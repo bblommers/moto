@@ -1,10 +1,16 @@
 from __future__ import unicode_literals
 
+import datetime
+import io
+import os
+import tarfile
 import re
 import sys
 
 import six
 from botocore.awsrequest import AWSPreparedRequest
+from botocore.parsers import EventStreamJSONParser
+from botocore.eventstream import EventStream
 
 from moto.core.utils import str_to_rfc_1123_datetime, py2_strip_unicode_keys
 from six.moves.urllib.parse import parse_qs, urlparse, unquote, parse_qsl
@@ -46,6 +52,7 @@ from .models import (
     FakeGrant,
     FakeAcl,
     FakeKey,
+    MockEventStream,
 )
 from .utils import (
     bucket_name_from_url,
@@ -55,6 +62,11 @@ from .utils import (
     parse_region_from_url,
 )
 from xml.dom import minidom
+
+try:
+    from tempfile import TemporaryDirectory
+except ImportError:
+    from backports.tempfile import TemporaryDirectory
 
 
 DEFAULT_REGION_NAME = "us-east-1"
@@ -123,6 +135,7 @@ ACTION_MAP = {
             "uploads": "PutObject",
             "restore": "RestoreObject",
             "uploadId": "PutObject",
+            "select": "SelectObject",
         },
     },
     "CONTROL": {
@@ -131,6 +144,22 @@ ACTION_MAP = {
         "DELETE": {"publicAccessBlock": "DeletePublicAccessBlock"},
     },
 }
+
+
+def bytes2tar(cntnt):
+    with TemporaryDirectory() as td:
+        tarname = os.path.join(td, "data.tar")
+        timeshift = int(
+            (datetime.datetime.now() - datetime.datetime.utcnow()).total_seconds()
+        )
+        with tarfile.TarFile(tarname, "w") as tarf:
+            tarinfo = tarfile.TarInfo(name="s3_example.json")
+            tarinfo.size = len(cntnt)
+            tarf.addfile(tarinfo, io.BytesIO(cntnt))
+
+        with open(tarname, "rb") as f:
+            tar_data = f.read()
+            return tar_data
 
 
 def parse_key_name(pth):
@@ -1729,6 +1758,62 @@ class ResponseObject(_TemplateEnvironmentMixin, ActionAuthenticatorMixin):
                 r = 200
             key.restore(int(days))
             return r, {}, ""
+        elif "select" in query:
+            import boto3
+            import docker
+            import requests
+            import urllib3
+            docker_client = docker.from_env()
+            with TemporaryDirectory() as td:
+                try:
+                    docker_client.ping()  # Verify Docker is running
+                    json_file = os.path.join(td, "s3_example.json")
+                    env_vars = {
+                        "JSON_FILE": json_file
+                    }
+                    f = open(json_file, "wb")
+                    key = self.backend.get_object(bucket_name, key_name)
+                    f.write(key.value)
+                    f.close()
+                    container = docker_client.containers.create(
+                        "partiqlclient:latest",
+                        #"ghcr.io/bblommers/partiqlclient:firsttry",
+                        # [],
+                        volumes={td: {'bind': '/tmp/partiqldata', 'mode': 'ro'}},
+                        detach=True,
+                        environment=env_vars
+                    )
+                    #tar_bytes = bytes2tar()
+                    #container.put_archive("/tmp/partiqldata/s3_example.json", tar_bytes)
+                    container.start()
+                finally:
+                    if container:
+                        try:
+                            exit_code = container.wait(timeout=300)
+                        except requests.exceptions.ReadTimeout:
+                            exit_code = -1
+                            container.stop()
+                            container.kill()
+                        else:
+                            exit_code = exit_code["StatusCode"]
+
+                        output = container.logs(stdout=False, stderr=True)
+                        output += container.logs(stdout=True, stderr=False)
+                        container.remove()
+                        print("OUTPUT:")
+                        print(type(output))
+                        print(output)
+                        # expected response
+                        # {'ResponseMetadata': {'RequestId': 'DE2DC3AC32479A83', 'HostId': 'xBa65MEremqn2UAsnMHS2dQvSjnM5ECEOCXUypXc3y5JGuLvXJwL2bUn6/iu+rF5XTWl+pELwg4=', 'HTTPStatusCode': 200, 'HTTPHeaders': {'x-amz-id-2': 'xBa65MEremqn2UAsnMHS2dQvSjnM5ECEOCXUypXc3y5JGuLvXJwL2bUn6/iu+rF5XTWl+pELwg4=', 'x-amz-request-id': 'DE2DC3AC32479A83', 'date': 'Mon, 14 Dec 2020 17:10:41 GMT', 'transfer-encoding': 'chunked', 'server': 'AmazonS3'}, 'RetryAttempts': 0}, 'Payload': <botocore.eventstream.EventStream object at 0x7fe032c0fb20>}
+                        #res = S3_SELECT_OBJECT_CONTENT_RESPONSE.replace(b"<<<DATA>>>", output)
+                        s3 = boto3.client("s3")
+                        print(s3.__dict__)
+                        parser = s3._response_parser._event_stream_parser
+                        raw_stream = urllib3.response.HTTPResponse(body=output)
+                        res = EventStream(raw_stream, output_shape, parser, operation_name="SelectObjectContent")
+                        return 200, {}, res
+                    else:
+                        print("no container!")
         else:
             raise NotImplementedError(
                 "Method POST had only been implemented for multipart uploads and restore operations, so far"
@@ -2406,3 +2491,12 @@ S3_PUBLIC_ACCESS_BLOCK_CONFIGURATION = """
   <RestrictPublicBuckets>{{public_block_config.restrict_public_buckets}}</RestrictPublicBuckets>
 </PublicAccessBlockConfiguration>
 """
+
+# Response for this method is in bytes
+S3_SELECT_OBJECT_CONTENT_RESPONSE = b"""\x00\x00\x01\xe7\x00\x00\x00U/\x8b\xb2x
+:message-type\x07\x00\x05event\x0b:event-type\x07\x00\x07Records
+:content-type\x07\x00\x18application/octet-stream<<<DATA>>>
+\xa7G\x0e\x8a\x00\x00\x00\xd1\x00\x00\x00C>b\x99\xaa
+:message-type\x07\x00\x05event\x0b:event-type\x07\x00\x05Stats
+:content-type\x07\x00\x08text/xml<Stats xmlns=""><BytesScanned></BytesScanned><BytesProcessed></BytesProcessed><BytesReturned></BytesReturned></Stats>7\xd0?S\x00\x00\x008\x00\x00\x00(\xc1\xc6\x84\xd4
+:message-type\x07\x00\x05event\x0b:event-type\x07\x00\x03End\xcf\x97\xd3\x92"""

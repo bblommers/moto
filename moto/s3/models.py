@@ -21,6 +21,7 @@ import uuid
 import six
 
 from bisect import insort
+from botocore.eventstream import EventStream, NoInitialResponseError
 from moto.core import ACCOUNT_ID, BaseBackend, BaseModel, CloudFormationModel
 from moto.core.utils import iso_8601_datetime_without_milliseconds_s3, rfc_1123_datetime
 from moto.cloudwatch.models import MetricDatum
@@ -1745,6 +1746,31 @@ class S3Backend(BaseBackend):
     def get_bucket_notification_configuration(self, bucket_name):
         bucket = self.get_bucket(bucket_name)
         return bucket.notification_configuration
+
+
+class MockEventStream(EventStream):
+
+    def __init__(self):
+        super(MockEventStream, self).__init__(raw_stream=None, output_shape=None, parser=None, operation_name=None)
+
+    def _create_raw_event_generator(self):
+        pass
+
+    def __iter__(self):
+        for event in self._event_generator:
+            parsed_event = self._parse_event(event)
+            if parsed_event:
+                yield parsed_event
+
+    def get_initial_response(self):
+        try:
+            initial_event = next(self._event_generator)
+            event_type = initial_event.headers.get(':event-type')
+            if event_type == 'initial-response':
+                return initial_event
+        except StopIteration:
+            pass
+        raise NoInitialResponseError()
 
 
 s3_backend = S3Backend()

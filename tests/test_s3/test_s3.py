@@ -4911,3 +4911,87 @@ def test_request_partial_content_should_contain_actual_content_length():
         )
         e.response["Error"]["ActualObjectSize"].should.equal("9")
         e.response["Error"]["RangeRequested"].should.equal(requested_range)
+
+
+@mock_s3
+def test_select_object_content():
+    from uuid import uuid4
+    s3 = boto3.client("s3")
+    print(s3._response_parser._event_stream_parser)
+    return
+    bucket = str(uuid4())
+    key = "test.json"
+    res = boto3.resource("s3", region_name="us-east-1")
+    res.create_bucket(Bucket=bucket)
+    res.Object(bucket, key).put(Body="""{"id": "1", "name": "person_1", "age": 32, "address": "555 1st street, Seattle", "tags": []}
+{"id": "2", "name": "person_2", "age": 24}
+{"id": "3", "name": "person_3", "age": 25, "address": {"number": 555, "street": "1st street", "city": "Seattle"}, "tags": ["premium_user"]}""")
+    print("Bucket created:")
+    print(bucket)
+    expression_type = "SQL"
+    expression = """SELECT * FROM S3Object"""
+    input_serialization = {"JSON": {"Type": "Document"}}
+    output_serialization = {"JSON": {}}
+    response = s3.select_object_content(
+        Bucket=bucket,
+        Key=key,
+        ExpressionType=expression_type,
+        Expression=expression,
+        InputSerialization=input_serialization,
+        OutputSerialization=output_serialization
+    )
+    print("============")
+    print(response)
+    response["ResponseMetadata"]["HTTPStatusCode"].should.equal(200)
+    response["Payload"].should.be.a(botocore.eventstream.EventStream)
+    for event in response["Payload"]:
+        event.should.be.a(dict)
+        if "Records" in event:
+            event.should.equal({'Records': {'Payload': b'{"id":"1","name":"person_1","age":32,"address":"555 1st street, Seattle","tags":[]}\n{"id":"2","name":"person_2","age":24}\n{"id":"3","name":"person_3","age":25,"address":{"number":555,"street":"1st street","city":"Seattle"},"tags":["premium_user"]}\n'}})
+        elif "Stats" in event:
+            event.should.equal({'Stats': {'Details': {'BytesScanned': 275, 'BytesProcessed': 275, 'BytesReturned': 248}}})
+        elif "End" in event:
+            event.should.equal({'End': {}})
+        else:
+            raise Exception("Not expecting any other records in the Payload, got: " + str(event))
+    print("============")
+    expression = "SELECT doc.name, doc.address FROM S3Object doc WHERE doc.age < 30"
+    response = s3.select_object_content(
+        Bucket=bucket,
+        Key=key,
+        ExpressionType=expression_type,
+        Expression=expression,
+        InputSerialization=input_serialization,
+        OutputSerialization=output_serialization
+    )
+    print(response)
+    for event in response["Payload"]:
+        event.should.be.a(dict)
+        if "Records" in event:
+            event.should.equal({'Records': {'Payload': b'{"name":"person_2"}\n{"name":"person_3","address":{"number":555,"street":"1st street","city":"Seattle"}}\n'}})
+        elif "Stats" in event:
+            event.should.equal({'Stats': {'Details': {'BytesScanned': 275, 'BytesProcessed': 275, 'BytesReturned': 104}}})
+        elif "End" in event:
+            event.should.equal({'End': {}})
+        else:
+            raise Exception("Not expecting any other records in the Payload, got: " + str(event))
+
+
+def test_stuff():
+    s3 = boto3.client("s3", region_name="us-east-1")
+    bucket = "partiqldatatest"
+    key = "data.json"
+    expression_type = "SQL"
+    expression = """SELECT * FROM S3Object"""
+    input_serialization = {"JSON": {"Type": "Document"}}
+    output_serialization = {"JSON": {}}
+    response = s3.select_object_content(
+        Bucket=bucket,
+        Key=key,
+        ExpressionType=expression_type,
+        Expression=expression,
+        InputSerialization=input_serialization,
+        OutputSerialization=output_serialization
+    )
+    print("============")
+    print(response)
