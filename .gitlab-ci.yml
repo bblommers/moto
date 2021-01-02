@@ -7,7 +7,7 @@ stages:
         - "python -m venv /opt/venv"
         - "source /opt/venv/bin/activate; python setup.py sdist"
         - "source /opt/venv/bin/activate; pip install --upgrade pip"
-        - "source /opt/venv/bin/activate; pip install -r requirements/dev.txt"
+        - "source /opt/venv/bin/activate; pip install -r requirements-dev.txt"
         - "source /opt/venv/bin/activate; pip install docker>=2.5.1"
         - "source /opt/venv/bin/activate; pip install boto==2.45.0"
         - "source /opt/venv/bin/activate; pip install boto3"
