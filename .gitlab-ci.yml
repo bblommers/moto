@@ -1,3 +1,6 @@
+# Docker-py does not work in CI runners:
+# https://gitlab.com/gitlab-org/gitlab-runner/-/issues/3442
+
 stages:
   - "lint"
   - "test"
