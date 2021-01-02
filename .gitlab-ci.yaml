@@ -1,0 +1,44 @@
+stages:
+  - "lint"
+  - "test"
+
+.build:
+    script:
+        - "python -m venv /opt/venv"
+        - "source /opt/venv/bin/activate; python setup.py sdist"
+        - "source /opt/venv/bin/activate; pip install --upgrade pip"
+        - "source /opt/venv/bin/activate; pip install -r requirements/dev.txt"
+        - "source /opt/venv/bin/activate; pip install docker>=2.5.1"
+        - "source /opt/venv/bin/activate; pip install boto==2.45.0"
+        - "source /opt/venv/bin/activate; pip install boto3"
+        - "source /opt/venv/bin/activate; pip install dist/moto*.gz"
+        - "source /opt/venv/bin/activate; pip install coveralls==1.1"
+        - "source /opt/venv/bin/activate; pip install coverage==4.5.4"
+
+lint:
+  extends: .build
+  stage: lint
+  image: "python:3.7"
+  script:
+    - make lint
+
+test-2.7:
+  stage: test
+  extends: .build
+  image: "python:2.7"
+  script:
+    - make simple-test
+
+test-3.6:
+  stage: test
+  extends: .build
+  image: "python:3.6"
+  script:
+    - make simple-test
+
+test-3.7:
+  stage: test
+  extends: .build
+  image: "python:3.7"
+  script:
+    - make simple-test
