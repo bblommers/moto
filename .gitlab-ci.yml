@@ -4,7 +4,7 @@ stages:
 
 .build:
     before_script:
-        - "python -m venv /opt/venv"
+        - "python -m virtualenv /opt/venv"
         - "source /opt/venv/bin/activate; python setup.py sdist"
         - "source /opt/venv/bin/activate; pip install --upgrade pip"
         - "source /opt/venv/bin/activate; pip install -r requirements-dev.txt"
@@ -41,4 +41,4 @@ test-3.7:
   extends: .build
   image: "python:3.7"
   script:
-    - make simple-test
+    - make test-only
