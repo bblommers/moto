@@ -23,8 +23,14 @@ lint:
 format:
 	black moto/ tests/
 
-simple-test:
+athena-test:
 	@pytest -sv tests/test_athena/
+
+lambda-test:
+	@pytest -sv tests/test_awslambda/
+
+mbc-test:
+	@pytest -sv tests/test_managedblockchain/
 
 test-only:
 	rm -f .coverage
