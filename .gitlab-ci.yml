@@ -3,7 +3,7 @@ stages:
   - "test"
 
 .build:
-    script:
+    before_script:
         - "python -m venv /opt/venv"
         - "source /opt/venv/bin/activate; python setup.py sdist"
         - "source /opt/venv/bin/activate; pip install --upgrade pip"
