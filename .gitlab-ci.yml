@@ -4,6 +4,7 @@ stages:
 
 .build:
     before_script:
+        - "pip install virtualenv"
         - "python -m virtualenv /opt/venv"
         - "source /opt/venv/bin/activate; python setup.py sdist"
         - "source /opt/venv/bin/activate; pip install --upgrade pip"
