@@ -24,7 +24,7 @@ format:
 	black moto/ tests/
 
 simple-test:
-    @pytest -sv tests/test_athena/
+	@pytest -sv tests/test_athena/
 
 test-only:
 	rm -f .coverage
