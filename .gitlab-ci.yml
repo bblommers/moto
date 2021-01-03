@@ -1,5 +1,11 @@
-# Docker-py does not work in CI runners:
-# https://gitlab.com/gitlab-org/gitlab-runner/-/issues/3442
+cache:
+  paths:
+    - .cache/pip
+    - venv/
+  key: "$CI_JOB_IMAGE-$CI_COMMIT_REF_SLUG"
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
 
 stages:
   - "lint"
@@ -9,9 +15,9 @@ stages:
     before_script:
         - "pip --version"
         - "pip install virtualenv"
-        - "python -m virtualenv /opt/venv"
-        - "source /opt/venv/bin/activate; pip install docker"
-        - "source /opt/venv/bin/activate; pip show docker"
+        - "python -m virtualenv venv"
+        - "source venv/bin/activate; pip install docker"
+        - "source venv/bin/activate; pip show docker"
         - "apt-get update -y"
         - "apt-get install apt-transport-https ca-certificates curl gnupg-agent software-properties-common -y"
         - "curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add -"
@@ -22,15 +28,15 @@ stages:
         - "while systemctl is-active docker | grep \"inactive\" --q; do sleep 1; done"
         - "service docker status"
         - "docker info"
-        - "source /opt/venv/bin/activate; python setup.py sdist"
-        - "source /opt/venv/bin/activate; pip install --upgrade pip"
-        - "source /opt/venv/bin/activate; pip install -r requirements-dev.txt"
-        - "source /opt/venv/bin/activate; pip install docker>=2.5.1"
-        - "source /opt/venv/bin/activate; pip install boto==2.45.0"
-        - "source /opt/venv/bin/activate; pip install boto3"
-        - "source /opt/venv/bin/activate; pip install dist/moto*.gz"
-        - "source /opt/venv/bin/activate; pip install coveralls==1.1"
-        - "source /opt/venv/bin/activate; pip install coverage==4.5.4"
+        - "source venv/bin/activate; python setup.py sdist"
+        - "source venv/bin/activate; pip install --upgrade pip"
+        - "source venv/bin/activate; pip install -r requirements-dev.txt"
+        - "source venv/bin/activate; pip install docker>=2.5.1"
+        - "source venv/bin/activate; pip install boto==2.45.0"
+        - "source venv/bin/activate; pip install boto3"
+        - "source venv/bin/activate; pip install dist/moto*.gz"
+        - "source venv/bin/activate; pip install coveralls==1.1"
+        - "source venv/bin/activate; pip install coverage==4.5.4"
 
 lint:
   extends: .build
