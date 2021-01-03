@@ -47,6 +47,8 @@ stages:
         - "python -m virtualenv venv"
         - "source venv/bin/activate; pip install docker"
         - "source venv/bin/activate; pip show docker"
+        - "service docker start"
+        - "sleep 2 # Wait for docker"
         - "service docker status"
         - "docker info"
         - "source venv/bin/activate; python setup.py sdist"
