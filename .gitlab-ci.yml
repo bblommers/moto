@@ -7,8 +7,21 @@ stages:
 
 .build:
     before_script:
+        - "pip --version"
         - "pip install virtualenv"
         - "python -m virtualenv /opt/venv"
+        - "source /opt/venv/bin/activate; pip install docker"
+        - "source /opt/venv/bin/activate; pip show docker"
+        - "apt-get update -y"
+        - "apt-get install apt-transport-https ca-certificates curl gnupg-agent software-properties-common -y"
+        - "curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add -"
+        - "add-apt-repository \"deb [arch=amd64] https://download.docker.com/linux/debian $(lsb_release -cs) stable\""
+        - "apt-get update -y"
+        - "apt-get install docker-ce docker-ce-cli containerd.io -y"
+        - "service docker start"
+        - "while systemctl is-active docker | grep \"inactive\" --q; do sleep 1; done"
+        - "service docker status"
+        - "docker info"
         - "source /opt/venv/bin/activate; python setup.py sdist"
         - "source /opt/venv/bin/activate; pip install --upgrade pip"
         - "source /opt/venv/bin/activate; pip install -r requirements-dev.txt"
