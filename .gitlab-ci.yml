@@ -69,7 +69,7 @@ lint:
 test-2.7:
   stage: test
   extends: .venv
-  image: "ghcr.io/bblommers/python27docker:latest"
+  image: "bblommers/python27docker:latest"
   script:
     - make athena-test
 
