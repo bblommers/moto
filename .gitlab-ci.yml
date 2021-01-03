@@ -57,7 +57,7 @@ test-3.6:
   extends: .build
   image: "python:3.6-buster"
   script:
-    - make lambda-test
+    - make athena-test
 
 test-3.7:
   stage: test
