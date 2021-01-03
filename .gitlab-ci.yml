@@ -3,7 +3,8 @@ cache:
     - .cache/pip
     - venv/
   key: "$CI_JOB_IMAGE-$CI_COMMIT_REF_SLUG"
-  # TODO: Change key to only CI_JOB_IMAGE, and empty cache when specific files are updated
+  # TODO: Change key to only CI_JOB_IMAGE
+  # And empty cache when specific files are updated
 
 variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
