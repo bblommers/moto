@@ -3,6 +3,7 @@ cache:
     - .cache/pip
     - venv/
   key: "$CI_JOB_IMAGE-$CI_COMMIT_REF_SLUG"
+  # TODO: Change key to only CI_JOB_IMAGE, and empty cache when specific files are updated
 
 variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
@@ -38,6 +39,26 @@ stages:
         - "source venv/bin/activate; pip install coveralls==1.1"
         - "source venv/bin/activate; pip install coverage==4.5.4"
 
+
+.venv:
+    before_script:
+        - "pip --version"
+        - "pip install virtualenv"
+        - "python -m virtualenv venv"
+        - "source venv/bin/activate; pip install docker"
+        - "source venv/bin/activate; pip show docker"
+        - "service docker status"
+        - "docker info"
+        - "source venv/bin/activate; python setup.py sdist"
+        - "source venv/bin/activate; pip install --upgrade pip"
+        - "source venv/bin/activate; pip install -r requirements-dev.txt"
+        - "source venv/bin/activate; pip install docker>=2.5.1"
+        - "source venv/bin/activate; pip install boto==2.45.0"
+        - "source venv/bin/activate; pip install boto3"
+        - "source venv/bin/activate; pip install dist/moto*.gz"
+        - "source venv/bin/activate; pip install coveralls==1.1"
+        - "source venv/bin/activate; pip install coverage==4.5.4"
+
 lint:
   extends: .build
   stage: lint
@@ -47,8 +68,8 @@ lint:
 
 test-2.7:
   stage: test
-  extends: .build
-  image: "python:2.7"
+  extends: .venv
+  image: "ghcr.io/bblommers/python27docker:latest"
   script:
     - make athena-test
 
