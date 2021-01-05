@@ -10,6 +10,7 @@ variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
 
 stages:
+  - "lint"
   - "test"
 
 .venv:
@@ -39,6 +40,9 @@ lint:
   image: "bblommers/python37docker:latest"
   script:
     - make lint
+  only:
+    refs:
+      - poc/gitlab
 
 test-2.7:
   stage: test
