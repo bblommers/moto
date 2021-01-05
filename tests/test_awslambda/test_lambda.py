@@ -1346,6 +1346,8 @@ def test_invoke_function_from_sqs_exception():
             logGroupName="/aws/lambda/testFunction",
             logStreamName=log_streams[0]["logStreamName"],
         )
+        print("\n")
+        print("Events: " + str(result.get("events")))
         for event in result.get("events"):
             if "I failed!" in event["message"]:
                 messages = queue.receive_messages(MaxNumberOfMessages=10)

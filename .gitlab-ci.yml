@@ -10,7 +10,6 @@ variables:
   PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
 
 stages:
-  - "lint"
   - "test"
 
 .venv:
@@ -47,13 +46,16 @@ test-2.7:
   image: "bblommers/python27docker:latest"
   script:
     - make test-only
+  only:
+    refs:
+      - poc/gitlab
 
 test-3.6:
   stage: test
   extends: .venv
   image: "bblommers/python36docker:latest"
   script:
-    - make test-only
+    - pytest tests/test_awslambda tests/test_sqs
 
 test-3.7:
   stage: test
@@ -61,6 +63,9 @@ test-3.7:
   image: "bblommers/python37docker:latest"
   script:
     - make test-only
+  only:
+    refs:
+      - poc/gitlab
 
 test-3.8:
   stage: test
@@ -68,3 +73,6 @@ test-3.8:
   image: "bblommers/python38docker:latest"
   script:
     - make test-only
+  only:
+    refs:
+      - poc/gitlab
