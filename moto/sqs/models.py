@@ -200,6 +200,12 @@ class Message(BaseModel):
             return True
         return False
 
+    def __str__(self):
+        return "Message[body="+str(self.body)+",id="+str(self.id)+",visible="+str(self.visible)+"]"
+
+    def __repr__(self):
+        return self.__str__()
+
 
 class Queue(CloudFormationModel):
     BASE_ATTRIBUTES = [
@@ -871,10 +877,14 @@ class SQSBackend(BaseBackend):
         queue._messages = new_messages
 
     def change_message_visibility(self, queue_name, receipt_handle, visibility_timeout):
+        print("change_message_visibility("+str(receipt_handle)+")")
         queue = self.get_queue(queue_name)
+        print("Messages:")
+        print(queue._messages)
         for message in queue._messages:
             if message.receipt_handle == receipt_handle:
                 if message.visible:
+                    print("Message visible: " + str(message))
                     raise MessageNotInflight
                 message.change_visibility(visibility_timeout)
                 if message.visible:

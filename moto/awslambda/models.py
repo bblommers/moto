@@ -1025,7 +1025,9 @@ class LambdaBackend(BaseBackend):
 
         request_headers = {}
         response_headers = {}
+        print("Sending message to AWS Lambda..")
         func.invoke(json.dumps(event), request_headers, response_headers)
+        print(response_headers)
         return "x-amz-function-error" not in response_headers
 
     def send_sns_message(self, function_name, message, subject=None, qualifier=None):

@@ -55,7 +55,7 @@ test-3.6:
   extends: .venv
   image: "bblommers/python36docker:latest"
   script:
-    - pytest tests/test_awslambda tests/test_sqs
+    - pytest -sv tests/test_awslambda tests/test_sqs
 
 test-3.7:
   stage: test
