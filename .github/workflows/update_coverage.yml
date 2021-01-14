@@ -1,6 +1,9 @@
 on:
  schedule:
    - cron: 0 0 * * 0 # Every week
+ pull_request:
+   types: [opened, synchronize]
+
 
 name: Update Implementation Coverage
 jobs:
