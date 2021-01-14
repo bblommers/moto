@@ -2,7 +2,7 @@ on:
  schedule:
    - cron: 0 0 * * 0 # Every week
  pull_request:
-   types: [opened, synchronize]
+   types: [opened, synchronize, reopened]
 
 
 name: Update Implementation Coverage
@@ -15,6 +15,7 @@ jobs:
        uses: technote-space/create-pr-action@v2
        with:
          EXECUTE_COMMANDS: |
+           python -m pip install .
            python -s scripts/implementation_coverage.py
          COMMIT_MESSAGE: 'chore: update implementation coverage'
          COMMIT_NAME: 'GitHub Actions'
