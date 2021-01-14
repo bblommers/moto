@@ -1,0 +1,18 @@
+on:
+ schedule:
+   - cron: 0 0 * * 0 # Every week
+
+name: Update Implementation Coverage
+jobs:
+ release:
+   name: Update Implementation Coverage
+   runs-on: ubuntu-latest
+   steps:
+     - name: Update implementation coverage
+       uses: technote-space/create-pr-action@v2
+       with:
+         EXECUTE_COMMANDS: |
+           python -s scripts/implementation_coverage.py
+         COMMIT_MESSAGE: 'chore: update implementation coverage'
+         COMMIT_NAME: 'GitHub Actions'
+         COMMIT_EMAIL: 'admin@moto.com'
