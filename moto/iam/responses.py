@@ -321,7 +321,7 @@ class IamResponse(BaseResponse):
         profile_name = self._get_param("InstanceProfileName")
         path = self._get_param("Path", "/")
 
-        profile = iam_backend.create_instance_profile(profile_name, path, role_ids=[])
+        profile = iam_backend.create_instance_profile(profile_name, path, role_names=[])
         template = self.response_template(CREATE_INSTANCE_PROFILE_TEMPLATE)
         return template.render(profile=profile)
 
