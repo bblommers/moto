@@ -20,9 +20,13 @@ jobs:
     name: A job to say hello
     steps:
     - uses: actions/checkout@v2
+    - name: Verify the action is here
+      run: |
+        ls -la /home/runner/work/moto/moto/.github
+        ls -la /home/runner/work/moto/moto/.github/actions/moto-release-action
     - name: Hello world action step
       id: hello
-      uses: ./.github/actions/moto-release-action
+      uses: ./.github/actions/moto-release-action/
       with:
         who-to-greet: 'Mona the Octocat wants to release ${{ github.event.inputs.version }}'
     # Use the output from the `hello` step
