@@ -21,7 +21,7 @@ runs:
       shell: bash
     - run: echo "Use file $(cat VERSION)"
       shell: bash
-    - run: git rev-parse ${{ inputs.version }} >/dev/null 2>&1
+    - run: git rev-parse ${{ inputs.version }}
       shell: bash
     - run: grep ${{ inputs.version }} CHANGELOG.md >/dev/null 2>&1
       shell: bash
