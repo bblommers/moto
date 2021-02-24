@@ -1,3 +1,5 @@
+name: Release
+
 on:
   push:
     branches:
@@ -19,7 +21,7 @@ jobs:
     steps:
     - name: Hello world action step
       id: hello
-      uses: bblommers/moto-release-action@latest
+      uses: bblommers/moto-release-action@master
       with:
         who-to-greet: 'Mona the Octocat wants to release ${{ github.event.inputs.version }}'
     # Use the output from the `hello` step
