@@ -1,7 +1,10 @@
 on:
   push:
     branches:
-      - master
+      - test-automate-release
+    # Only run when we're editing this file (for testing purposes)
+    paths:
+      - '.github/workflows/release.yml'
   workflow_dispatch:
     inputs:
       version:
@@ -16,7 +19,7 @@ jobs:
     steps:
     - name: Hello world action step
       id: hello
-      uses: bblommers/moto-release-action@v1
+      uses: bblommers/moto-release-action@latest
       with:
         who-to-greet: 'Mona the Octocat wants to release ${{ github.event.inputs.version }}'
     # Use the output from the `hello` step
