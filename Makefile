@@ -40,7 +40,7 @@ aws_managed_policies:
 
 upload_pypi_artifact:
 	python setup.py sdist bdist_wheel
-	twine upload dist/*
+	twine upload dist/* --non-interactive
 
 push_dockerhub_image:
 	docker build -t motoserver/moto . --tag moto:`python setup.py --version`

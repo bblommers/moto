@@ -9,9 +9,9 @@ on:
         default: ''
 
 jobs:
-  hello_world_job:
+  release-moto-job:
     runs-on: ubuntu-latest
-    name: A job to say hello
+    name: Release Moto
     steps:
     - uses: actions/checkout@v2
       with:

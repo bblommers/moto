@@ -9,25 +9,12 @@ runs:
   using: 'composite'
   steps:
     - run: |
-        pwd
-        ls -la /home/runner/work/moto/moto
-      shell: bash
-    - run: echo ${{ inputs.version }} > VERSION
-      shell: bash
-    - run: echo "lets see if ${{ inputs.version}} exists.."
-      shell: bash
-    - run: echo "lets see if envs exist ${{ env.version }}"
-      shell: bash
-    - run: echo "Use file $(cat VERSION)"
-      shell: bash
-    - run: |
         ! git rev-parse ${{ inputs.version }}
       shell: bash
     - run: grep ${{ inputs.version }} CHANGELOG.md || { echo "Ensure that the CHANGELOG contains an entry for ${{ inputs.version }}" ; exit 1; }
       shell: bash
     - run: |
-        echo "TODO: update __init__.py"
+        python update_version_from_git.py ${{ inputs.version }}
       shell: bash
-    - run: |
-        echo "make publish"
+    - run: make publish
       shell: bash
