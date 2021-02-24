@@ -17,15 +17,9 @@ jobs:
     name: A job to say hello
     steps:
     - uses: actions/checkout@v2
-    - name: Verify the action is here
-      run: |
-        ls -la /home/runner/work/moto/moto/.github/actions
-        ls -la /home/runner/work/moto/moto/.github/actions/moto-release
-    - name: Hello world action step
-      id: hello
+      with:
+        fetch-depth: 0
+    - name: Release Moto
       uses: ./.github/actions/moto-release/
       with:
-        who-to-greet: 'Mona the Octocat wants to release: ${{ github.event.inputs.version }}'
-    # Use the output from the `hello` step
-    - name: Get the output time
-      run: echo "The time was ${{ steps.hello.outputs.time }}"
+        version: '${{ github.event.inputs.version }}'

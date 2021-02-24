@@ -1,14 +1,11 @@
 # action.yml
-name: 'Hello World'
-description: 'Greet someone and record the time'
+name: 'Release Moto'
+description: 'Release Moto with the version supplied'
 inputs:
-  who-to-greet:  # id of input
-    description: 'Who to greet'
+  version:  # id of input
+    description: 'Version number'
     required: true
-    default: 'World'
-outputs:
-  time: # id of output
-    description: 'The time we greeted you'
+    default: "0.0.1-alpha"
 runs:
   using: 'composite'
   steps:
@@ -16,11 +13,9 @@ runs:
         pwd
         ls -la /home/runner/work/moto/moto
       shell: bash
-    - run: |
-        echo "TODO: verify our version does not yet exist"
+    - run: git rev-parse ${{ inputs.version }} >/dev/null 2>&1
       shell: bash
-    - run: |
-        echo "TODO: verify changelog contains our version"
+    - run: grep ${{ inputs.version }} CHANGELOG.md >/dev/null 2>&1
       shell: bash
     - run: |
         echo "TODO: update __init__.py"
