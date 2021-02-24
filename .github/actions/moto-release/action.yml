@@ -10,7 +10,21 @@ outputs:
   time: # id of output
     description: 'The time we greeted you'
 runs:
-  using: 'docker'
-  image: 'Dockerfile'
-  args:
-    - ${{ inputs.who-to-greet }}
+  using: 'composite'
+  steps:
+    - run: |
+        pwd
+        ls -la /home/runner/work/moto/moto
+      shell: bash
+    - run: |
+        echo "TODO: verify our version does not yet exist"
+      shell: bash
+    - run: |
+        echo "TODO: verify changelog contains our version"
+      shell: bash
+    - run: |
+        echo "TODO: update __init__.py"
+      shell: bash
+    - run: |
+        echo "make publish"
+      shell: bash
