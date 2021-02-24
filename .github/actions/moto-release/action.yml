@@ -17,7 +17,7 @@ runs:
       shell: bash
     - run: echo "lets see if ${{ inputs.version}} exists.."
       shell: bash
-    - run: echo "lets see if envs exist ${{ github }}"
+    - run: echo "lets see if envs exist ${{ github.version }}"
       shell: bash
     - run: git rev-parse ${{ inputs.version }} >/dev/null 2>&1
       shell: bash
