@@ -4,9 +4,6 @@ on:
   push:
     branches:
       - test-automate-release
-    # Only run when we're editing this file (for testing purposes)
-    paths:
-      - '.github/workflows/release.yml'
   workflow_dispatch:
     inputs:
       version:
@@ -28,7 +25,7 @@ jobs:
       id: hello
       uses: ./.github/actions/moto-release/
       with:
-        who-to-greet: 'Mona the Octocat wants to release ${{ github.event.inputs.version }}'
+        who-to-greet: 'Mona the Octocat wants to release: ${{ github.event.inputs.version }}'
     # Use the output from the `hello` step
     - name: Get the output time
       run: echo "The time was ${{ steps.hello.outputs.time }}"
