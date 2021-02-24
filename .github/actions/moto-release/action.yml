@@ -23,7 +23,7 @@ runs:
     - run: |
         ! git rev-parse ${{ inputs.version }}
       shell: bash
-    - run: grep ${{ inputs.version }} CHANGELOG.md || echo "Ensure that the CHANGELOG contains an entry for ${{ inputs.version }}"
+    - run: grep ${{ inputs.version }} CHANGELOG.md || { echo "Ensure that the CHANGELOG contains an entry for ${{ inputs.version }}" ; exit 1; }
       shell: bash
     - run: |
         echo "TODO: update __init__.py"
