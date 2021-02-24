@@ -5,7 +5,6 @@ inputs:
   version:  # id of input
     description: 'Version number'
     required: true
-    default: "0.0.1-alpha"
 runs:
   using: 'composite'
   steps:
@@ -21,9 +20,10 @@ runs:
       shell: bash
     - run: echo "Use file $(cat VERSION)"
       shell: bash
-    - run: git rev-parse ${{ inputs.version }}
+    - run: |
+        ! git rev-parse ${{ inputs.version }}
       shell: bash
-    - run: grep ${{ inputs.version }} CHANGELOG.md >/dev/null 2>&1
+    - run: grep ${{ inputs.version }} CHANGELOG.md
       shell: bash
     - run: |
         echo "TODO: update __init__.py"
