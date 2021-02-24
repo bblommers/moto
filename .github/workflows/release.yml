@@ -21,7 +21,7 @@ jobs:
     steps:
     - name: Hello world action step
       id: hello
-      uses: bblommers/moto-release-action@master
+      uses: ./.github/actions/moto-release-action
       with:
         who-to-greet: 'Mona the Octocat wants to release ${{ github.event.inputs.version }}'
     # Use the output from the `hello` step
