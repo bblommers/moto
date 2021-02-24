@@ -13,11 +13,13 @@ runs:
         pwd
         ls -la /home/runner/work/moto/moto
       shell: bash
-    - run: echo "version=${{ inputs.version }}" >> $GITHUB_ENV
+    - run: echo ${{ inputs.version }} > VERSION
       shell: bash
     - run: echo "lets see if ${{ inputs.version}} exists.."
       shell: bash
     - run: echo "lets see if envs exist ${{ env.version }}"
+      shell: bash
+    - run: echo "Use file $(cat VERSION)"
       shell: bash
     - run: git rev-parse ${{ inputs.version }} >/dev/null 2>&1
       shell: bash
