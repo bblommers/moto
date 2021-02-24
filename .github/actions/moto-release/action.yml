@@ -8,6 +8,8 @@ inputs:
 runs:
   using: 'composite'
   steps:
+    - run: pip install setuptools --upgrade
+      shell: bash
     - run: |
         ! git rev-parse ${{ inputs.version }}
       shell: bash
