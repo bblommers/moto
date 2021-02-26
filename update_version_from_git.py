@@ -54,7 +54,7 @@ def migrate_version(target_file, new_version):
     regex = r"['\"](.*)['\"]"
     migrate_source_attribute(
         "__version__",
-        "'{new_version}'".format(new_version=new_version),
+        "\"{new_version}\"".format(new_version=new_version),
         target_file,
         regex,
     )

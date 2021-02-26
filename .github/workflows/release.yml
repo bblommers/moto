@@ -38,19 +38,9 @@ jobs:
       run: python update_version_from_git.py ${{ env.VERSION }}
     - name: Build
       run: python setup.py sdist bdist_wheel
-    - name: Increase patch version number
-      run: |
-        python update_version_from_git.py patch
-        git config --local user.email "admin@getmoto.org"
-        git config --local user.name "Moto Admin"
-        git add moto/__init__.py
-        git commit -m "Increase version number post-release"
-        git push
-        exit 1
     - name: Publish to PyPI
       uses: pypa/gh-action-pypi-publish@master
       with:
-        repository_url: https://test.pypi.org/legacy/
         password: ${{ secrets.PYPI_API_TOKEN }}
     - name: Tag version on Github
       run: |
@@ -69,3 +59,11 @@ jobs:
       with:
         push: true
         tags: motoserver/moto:${{ env.VERSION }}
+    - name: Increase patch version number
+      run: |
+        python update_version_from_git.py patch
+        git config --local user.email "admin@getmoto.org"
+        git config --local user.name "Moto Admin"
+        git add moto/__init__.py
+        git commit -m "Increase version number post-release"
+        git push
