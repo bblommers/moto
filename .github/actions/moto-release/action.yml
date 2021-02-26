@@ -39,8 +39,9 @@ runs:
         TWINE_USER: ${{ inputs.twine_user }}
         TWINE_PASSWORD: ${{ inputs.twine_pass }}
       run: |
+        pip show twine
         python setup.py sdist bdist_wheel
-        twine upload --repository testpypi dist/* --non-interactive
+        python -m twine upload --repository testpypi dist/* --non-interactive
       shell: bash
     - name: Tag version on Github
       run: |
