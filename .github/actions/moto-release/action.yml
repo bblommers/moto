@@ -43,7 +43,7 @@ runs:
       run: |
         pip show twine
         python setup.py sdist bdist_wheel
-        python -m twine upload --repository testpypi dist/*
+        python -m twine upload --repository testpypi dist/* --non-interactive
       shell: bash
     - name: Tag version on Github
       run: |
