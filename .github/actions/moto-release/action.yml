@@ -5,6 +5,18 @@ inputs:
   version:  # id of input
     description: 'Version number'
     required: true
+  twine_user:
+    description: 'Twine Username'
+    required: true
+  twine_pass:
+    description: 'Twine Password'
+    required: true
+  docker_user:
+    description: 'DockerHub Username'
+    required: true
+  docker_token:
+    description: 'DockerHub Token'
+    required: true
 runs:
   using: 'composite'
   steps:
@@ -23,6 +35,9 @@ runs:
         python update_version_from_git.py ${{ inputs.version }}
       shell: bash
     - name: Build and Upload
+      env:
+        TWINE_USER: ${{ inputs.twine_user }}
+        TWINE_PASSWORD: ${{ inputs.twine_pass }}
       run: |
         python setup.py sdist bdist_wheel
         twine upload --repository testpypi dist/* --non-interactive
@@ -34,7 +49,7 @@ runs:
       shell: bash
     - name: Push Docker version
       run: |
-        echo ${{ secrets.DOCKERHUB_TOKEN }} | docker login --username ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
+        echo ${{ inputs.docker_token }} | docker login --username ${{ inputs.docker_user }} --password-stdin
         docker build -t bblommers/mototestreleases  . --tag moto:`python setup.py --version`
         docker push bblommers/mototestreleases
         docker logout

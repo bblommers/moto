@@ -20,3 +20,7 @@ jobs:
       uses: ./.github/actions/moto-release/
       with:
         version: '${{ github.event.inputs.version }}'
+        twine_user: '${{ secrets.TWINE_USERNAME }}'
+        twine_pass: '${{ secrets.TWINE_PASSWORD }}'
+        docker_user: '${{ secrets.DOCKER_USERNAME }}'
+        docker_token: '${{ secrets.DOCKER_TOKEN }}'
