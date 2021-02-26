@@ -35,10 +35,10 @@ jobs:
     - name: Build
       run: python setup.py sdist bdist_wheel
     - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@master
-        with:
-          repository_url: https://test.pypi.org/legacy/
-          password: ${{ secrets.TEST_PYPI_API_TOKEN }}
+      uses: pypa/gh-action-pypi-publish@master
+      with:
+        repository_url: https://test.pypi.org/legacy/
+        password: ${{ secrets.TEST_PYPI_API_TOKEN }}
     - name: Tag version on Github
       run: |
         git tag ${{ github.events.inputs.version }}
