@@ -41,15 +41,14 @@ jobs:
     - name: Publish to PyPI
       uses: pypa/gh-action-pypi-publish@master
       with:
-        repository_url: https://test.pypi.org/legacy/
-        password: ${{ secrets.TEST_PYPI_API_TOKEN }}
+        password: ${{ secrets.PYPI_API_TOKEN }}
     - name: Tag version on Github
       run: |
         git tag ${{ env.VERSION }}
         git push origin ${{ env.VERSION }}
     - name: Build Docker release
       run: |
-        docker build -t bblommers/mototestreleases . --tag mototestreleases:${{ env.VERSION }}
+        docker build -t motoserver/moto . --tag moto:${{ env.VERSION }}
     - name: Login to DockerHub
       uses: docker/login-action@v1
       with:
@@ -59,4 +58,4 @@ jobs:
       uses: docker/build-push-action@v2
       with:
         push: true
-        tags: bblommers/mototestreleases:${{ env.VERSION }}
+        tags: motoserver/moto:${{ env.VERSION }}
