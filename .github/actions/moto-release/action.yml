@@ -21,7 +21,7 @@ runs:
   using: 'composite'
   steps:
     - name: Install dependencies
-      run: pip install wheel setuptools packaging --upgrade
+      run: pip install wheel setuptools packaging twine --upgrade
       shell: bash
     - name: Verify supplied version is not a GitHub tag yet
       run: |
