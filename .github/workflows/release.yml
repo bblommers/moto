@@ -41,6 +41,8 @@ jobs:
     - name: Increase patch version number
       run: |
         python update_version_from_git.py patch
+        git config --local user.email "admin@getmoto.org"
+        git config --local user.name "Moto Admin"
         git add moto/__init__.py
         git commit -m "Increase version number post-release"
         git push
