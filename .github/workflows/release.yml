@@ -24,7 +24,7 @@ jobs:
       uses: ./.github/actions/moto-release/
       with:
         version: '${{ github.event.inputs.version }}'
-        twine_user: '${{ secrets.TWINE_USERNAME }}'
-        twine_pass: '${{ secrets.TWINE_PASSWORD }}'
+        twine_user: '__token__'
+        twine_pass: '${{ secrets.TEST_PYPI_API_TOKEN }}'
         docker_user: '${{ secrets.DOCKER_USERNAME }}'
         docker_token: '${{ secrets.DOCKER_TOKEN }}'
