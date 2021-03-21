@@ -55,7 +55,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: "echo 'data: ${{ steps.get_pr.outputs.data }}'"
-      - run: "echo 'assoc pr: ${{ toJson(steps.get_pr.outputs.data).repository.object.associatedPullRequests.edges[0].node.number }}'"
+      - run: "echo 'assoc pr: ${{ fromJSON(steps.get_pr.outputs.data).repository.object.associatedPullRequests.edges[0].node.number }}'"
       - name: Get PR number
         run: |
           msg="${{ github.event.commits[0].message }}"
