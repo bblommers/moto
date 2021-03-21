@@ -51,7 +51,7 @@ jobs:
             }
           owner: ${{ github.event.repository.owner.name }}
           repo: ${{ github.event.repository.name }}
-          commit: ${{ github.sha }}
+          commit: "${{ github.sha }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: "echo 'assoc pr: ${{ steps.get_pr.outputs.data }}'"
