@@ -30,7 +30,7 @@ jobs:
         id: get_pr
         with:
           query: |
-            query get_pr($owner:String!,$repo:String!,$commit:String!) {
+            query get_pr($owner:String!,$repo:String!,$commit:GitObjectID) {
               repository(owner:$owner,name:$repo) {
                 object(oid:$commit) {
                   ... on Commit {
