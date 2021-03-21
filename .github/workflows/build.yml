@@ -32,7 +32,7 @@ jobs:
           query: |
             query get_pr($owner:String!,$repo:String!,$commit:String!) {
               repository(owner:$owner,name:$repo) {
-                object(oid: $commit) {
+                object(oid:$commit) {
                   ... on Commit {
                     associatedPullRequests(last: 1){
                       edges {
