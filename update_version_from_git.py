@@ -95,7 +95,7 @@ def prerelease_version():
     assert (
         initpy_ver > ver
     ), "the moto/__init__.py version should be newer than the last tagged release."
-    return "{initpy_ver}.{commits_since}".format(
+    return "{initpy_ver}{commits_since}".format(
         initpy_ver=initpy_ver, commits_since=commits_since
     )
 
@@ -133,7 +133,7 @@ def release_version_correct():
     - prerelease verion for master is correct.
     - release version is correct for tags.
     """
-    if is_master_branch():
+    if True:
         # update for a pre release version.
         initpy = os.path.abspath("moto/__init__.py")
 
