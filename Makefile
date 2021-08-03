@@ -22,17 +22,17 @@ format:
 test-only:
 	rm -f .coverage
 	rm -rf cover
-	pytest -sv ./tests/ $(TEST_EXCLUDE)
+	pytest $(TEST_EXCLUDE)
 
 test-coverage:
 	rm -f .coverage
 	rm -rf cover
-	pytest -sv --cov=moto --cov-report xml ./tests/ $(TEST_EXCLUDE)
+	pytest $(TEST_EXCLUDE)
 
 test: lint test-only
 
 test_server:
-	@TEST_SERVER_MODE=true pytest -sv --cov=moto --cov-report xml ./tests/
+	@TEST_SERVER_MODE=true pytest
 
 aws_managed_policies:
 	scripts/update_managed_policies.py
@@ -61,5 +61,5 @@ scaffold:
 	@pip install -r requirements-dev.txt > /dev/null
 	exec python scripts/scaffold.py
 
-int_test:
-	@./scripts/int_test.sh
+dependency_test:
+	@./scripts/dependency_test.sh

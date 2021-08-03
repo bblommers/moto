@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 from io import open
 import os
 import re
-from setuptools import setup, find_packages
+from setuptools import setup
 
 # Borrowed from pip at https://github.com/pypa/pip/blob/62c27dee45625e1b63d1e023b0656310f276e050/setup.py#L11-L15
 here = os.path.abspath(os.path.dirname(__file__))
@@ -26,109 +26,5 @@ def get_version():
     raise RuntimeError("Unable to find version string.")
 
 
-install_requires = [
-    "boto3>=1.9.201",
-    "botocore>=1.12.201",
-    "cryptography>=3.3.1",
-    "requests>=2.5",
-    "xmltodict",
-    "werkzeug",
-    "pytz",
-    "python-dateutil<3.0.0,>=2.1",
-    "responses>=0.9.0",
-    "MarkupSafe!=2.0.0a1",  # This is a Jinja2 dependency, 2.0.0a1 currently seems broken
-    "Jinja2>=2.10.1",
-    "more-itertools",
-    "setuptools",
-]
-
-_dep_PyYAML = "PyYAML>=5.1"
-_dep_python_jose = "python-jose[cryptography]>=3.1.0,<4.0.0"
-_dep_python_jose_ecdsa_pin = (
-    "ecdsa<0.15"  # https://github.com/spulec/moto/pull/3263#discussion_r477404984
-)
-_dep_docker = "docker>=2.5.1"
-_dep_jsondiff = "jsondiff>=1.1.2"
-_dep_aws_xray_sdk = "aws-xray-sdk!=0.96,>=0.93"
-_dep_idna = "idna<3,>=2.5"
-_dep_cfn_lint = "cfn-lint>=0.4.0"
-_dep_sshpubkeys = "sshpubkeys>=3.1.0"
-
-all_extra_deps = [
-    _dep_PyYAML,
-    _dep_python_jose,
-    _dep_python_jose_ecdsa_pin,
-    _dep_docker,
-    _dep_jsondiff,
-    _dep_aws_xray_sdk,
-    _dep_idna,
-    _dep_cfn_lint,
-    _dep_sshpubkeys,
-]
-all_server_deps = all_extra_deps + ["flask", "flask-cors"]
-
-# TODO: do we want to add ALL services here?
-# i.e. even those without extra dependencies.
-# Would be good for future-compatibility, I guess.
-extras_per_service = {
-    "apigateway": [_dep_python_jose, _dep_python_jose_ecdsa_pin],
-    "awslambda": [_dep_docker],
-    "batch": [_dep_docker],
-    "cloudformation": [_dep_docker, _dep_PyYAML, _dep_cfn_lint],
-    "cognitoidp": [_dep_python_jose, _dep_python_jose_ecdsa_pin],
-    "ec2": [_dep_sshpubkeys],
-    "iotdata": [_dep_jsondiff],
-    "s3": [_dep_PyYAML],
-    "ses": [],
-    "sns": [],
-    "sqs": [],
-    "ssm": [_dep_PyYAML],
-    "xray": [_dep_aws_xray_sdk],
-}
-# When a Table has a Stream, we'll always need to import AWSLambda to search for a corresponding function to send the table data to
-extras_per_service["dynamodb2"] = extras_per_service["awslambda"]
-extras_per_service["dynamodbstreams"] = extras_per_service["awslambda"]
-# EFS depends on EC2 to find subnets etc
-extras_per_service["efs"] = extras_per_service["ec2"]
-extras_require = {
-    "all": all_extra_deps,
-    "server": all_server_deps,
-}
-
-extras_require.update(extras_per_service)
-
-
-setup(
-    name="moto",
-    version=get_version(),
-    description="A library that allows your python tests to easily"
-    " mock out the boto library",
-    long_description=read("README.md"),
-    long_description_content_type="text/markdown",
-    author="Steve Pulec",
-    author_email="spulec@gmail.com",
-    url="https://github.com/spulec/moto",
-    entry_points={
-        "console_scripts": [
-            "moto_server = moto.server:main",
-        ],
-    },
-    packages=find_packages(exclude=("tests", "tests.*")),
-    install_requires=install_requires,
-    extras_require=extras_require,
-    include_package_data=True,
-    license="Apache",
-    test_suite="tests",
-    classifiers=[
-        "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.5",
-        "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
-        "License :: OSI Approved :: Apache Software License",
-        "Topic :: Software Development :: Testing",
-    ],
-    project_urls={
-        "Documentation": "http://docs.getmoto.org/en/latest/",
-    },
-)
+if __name__ == '__main__':
+    setup(name="moto", version=get_version())
