@@ -317,4 +317,4 @@ jobs:
         with:
           issue-number: ${{ env.pr_nr }}
           body: |
-            This is now part of moto >= ${{ env.moto_version }}
+            This is now part of moto >= ${{ env.moto_version }} 
