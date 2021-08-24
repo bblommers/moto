@@ -122,39 +122,13 @@ def append_mock_to_init_py(service):
     filtered_lines = [_ for _ in lines if re.match("^mock_.*lazy_load(.*)$", _)]
     last_import_line_index = lines.index(filtered_lines[-1])
 
-    new_line = 'mock_{} = lazy_load(".{}", "mock_{}")'.format(
+    new_line = 'mock_{} = lazy_load(".{}", "mock_{}", boto3_name="{}")'.format(
         get_escaped_service(service),
         get_escaped_service(service),
         get_escaped_service(service),
+        service
     )
     lines.insert(last_import_line_index + 1, new_line)
-
-    body = "\n".join(lines) + "\n"
-    with open(path, "w") as f:
-        f.write(body)
-
-
-def append_mock_dict_to_backends_py(service):
-    path = os.path.join(os.path.dirname(__file__), "..", "moto", "backends.py")
-    with open(path) as f:
-        lines = [_.replace("\n", "") for _ in f.readlines()]
-
-    if any(
-        _
-        for _ in lines
-        if re.match('.*"{}": {}_backends.*'.format(service, service), _)
-    ):
-        return
-    filtered_lines = [_ for _ in lines if re.match('.*".*":.*_backends.*', _)]
-    last_elem_line_index = lines.index(filtered_lines[-1])
-
-    new_line = '    "{}": ("{}", "{}_backends"),'.format(
-        service, get_escaped_service(service), get_escaped_service(service)
-    )
-    prev_line = lines[last_elem_line_index]
-    if not prev_line.endswith("{") and not prev_line.endswith(","):
-        lines[last_elem_line_index] += ","
-    lines.insert(last_elem_line_index + 1, new_line)
 
     body = "\n".join(lines) + "\n"
     with open(path, "w") as f:
@@ -208,7 +182,6 @@ def initialize_service(service, operation, api_protocol):
 
     # append mock to init files
     append_mock_to_init_py(service)
-    append_mock_dict_to_backends_py(service)
 
 
 def to_upper_camel_case(s):
