@@ -61,7 +61,7 @@ jobs:
       - name: Update pip
         if: ${{ steps.pip-cache.outputs.cache-hit != 'true' }}
         run: |
-          python -m pip install git+git://github.com/notatallshaw/pip@second_attempt_at_prefer_non_conflicts
+          python -m pip install git+git://github.com/notatallshaw/pip@third_attempt_at_prefer_non_conflicts
       - name: Install project dependencies
         if: ${{ steps.pip-cache.outputs.cache-hit != 'true' }}
         run: |
@@ -94,7 +94,7 @@ jobs:
     - name: Update pip
       run: |
         # https://github.com/pypa/pip/issues/10201
-        python -m pip install git+git://github.com/notatallshaw/pip@second_attempt_at_prefer_non_conflicts
+        python -m pip install git+git://github.com/notatallshaw/pip@third_attempt_at_prefer_non_conflicts
     # Still need to properly install the dependencies - it will only skip the download part
     - name: Install project dependencies
       run: |
@@ -131,7 +131,7 @@ jobs:
         key: pip-${{ matrix.python-version }}-${{ hashFiles('**/setup.py') }}-4
     - name: Update pip
       run: |
-        python -m pip install git+git://github.com/notatallshaw/pip@second_attempt_at_prefer_non_conflicts
+        python -m pip install git+git://github.com/notatallshaw/pip@third_attempt_at_prefer_non_conflicts
     - name: Install project dependencies
       run: |
         pip install -r requirements-dev.txt
@@ -179,7 +179,7 @@ jobs:
         key: pip-${{ matrix.python-version }}-${{ hashFiles('**/setup.py') }}-4
     - name: Update pip
       run: |
-        python -m pip install git+git://github.com/notatallshaw/pip@second_attempt_at_prefer_non_conflicts
+        python -m pip install git+git://github.com/notatallshaw/pip@third_attempt_at_prefer_non_conflicts
     - name: Install project dependencies
       run: |
         pip install -r requirements-dev.txt
