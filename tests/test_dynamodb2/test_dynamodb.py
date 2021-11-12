@@ -3733,3 +3733,54 @@ def test_gsi_lastevaluatedkey():
     last_evaluated_key = response["LastEvaluatedKey"]
     last_evaluated_key.should.have.length_of(2)
     last_evaluated_key.should.equal({"main_key": "testkey1", "index_key": "indexkey"})
+
+
+@mock_dynamodb2
+def test_begins_with():
+    conn = boto3.client("dynamodb", region_name="us-east-1")
+    name = "test-table"
+    conn.create_table(
+        TableName=name,
+        KeySchema=[
+            {"AttributeName": "pk", "KeyType": "HASH"},
+            {"AttributeName": "sk", "KeyType": "RANGE"},
+        ],
+        AttributeDefinitions=[
+            {"AttributeName": "pk", "AttributeType": "S"},
+            {"AttributeName": "sk", "AttributeType": "S"},
+        ],
+        BillingMode="THROUGHPUT",
+    )
+    for sk in ["sk1", "sk11", "sk2", "sk21", "sk3", "sk31"]:
+        conn.put_item(TableName=name, Item={"pk": {"S": "pk"}, "sk": {"S": sk}})
+    # Verify standard begins-with
+    items = conn.query(
+        TableName=name,
+        KeyConditionExpression="pk = :pkval and begins_with(sk, :skval)",
+        ExpressionAttributeValues={":pkval": {"S": "pk"}, ":skval": {"S": "sk1"}},
+    )["Items"]
+    items.should.have.length_of(2)
+    # Verify begins-with with spaces everywhere
+    items = conn.query(
+        TableName="test-table",
+        KeyConditionExpression="pk = :pkval and begins_with ( sk, :skval )",
+        ExpressionAttributeValues={":pkval": {"S": "pk"}, ":skval": {"S": "sk1"}},
+    )["Items"]
+    items.should.have.length_of(2)
+    # Verify begins-with with no spaces
+    items = conn.query(
+        TableName="test-table",
+        KeyConditionExpression="pk = :pkval and begins_with(sk,:skval)",
+        ExpressionAttributeValues={":pkval": {"S": "pk"}, ":skval": {"S": "sk1"}},
+    )["Items"]
+    items.should.have.length_of(2)
+    # Verify begins-with without parentheses
+    with pytest.raises(ClientError) as exc:
+        conn.query(
+            TableName="test-table",
+            KeyConditionExpression="pk = :pkval and begins_with sk,:skval",
+            ExpressionAttributeValues={":pkval": {"S": "pk"}, ":skval": {"S": "sk1"}},
+        )
+    err = exc.value.response["Error"]
+    err["Code"].should.equal("ValidationException")
+    err["Message"].should.contain("Invalid KeyConditionExpression: Syntax error")

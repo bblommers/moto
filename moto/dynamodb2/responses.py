@@ -657,6 +657,14 @@ class DynamoHandler(BaseResponse):
                     ]
                     supplied_range_key = range_key_expression_components[0]
                 elif "begins_with" in range_key_expression:
+                    # Validate that begins_with-function contains parentheses
+                    # Should be a dedicated parser, but this will work for now
+                    valid_re = r"begins_with\s*\([^)]+\)"
+                    if not re.search(valid_re, expressions[0]):
+                        return self.error(
+                            "ValidationException",
+                            "Invalid KeyConditionExpression: Syntax error",
+                        )
                     range_comparison = "BEGINS_WITH"
                     # [begins_with, range_key, x]
                     range_values = [
