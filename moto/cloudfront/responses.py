@@ -32,12 +32,21 @@ class CloudFrontResponse(BaseResponse):
         if request.method == "GET":
             return self.list_distributions()
 
+    def tagging(self, request, full_url, headers):
+        self.setup_class(request, full_url, headers)
+        if request.method == "GET":
+            return self.list_tags_for_resource(request, full_url, headers)
+
     def create_distribution(self):
         params = self._get_xml_body()
-        distribution_config = params.get("DistributionConfig")
-        distribution, location, e_tag = cloudfront_backend.create_distribution(
-            distribution_config=distribution_config,
-        )
+        if "WithTags" in self.querystring:
+            config = params.get("DistributionConfigWithTags")
+            distribution, location, e_tag = cloudfront_backend.create_distribution_with_tags(config)
+        else:
+            distribution_config = params.get("DistributionConfig")
+            distribution, location, e_tag = cloudfront_backend.create_distribution(
+                distribution_config=distribution_config,
+            )
         template = self.response_template(CREATE_DISTRIBUTION_TEMPLATE)
         response = template.render(distribution=distribution, xmlns=XMLNS)
         headers = {"ETag": e_tag, "Location": location}
@@ -63,6 +72,25 @@ class CloudFrontResponse(BaseResponse):
             response = template.render(distribution=dist, xmlns=XMLNS)
             return 200, {"ETag": etag}, response
 
+    def update_distribution(self, request, full_url, headers):
+        self.setup_class(request, full_url, headers)
+        if request.method == "PUT":
+            dist_id = self.path.split("/")[-2]
+            if_match = self._get_param("If-Match")
+            params = self._get_xml_body()
+            config = params.get("DistributionConfig")
+            dist, etag = cloudfront_backend.update_distribution(dist_id, if_match, config)
+            template = self.response_template(GET_DISTRIBUTION_TEMPLATE)
+            response = template.render(distribution=dist)
+            return 200, {"ETag": etag}, response
+
+    def list_tags_for_resource(self, request, full_url, headers):
+        resource = self._get_param("Resource")
+        tags = cloudfront_backend.list_tags_for_resource(resource)
+
+        template = self.response_template(LIST_TAGS_TEMPLATE)
+        return 200, {}, template.render(tags=tags)
+
 
 DIST_META_TEMPLATE = """
     <Id>{{ distribution.distribution_id }}</Id>
@@ -84,7 +112,7 @@ DIST_CONFIG_TEMPLATE = """
           {% endfor %}
         </Items>
       </Aliases>
-      <DefaultRootObject>{{ distribution.distribution_config.default_distribution_object }}</DefaultRootObject>
+      <DefaultRootObject>{{ distribution.distribution_config.default_root_object }}</DefaultRootObject>
       <Origins>
         <Quantity>{{ distribution.distribution_config.origins|length }}</Quantity>
         <Items>
@@ -102,19 +130,21 @@ DIST_CONFIG_TEMPLATE = """
                 {% endfor %}
               </Items>
             </CustomHeaders>
+            {% if origin.is_s3_config %}
             <S3OriginConfig>
               <OriginAccessIdentity>{{ origin.s3_access_identity }}</OriginAccessIdentity>
             </S3OriginConfig>
-            {% if origin.custom_origin %}
+            {% endif %}
+            {% if origin.is_custom_config %}
             <CustomOriginConfig>
               <HTTPPort>{{ origin.custom_origin.http_port }}</HTTPPort>
               <HTTPSPort>{{ origin.custom_origin.https_port }}</HTTPSPort>
-              <OriginProtocolPolicy>{{ OriginProtocolPolicy }}</OriginProtocolPolicy>
+              <OriginProtocolPolicy>{{ origin.custom_origin.protocol_policy }}</OriginProtocolPolicy>
               <OriginSslProtocols>
-                <Quantity>{{ origin.custom_origin.origin_ssl_protocols.quantity }}</Quantity>
+                <Quantity>{{ origin.custom_origin.origin_ssl_protocols|length }}</Quantity>
                 <Items>
-                  {% for protocol  in origin.custom_origin.origin_ssl_protocols %}
-                  {{ protocol }}
+                  {% for protocol in origin.custom_origin.origin_ssl_protocols %}
+                  <SslProtocol>{{ protocol }}</SslProtocol>
                   {% endfor %}
                 </Items>
               </OriginSslProtocols>
@@ -170,9 +200,9 @@ DIST_CONFIG_TEMPLATE = """
         <TargetOriginId>{{ distribution.distribution_config.default_cache_behavior.target_origin_id }}</TargetOriginId>
         <TrustedSigners>
           <Enabled>{{ distribution.distribution_config.default_cache_behavior.trusted_signers.enabled }}</Enabled>
-          <Quantity>{{ distribution.distribution_config.default_cache_behavior.trusted_signers|length }}</Quantity>
+          <Quantity>{{ distribution.distribution_config.default_cache_behavior.trusted_signers.signers|length }}</Quantity>
           <Items>
-            {% for aws_account_number  in distribution.distribution_config.default_cache_behavior.trusted_signers %}
+            {% for aws_account_number  in distribution.distribution_config.default_cache_behavior.trusted_signers.signers %}
               <AwsAccountNumber>{{ aws_account_number }}</AwsAccountNumber>
             {% endfor %}
           </Items>
@@ -188,22 +218,24 @@ DIST_CONFIG_TEMPLATE = """
         </TrustedKeyGroups>
         <ViewerProtocolPolicy>{{ distribution.distribution_config.default_cache_behavior.viewer_protocol_policy }}</ViewerProtocolPolicy>
         <AllowedMethods>
-          <Quantity>{{ distribution.distribution_config.default_cache_behavior.allowed_methods|length }}</Quantity>
+          <Quantity>{{ distribution.distribution_config.default_cache_behavior.allowed_methods.names|length }}</Quantity>
           <Items>
-            {% for method in distribution.distribution_config.default_cache_behavior.allowed_methods %}
-            <member>{{ method }}</member>
+            {% for name in distribution.distribution_config.default_cache_behavior.allowed_methods.names %}
+            <Method>{{ name }}</Method>
             {% endfor %}
           </Items>
           <CachedMethods>
-            <Quantity>{{ distribution.distribution_config.default_cache_behavior.cached_methods|length }}</Quantity>
+            <Quantity>{{ distribution.distribution_config.default_cache_behavior.cached_methods.names|length }}</Quantity>
             <Items>
-              {% for method in distribution.distribution_config.default_cache_behavior.cached_methods %}
-              <member>{{ method }}</member>
+              {% for name in distribution.distribution_config.default_cache_behavior.cached_methods.names %}
+              <Method>{{ name }}</Method>
               {% endfor %}
             </Items>
           </CachedMethods>
         </AllowedMethods>
-        <SmoothStreaming>{{ distribution.distribution_config.default_cache_behavior.smooth_streaming }}</SmoothStreaming>
+        {% if distribution.distribution_config.default_cache_behavior.smooth_streaming %}
+            <SmoothStreaming>true</SmoothStreaming>
+        {% endif %}
         <Compress>{{ 'true' if distribution.distribution_config.default_cache_behavior.compress else 'false' }}</Compress>
         <LambdaFunctionAssociations>
           <Quantity>{{ distribution.distribution_config.default_cache_behavior.lambda_function_associations|length }}</Quantity>
@@ -234,9 +266,9 @@ DIST_CONFIG_TEMPLATE = """
         <OriginRequestPolicyId>{{ distribution.distribution_config.default_cache_behavior.origin_request_policy_id }}</OriginRequestPolicyId>
         <ResponseHeadersPolicyId>{{ distribution.distribution_config.default_cache_behavior.response_headers_policy_id }}</ResponseHeadersPolicyId>
         <ForwardedValues>
-          <QueryString>{{ distribution.distribution_config.default_cache_behavior.forwarded_values.query_string }}</QueryString>
+          <QueryString>{{ 'true' if distribution.distribution_config.default_cache_behavior.forwarded_values.query_string else 'false' }}</QueryString>
           <Cookies>
-            <Forward>{{ ItemSelection }}</Forward>
+            <Forward>{{ distribution.distribution_config.default_cache_behavior.forwarded_values.forward }}</Forward>
             <WhitelistedNames>
               <Quantity>{{ distribution.distribution_config.default_cache_behavior.forwarded_values.whitelisted_names|length }}</Quantity>
               <Items>
@@ -389,7 +421,7 @@ DIST_CONFIG_TEMPLATE = """
         <Prefix>{{ distribution.distribution_config.logging.prefix }}</Prefix>
       </Logging>
       <PriceClass>{{ distribution.distribution_config.price_class }}</PriceClass>
-      <Enabled>{{ distribution.distribution_config.enabled }}</Enabled>
+      <Enabled>{{ 'true' if distribution.distribution_config.enabled else 'false' }}</Enabled>
       <ViewerCertificate>
         <CloudFrontDefaultCertificate>{{ 'true' if distribution.distribution_config.viewer_certificate.cloud_front_default_certificate else 'false' }}</CloudFrontDefaultCertificate>
         <IAMCertificateId>{{ distribution.distribution_config.viewer_certificate.iam_certificate_id }}</IAMCertificateId>
@@ -512,3 +544,16 @@ LIST_TEMPLATE = (
   {% endif %}
 </DistributionList>"""
 )
+
+LIST_TAGS_TEMPLATE = """<?xml version="1.0"?>
+<ListTagsForResourceResult>
+        <Items>
+            {% for key, value in tags.items() %}
+                <Tag>
+                    <Key>{{ key }}</Key>
+                    <Value>{{ value }}</Value>
+                </Tag>
+            {% endfor %}
+        </Items>
+</ListTagsForResourceResult>
+"""

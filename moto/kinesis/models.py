@@ -137,7 +137,7 @@ class Shard(BaseModel):
 class Stream(CloudFormationModel):
     def __init__(self, stream_name, shard_count, retention_period_hours, region_name):
         self.stream_name = stream_name
-        self.creation_datetime = datetime.datetime.now()
+        self.creation_datetime = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f000")
         self.region = region_name
         self.account_number = ACCOUNT_ID
         self.shards = {}
@@ -218,7 +218,7 @@ class Stream(CloudFormationModel):
             "StreamDescription": {
                 "StreamARN": self.arn,
                 "StreamName": self.stream_name,
-                "StreamCreationTimestamp": str(self.creation_datetime),
+                "StreamCreationTimestamp": self.creation_datetime,
                 "StreamStatus": self.status,
                 "HasMoreShards": len(requested_shards) != len(all_shards),
                 "RetentionPeriodHours": self.retention_period_hours,
@@ -234,7 +234,7 @@ class Stream(CloudFormationModel):
                 "StreamARN": self.arn,
                 "StreamName": self.stream_name,
                 "StreamStatus": self.status,
-                "StreamCreationTimestamp": str(self.creation_datetime),
+                "StreamCreationTimestamp": self.creation_datetime,
                 "OpenShardCount": self.shard_count,
             }
         }
