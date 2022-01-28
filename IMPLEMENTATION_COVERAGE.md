@@ -1371,7 +1371,7 @@
 - [X] create_route_table
 - [X] create_security_group
 - [X] create_snapshot
-- [ ] create_snapshots
+- [X] create_snapshots
 - [ ] create_spot_datafeed_subscription
 - [ ] create_store_image_task
 - [X] create_subnet
@@ -1492,6 +1492,7 @@
 - [ ] describe_elastic_gpus
 - [ ] describe_export_image_tasks
 - [ ] describe_export_tasks
+- [ ] describe_fast_launch_images
 - [ ] describe_fast_snapshot_restores
 - [ ] describe_fleet_history
 - [ ] describe_fleet_instances
@@ -1606,6 +1607,7 @@
 - [X] detach_volume
 - [X] detach_vpn_gateway
 - [X] disable_ebs_encryption_by_default
+- [ ] disable_fast_launch
 - [ ] disable_fast_snapshot_restores
 - [ ] disable_image_deprecation
 - [ ] disable_ipam_organization_admin_account
@@ -1626,6 +1628,7 @@
 - [ ] disassociate_trunk_interface
 - [X] disassociate_vpc_cidr_block
 - [X] enable_ebs_encryption_by_default
+- [ ] enable_fast_launch
 - [ ] enable_fast_snapshot_restores
 - [ ] enable_image_deprecation
 - [ ] enable_ipam_organization_admin_account
@@ -2135,7 +2138,7 @@
 
 ## elb
 <details>
-<summary>37% implemented</summary>
+<summary>41% implemented</summary>
 
 - [ ] add_tags
 - [X] apply_security_groups_to_load_balancer
@@ -2160,7 +2163,7 @@
 - [ ] detach_load_balancer_from_subnets
 - [ ] disable_availability_zones_for_load_balancer
 - [ ] enable_availability_zones_for_load_balancer
-- [ ] modify_load_balancer_attributes
+- [X] modify_load_balancer_attributes
 - [ ] register_instances_with_load_balancer
 - [ ] remove_tags
 - [X] set_load_balancer_listener_ssl_certificate
@@ -3158,36 +3161,36 @@
 
 ## kinesis
 <details>
-<summary>58% implemented</summary>
+<summary>89% implemented</summary>
 
 - [X] add_tags_to_stream
 - [X] create_stream
 - [X] decrease_stream_retention_period
 - [X] delete_stream
-- [ ] deregister_stream_consumer
+- [X] deregister_stream_consumer
 - [ ] describe_limits
 - [X] describe_stream
-- [ ] describe_stream_consumer
+- [X] describe_stream_consumer
 - [X] describe_stream_summary
-- [ ] disable_enhanced_monitoring
-- [ ] enable_enhanced_monitoring
+- [X] disable_enhanced_monitoring
+- [X] enable_enhanced_monitoring
 - [X] get_records
 - [X] get_shard_iterator
 - [X] increase_stream_retention_period
 - [X] list_shards
-- [ ] list_stream_consumers
+- [X] list_stream_consumers
 - [X] list_streams
 - [X] list_tags_for_stream
 - [X] merge_shards
 - [X] put_record
 - [X] put_records
-- [ ] register_stream_consumer
+- [X] register_stream_consumer
 - [X] remove_tags_from_stream
 - [X] split_shard
-- [ ] start_stream_encryption
-- [ ] stop_stream_encryption
+- [X] start_stream_encryption
+- [X] stop_stream_encryption
 - [ ] subscribe_to_shard
-- [ ] update_shard_count
+- [X] update_shard_count
 - [ ] update_stream_mode
 </details>
 
@@ -3347,11 +3350,11 @@
 
 ## logs
 <details>
-<summary>57% implemented</summary>
+<summary>59% implemented</summary>
 
 - [ ] associate_kms_key
 - [ ] cancel_export_task
-- [ ] create_export_task
+- [X] create_export_task
 - [X] create_log_group
 - [X] create_log_stream
 - [ ] delete_destination
@@ -3584,6 +3587,34 @@
 - [X] put_object
 </details>
 
+## mq
+<details>
+<summary>86% implemented</summary>
+
+- [X] create_broker
+- [X] create_configuration
+- [X] create_tags
+- [X] create_user
+- [X] delete_broker
+- [X] delete_tags
+- [X] delete_user
+- [X] describe_broker
+- [ ] describe_broker_engine_types
+- [ ] describe_broker_instance_options
+- [X] describe_configuration
+- [X] describe_configuration_revision
+- [X] describe_user
+- [X] list_brokers
+- [ ] list_configuration_revisions
+- [X] list_configurations
+- [X] list_tags
+- [X] list_users
+- [X] reboot_broker
+- [X] update_broker
+- [X] update_configuration
+- [X] update_user
+</details>
+
 ## opsworks
 <details>
 <summary>12% implemented</summary>
@@ -3666,7 +3697,7 @@
 
 ## organizations
 <details>
-<summary>74% implemented</summary>
+<summary>76% implemented</summary>
 
 - [ ] accept_handshake
 - [X] attach_policy
@@ -3714,7 +3745,7 @@
 - [X] list_targets_for_policy
 - [X] move_account
 - [X] register_delegated_administrator
-- [ ] remove_account_from_organization
+- [X] remove_account_from_organization
 - [X] tag_resource
 - [X] untag_resource
 - [X] update_organizational_unit
@@ -3754,6 +3785,7 @@
 - [ ] get_resource_share_invitations
 - [X] get_resource_shares
 - [ ] list_pending_invitation_resources
+- [ ] list_permission_versions
 - [ ] list_permissions
 - [ ] list_principals
 - [ ] list_resource_share_permissions
@@ -3768,7 +3800,7 @@
 
 ## rds
 <details>
-<summary>14% implemented</summary>
+<summary>17% implemented</summary>
 
 - [ ] add_role_to_db_cluster
 - [ ] add_role_to_db_instance
@@ -3788,7 +3820,7 @@
 - [X] create_db_cluster
 - [ ] create_db_cluster_endpoint
 - [ ] create_db_cluster_parameter_group
-- [ ] create_db_cluster_snapshot
+- [X] create_db_cluster_snapshot
 - [ ] create_db_instance
 - [ ] create_db_instance_read_replica
 - [X] create_db_parameter_group
@@ -3805,7 +3837,7 @@
 - [X] delete_db_cluster
 - [ ] delete_db_cluster_endpoint
 - [ ] delete_db_cluster_parameter_group
-- [ ] delete_db_cluster_snapshot
+- [X] delete_db_cluster_snapshot
 - [ ] delete_db_instance
 - [ ] delete_db_instance_automated_backup
 - [X] delete_db_parameter_group
@@ -3827,7 +3859,7 @@
 - [ ] describe_db_cluster_parameter_groups
 - [ ] describe_db_cluster_parameters
 - [ ] describe_db_cluster_snapshot_attributes
-- [ ] describe_db_cluster_snapshots
+- [X] describe_db_cluster_snapshots
 - [X] describe_db_clusters
 - [ ] describe_db_engine_versions
 - [ ] describe_db_instance_automated_backups
@@ -3896,7 +3928,7 @@
 - [ ] reset_db_cluster_parameter_group
 - [ ] reset_db_parameter_group
 - [ ] restore_db_cluster_from_s3
-- [ ] restore_db_cluster_from_snapshot
+- [X] restore_db_cluster_from_snapshot
 - [ ] restore_db_cluster_to_point_in_time
 - [X] restore_db_instance_from_db_snapshot
 - [ ] restore_db_instance_from_s3
@@ -4312,6 +4344,69 @@
 - [X] upload_part
 - [ ] upload_part_copy
 - [ ] write_get_object_response
+</details>
+
+## s3control
+<details>
+<summary>5% implemented</summary>
+
+- [ ] create_access_point
+- [ ] create_access_point_for_object_lambda
+- [ ] create_bucket
+- [ ] create_job
+- [ ] create_multi_region_access_point
+- [ ] delete_access_point
+- [ ] delete_access_point_for_object_lambda
+- [ ] delete_access_point_policy
+- [ ] delete_access_point_policy_for_object_lambda
+- [ ] delete_bucket
+- [ ] delete_bucket_lifecycle_configuration
+- [ ] delete_bucket_policy
+- [ ] delete_bucket_tagging
+- [ ] delete_job_tagging
+- [ ] delete_multi_region_access_point
+- [X] delete_public_access_block
+- [ ] delete_storage_lens_configuration
+- [ ] delete_storage_lens_configuration_tagging
+- [ ] describe_job
+- [ ] describe_multi_region_access_point_operation
+- [ ] get_access_point
+- [ ] get_access_point_configuration_for_object_lambda
+- [ ] get_access_point_for_object_lambda
+- [ ] get_access_point_policy
+- [ ] get_access_point_policy_for_object_lambda
+- [ ] get_access_point_policy_status
+- [ ] get_access_point_policy_status_for_object_lambda
+- [ ] get_bucket
+- [ ] get_bucket_lifecycle_configuration
+- [ ] get_bucket_policy
+- [ ] get_bucket_tagging
+- [ ] get_job_tagging
+- [ ] get_multi_region_access_point
+- [ ] get_multi_region_access_point_policy
+- [ ] get_multi_region_access_point_policy_status
+- [X] get_public_access_block
+- [ ] get_storage_lens_configuration
+- [ ] get_storage_lens_configuration_tagging
+- [ ] list_access_points
+- [ ] list_access_points_for_object_lambda
+- [ ] list_jobs
+- [ ] list_multi_region_access_points
+- [ ] list_regional_buckets
+- [ ] list_storage_lens_configurations
+- [ ] put_access_point_configuration_for_object_lambda
+- [ ] put_access_point_policy
+- [ ] put_access_point_policy_for_object_lambda
+- [ ] put_bucket_lifecycle_configuration
+- [ ] put_bucket_policy
+- [ ] put_bucket_tagging
+- [ ] put_job_tagging
+- [ ] put_multi_region_access_point_policy
+- [X] put_public_access_block
+- [ ] put_storage_lens_configuration
+- [ ] put_storage_lens_configuration_tagging
+- [ ] update_job_priority
+- [ ] update_job_status
 </details>
 
 ## sagemaker
@@ -5305,7 +5400,6 @@
 - migrationhub-config
 - migrationhubstrategy
 - mobile
-- mq
 - mturk
 - mwaa
 - neptune
@@ -5339,7 +5433,6 @@
 - route53-recovery-readiness
 - route53domains
 - rum
-- s3control
 - s3outposts
 - sagemaker-a2i-runtime
 - sagemaker-edge

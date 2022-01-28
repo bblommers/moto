@@ -234,7 +234,9 @@ def test_create_distribution_s3_minimum():
 
     config.should.have.key("CacheBehaviors").equals({"Quantity": 0})
     config.should.have.key("CustomErrorResponses").equals({"Quantity": 0})
-    config.should.have.key("Comment").equals("")
+    config.should.have.key("Comment").equals(
+        "an optional comment that's not actually optional"
+    )
 
     config.should.have.key("Logging")
     logging = config["Logging"]
@@ -364,6 +366,21 @@ def test_create_distribution_custom_origin():
     restriction = config["Restrictions"]["GeoRestriction"]
     restriction.should.have.key("RestrictionType").equals("whitelist")
     restriction.should.have.key("Quantity").equals(4)
+
+
+@mock_cloudfront
+def test_create_distribution_with_additional_fields():
+    client = boto3.client("cloudfront", region_name="us-west-1")
+
+    config = example_distribution_config("ref")
+    config["Aliases"] = {"Quantity": 2, "Items": ["alias1", "alias2"]}
+    resp = client.create_distribution(DistributionConfig=config)
+    distribution = resp["Distribution"]
+    distribution.should.have.key("DistributionConfig")
+    config = distribution["DistributionConfig"]
+    config.should.have.key("Aliases").equals(
+        {"Items": ["alias1", "alias2"], "Quantity": 2}
+    )
 
 
 @mock_cloudfront

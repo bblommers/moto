@@ -2,6 +2,7 @@ import botocore
 import boto3
 import functools
 import inspect
+import itertools
 import os
 import random
 import re
@@ -13,10 +14,11 @@ from collections import defaultdict
 from botocore.config import Config
 from botocore.handlers import BUILTIN_HANDLERS
 from botocore.awsrequest import AWSResponse
+from types import FunctionType
 
 from moto import settings
 import responses
-from moto.packages.httpretty import HTTPretty
+import unittest
 from unittest.mock import patch
 from .custom_responses_mock import (
     get_response_mock,
@@ -25,7 +27,6 @@ from .custom_responses_mock import (
     reset_responses_mock,
 )
 from .utils import (
-    convert_httpretty_response,
     convert_regex_to_flask_path,
     convert_flask_to_responses_response,
 )
@@ -92,7 +93,7 @@ class BaseMockAWS:
             for backend in self.backends.values():
                 backend.reset()
 
-        self.enable_patching()
+        self.enable_patching(reset)
 
     def stop(self):
         self.__class__.nested_count -= 1
@@ -126,7 +127,23 @@ class BaseMockAWS:
         return wrapper
 
     def decorate_class(self, klass):
-        for attr in dir(klass):
+        direct_methods = get_direct_methods_of(klass)
+        defined_classes = set(
+            x for x, y in klass.__dict__.items() if inspect.isclass(y)
+        )
+
+        # Get a list of all userdefined superclasses
+        superclasses = [
+            c for c in klass.__mro__ if c not in [unittest.TestCase, object]
+        ]
+        # Get a list of all userdefined methods
+        supermethods = itertools.chain(
+            *[get_direct_methods_of(c) for c in superclasses]
+        )
+        # Check whether the user has overridden the setUp-method
+        has_setup_method = "setUp" in supermethods
+
+        for attr in itertools.chain(direct_methods, defined_classes):
             if attr.startswith("_"):
                 continue
 
@@ -152,7 +169,18 @@ class BaseMockAWS:
                 continue
 
             try:
-                setattr(klass, attr, self(attr_value, reset=False))
+                # Special case for UnitTests-class
+                is_test_method = attr.startswith(unittest.TestLoader.testMethodPrefix)
+                should_reset = False
+                if attr == "setUp":
+                    should_reset = True
+                elif not has_setup_method and is_test_method:
+                    should_reset = True
+                else:
+                    # Method is unrelated to the test setup
+                    # Method is a test, but was already reset while executing the setUp-method
+                    pass
+                setattr(klass, attr, self(attr_value, reset=should_reset))
             except TypeError:
                 # Sometimes we can't set this for built-in types
                 continue
@@ -177,26 +205,12 @@ class BaseMockAWS:
                 del os.environ[k]
 
 
-class HttprettyMockAWS(BaseMockAWS):
-    def reset(self):
-        HTTPretty.reset()
-
-    def enable_patching(self):
-        if not HTTPretty.is_enabled():
-            HTTPretty.enable()
-
-        for method in HTTPretty.METHODS:
-            for backend in self.backends_for_urls.values():
-                for key, value in backend.urls.items():
-                    HTTPretty.register_uri(
-                        method=method,
-                        uri=re.compile(key),
-                        body=convert_httpretty_response(value),
-                    )
-
-    def disable_patching(self):
-        HTTPretty.disable()
-        HTTPretty.reset()
+def get_direct_methods_of(klass):
+    return set(
+        x
+        for x, y in klass.__dict__.items()
+        if isinstance(y, (FunctionType, classmethod, staticmethod))
+    )
 
 
 RESPONSES_METHODS = [
@@ -320,7 +334,7 @@ class BotocoreEventMockAWS(BaseMockAWS):
         botocore_stubber.reset()
         reset_responses_mock(responses_mock)
 
-    def enable_patching(self):
+    def enable_patching(self, reset=True):
         botocore_stubber.enabled = True
         for method in BOTOCORE_HTTP_METHODS:
             for backend in self.backends_for_urls.values():
@@ -373,15 +387,19 @@ MockAWS = BotocoreEventMockAWS
 
 
 class ServerModeMockAWS(BaseMockAWS):
+    def __init__(self, *args, **kwargs):
+        self.test_server_mode_endpoint = settings.test_server_mode_endpoint()
+        super().__init__(*args, **kwargs)
+
     def reset(self):
         call_reset_api = os.environ.get("MOTO_CALL_RESET_API")
         if not call_reset_api or call_reset_api.lower() != "false":
             import requests
 
-            requests.post("http://localhost:5000/moto-api/reset")
+            requests.post(f"{self.test_server_mode_endpoint}/moto-api/reset")
 
-    def enable_patching(self):
-        if self.__class__.nested_count == 1:
+    def enable_patching(self, reset=True):
+        if self.__class__.nested_count == 1 and reset:
             # Just started
             self.reset()
 
@@ -396,12 +414,12 @@ class ServerModeMockAWS(BaseMockAWS):
                     config = Config(user_agent_extra="region/" + region)
                     kwargs["config"] = config
             if "endpoint_url" not in kwargs:
-                kwargs["endpoint_url"] = "http://localhost:5000"
+                kwargs["endpoint_url"] = self.test_server_mode_endpoint
             return real_boto3_client(*args, **kwargs)
 
         def fake_boto3_resource(*args, **kwargs):
             if "endpoint_url" not in kwargs:
-                kwargs["endpoint_url"] = "http://localhost:5000"
+                kwargs["endpoint_url"] = self.test_server_mode_endpoint
             return real_boto3_resource(*args, **kwargs)
 
         self._client_patcher = patch("boto3.client", fake_boto3_client)
@@ -681,12 +699,6 @@ class BaseBackend:
         else:
             return mocked_backend
 
-    def deprecated_decorator(self, func=None):
-        if func:
-            return HttprettyMockAWS({"global": self})(func)
-        else:
-            return HttprettyMockAWS({"global": self})
-
     # def list_config_service_resources(self, resource_ids, resource_name, limit, next_token):
     #     """For AWS Config. This will list all of the resources of the given type and optional resource name and region"""
     #     raise NotImplementedError()
@@ -792,7 +804,7 @@ class base_decorator:
         self.backends = backends
 
     def __call__(self, func=None):
-        if self.mock_backend != HttprettyMockAWS and settings.TEST_SERVER_MODE:
+        if settings.TEST_SERVER_MODE:
             mocked_backend = ServerModeMockAWS(self.backends)
         else:
             mocked_backend = self.mock_backend(self.backends)
@@ -801,10 +813,6 @@ class base_decorator:
             return mocked_backend(func)
         else:
             return mocked_backend
-
-
-class deprecated_base_decorator(base_decorator):
-    mock_backend = HttprettyMockAWS
 
 
 class MotoAPIBackend(BaseBackend):
