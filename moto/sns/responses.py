@@ -97,6 +97,13 @@ class SNSResponse(BaseResponse):
 
         return transformed_message_attributes
 
+    def confirm_subscription(self):
+        topic_arn = self._get_param("TopicArn")
+        token = self._get_param("Token")
+        subscription_arn = self.backend.confirm_subscription(topic_arn, token)
+        template = self.response_template(CONFIRM_SUBSCRIPTION_TEMPLATE)
+        return template.render(sub_arn=subscription_arn)
+
     def create_topic(self):
         name = self._get_param("Name")
         attributes = self._get_attributes()
@@ -219,9 +226,10 @@ class SNSResponse(BaseResponse):
         topic_arn = self._get_param("TopicArn")
         endpoint = self._get_param("Endpoint")
         protocol = self._get_param("Protocol")
+        return_subscription_arn = self._get_bool_param("ReturnSubscriptionArn", False)
         attributes = self._get_attributes()
 
-        subscription = self.backend.subscribe(topic_arn, endpoint, protocol)
+        subscription = self.backend.subscribe(topic_arn, endpoint, protocol, return_subscription_arn=return_subscription_arn)
 
         if attributes is not None:
             for attr_name, attr_value in attributes.items():
@@ -233,7 +241,7 @@ class SNSResponse(BaseResponse):
             return json.dumps(
                 {
                     "SubscribeResponse": {
-                        "SubscribeResult": {"SubscriptionArn": subscription.arn},
+                        "SubscribeResult": {"SubscriptionArn": subscription.arn_if_confirmed},
                         "ResponseMetadata": {
                             "RequestId": "a8763b99-33a7-11df-a9b7-05d48da6f042"
                         },
@@ -277,7 +285,7 @@ class SNSResponse(BaseResponse):
                                 {
                                     "TopicArn": subscription.topic.arn,
                                     "Protocol": subscription.protocol,
-                                    "SubscriptionArn": subscription.arn,
+                                    "SubscriptionArn": subscription.arn_if_confirmed,
                                     "Owner": subscription.topic.account_id,
                                     "Endpoint": subscription.endpoint,
                                 }
@@ -311,7 +319,7 @@ class SNSResponse(BaseResponse):
                                 {
                                     "TopicArn": subscription.topic.arn,
                                     "Protocol": subscription.protocol,
-                                    "SubscriptionArn": subscription.arn,
+                                    "SubscriptionArn": subscription.arn_if_confirmed,
                                     "Owner": subscription.topic.account_id,
                                     "Endpoint": subscription.endpoint,
                                 }
@@ -741,33 +749,6 @@ class SNSResponse(BaseResponse):
         template = self.response_template(DEL_PERMISSION_TEMPLATE)
         return template.render()
 
-    def confirm_subscription(self):
-        arn = self._get_param("TopicArn")
-
-        if arn not in self.backend.topics:
-            error_response = self._error("NotFound", "Topic does not exist")
-            return error_response, dict(status=404)
-
-        # Once Tokens are stored by the `subscribe` endpoint and distributed
-        # to the client somehow, then we can check validity of tokens
-        # presented to this method. The following code works, all thats
-        # needed is to perform a token check and assign that value to the
-        # `already_subscribed` variable.
-        #
-        # token = self._get_param('Token')
-        # auth = self._get_param('AuthenticateOnUnsubscribe')
-        # if already_subscribed:
-        #     error_response = self._error(
-        #         code='AuthorizationError',
-        #         message='Subscription already confirmed'
-        #     )
-        #     return error_response, dict(status=400)
-
-        template = self.response_template(CONFIRM_SUBSCRIPTION_TEMPLATE)
-        return template.render(
-            sub_arn="{0}:68762e72-e9b1-410a-8b3b-903da69ee1d5".format(arn)
-        )
-
     def list_tags_for_resource(self):
         arn = self._get_param("ResourceArn")
 
@@ -1026,7 +1007,7 @@ SET_PLATFORM_APPLICATION_ATTRIBUTES_TEMPLATE = """<SetPlatformApplicationAttribu
 
 SUBSCRIBE_TEMPLATE = """<SubscribeResponse xmlns="http://sns.amazonaws.com/doc/2010-03-31/">
   <SubscribeResult>
-    <SubscriptionArn>{{ subscription.arn }}</SubscriptionArn>
+    <SubscriptionArn>{{ subscription.arn_if_confirmed }}</SubscriptionArn>
   </SubscribeResult>
   <ResponseMetadata>
     <RequestId>c4407779-24a4-56fa-982c-3d927f93a775</RequestId>
@@ -1046,7 +1027,7 @@ LIST_SUBSCRIPTIONS_TEMPLATE = """<ListSubscriptionsResponse xmlns="http://sns.am
       <member>
         <TopicArn>{{ subscription.topic.arn }}</TopicArn>
         <Protocol>{{ subscription.protocol }}</Protocol>
-        <SubscriptionArn>{{ subscription.arn }}</SubscriptionArn>
+        <SubscriptionArn>{{ subscription.arn_if_confirmed }}</SubscriptionArn>
         <Owner>{{ subscription.account_id }}</Owner>
         <Endpoint>{{ subscription.endpoint }}</Endpoint>
       </member>
@@ -1068,7 +1049,7 @@ LIST_SUBSCRIPTIONS_BY_TOPIC_TEMPLATE = """<ListSubscriptionsByTopicResponse xmln
       <member>
         <TopicArn>{{ subscription.topic.arn }}</TopicArn>
         <Protocol>{{ subscription.protocol }}</Protocol>
-        <SubscriptionArn>{{ subscription.arn }}</SubscriptionArn>
+        <SubscriptionArn>{{ subscription.arn_if_confirmed }}</SubscriptionArn>
         <Owner>{{ subscription.account_id }}</Owner>
         <Endpoint>{{ subscription.endpoint }}</Endpoint>
       </member>

@@ -22,10 +22,70 @@ def test_subscribe_sms():
     arn = resp["TopicArn"]
 
     resp = client.subscribe(TopicArn=arn, Protocol="sms", Endpoint="+15551234567")
-    resp.should.have.key("SubscriptionArn")
+    resp.should.have.key("SubscriptionArn").equals("pending confirmation")
 
     resp = client.subscribe(TopicArn=arn, Protocol="sms", Endpoint="+15/55-123.4567")
-    resp.should.have.key("SubscriptionArn")
+    resp.should.have.key("SubscriptionArn").equals("pending confirmation")
+
+
+@mock_sns
+@pytest.mark.parametrize("protocol", ["sms", "sqs", "lambda", "firehose"])
+def test_subscribe_and_always_return_arn(protocol):
+    client = boto3.client("sns", region_name="us-east-1")
+    client.create_topic(Name="some-topic")
+    resp = client.create_topic(Name="some-topic")
+    arn = resp["TopicArn"]
+
+    resp = client.subscribe(TopicArn=arn, Protocol=protocol, Endpoint="sth")
+    resp.should.have.key("SubscriptionArn").match("arn:aws:sns:us-east-1:123456789012:some-topic:")
+
+
+@mock_sns
+@pytest.mark.parametrize("protocol", ["http", "https", "email", "email-json"])
+def test_subscribe_and_return_arn_when_asked(protocol):
+    client = boto3.client("sns", region_name="us-east-1")
+    client.create_topic(Name="some-topic")
+    resp = client.create_topic(Name="some-topic")
+    arn = resp["TopicArn"]
+
+    resp = client.subscribe(TopicArn=arn, Protocol=protocol, Endpoint="sth")
+    resp.should.have.key("SubscriptionArn").equals("pending confirmation")
+
+    resp = client.subscribe(TopicArn=arn, Protocol=protocol, Endpoint="sth-else", ReturnSubscriptionArn=True)
+    resp.should.have.key("SubscriptionArn").match("arn:aws:sns:us-east-1:123456789012:some-topic:")
+
+
+@mock_sns
+def test_confirm_subscription_to_unknown_topic():
+    client = boto3.client("sns", region_name="us-east-1")
+    with pytest.raises(ClientError) as exc:
+        client.confirm_subscription(TopicArn="arn:aws:sns:unknowntopic", Token="?")
+    err = exc.value.response["Error"]
+    err["Code"].should.equal("NotFound")
+    err["Message"].should.equal("Topic does not exist")
+
+
+@mock_sns
+def test_create_multiple_subscriptions_but_only_confirm_one():
+    conn = boto3.client("sns", region_name="us-east-1")
+    topic_arn = conn.create_topic(Name="some-topic")["TopicArn"]
+
+    conn.subscribe(TopicArn=topic_arn, Protocol="http", Endpoint="http://example1.com/")
+    conn.subscribe(TopicArn=topic_arn, Protocol="http", Endpoint="http://example2.com/")
+    conn.subscribe(TopicArn=topic_arn, Protocol="http", Endpoint="http://example3.com/")
+    conn.subscribe(TopicArn=topic_arn, Protocol="http", Endpoint="http://example4.com/")
+    conn.subscribe(TopicArn=topic_arn, Protocol="http", Endpoint="http://example5.com/")
+    conn.confirm_subscription(TopicArn=topic_arn, Token="http://example3.com/")
+
+    subscriptions = conn.list_subscriptions()["Subscriptions"]
+    subscriptions.should.have.length_of(5)
+
+    for sub in subscriptions:
+        if sub["Endpoint"] == "http://example3.com/":
+            sub["SubscriptionArn"].should.match("arn:aws:sns:us-east-1:123456789012:some-topic:")
+        else:
+            sub["SubscriptionArn"].should.equal("pending confirmation")
+        sub["TopicArn"].should.equal(topic_arn)
 
 
 @mock_sns
@@ -38,9 +98,13 @@ def test_double_subscription():
     resp1 = client.subscribe(
         TopicArn=arn, Protocol="sqs", Endpoint="arn:aws:sqs:elasticmq:000000000000:foo"
     )
+    resp1.should.have.key("SubscriptionArn").equals("pending confirmation")
+    resp1 = client.confirm_subscription(TopicArn=arn, Token="arn:aws:sqs:elasticmq:000000000000:foo")
+
     resp2 = client.subscribe(
         TopicArn=arn, Protocol="sqs", Endpoint="arn:aws:sqs:elasticmq:000000000000:foo"
     )
+    resp2.should.have.key("SubscriptionArn").match("arn:aws:sns:us-east-1:123456789012:some-topic")
 
     resp1["SubscriptionArn"].should.equal(resp2["SubscriptionArn"])
 
@@ -79,6 +143,7 @@ def test_creating_subscription():
     topic_arn = response["Topics"][0]["TopicArn"]
 
     conn.subscribe(TopicArn=topic_arn, Protocol="http", Endpoint="http://example.com/")
+    conn.confirm_subscription(TopicArn=topic_arn, Token="http://example.com/")
 
     subscriptions = conn.list_subscriptions()["Subscriptions"]
     subscriptions.should.have.length_of(1)
@@ -104,7 +169,7 @@ def test_unsubscribe_from_deleted_topic():
     topic_arn = response["Topics"][0]["TopicArn"]
 
     client.subscribe(
-        TopicArn=topic_arn, Protocol="http", Endpoint="http://example.com/"
+        TopicArn=topic_arn, Protocol="http", Endpoint="http://example.com/", ReturnSubscriptionArn=True
     )
 
     subscriptions = client.list_subscriptions()["Subscriptions"]
@@ -209,7 +274,18 @@ def test_subscribe_attributes():
     resp = client.create_topic(Name="some-topic")
     arn = resp["TopicArn"]
 
-    resp = client.subscribe(TopicArn=arn, Protocol="http", Endpoint="http://test.com")
+    resp = client.subscribe(TopicArn=arn, Protocol="http", Endpoint="http://test.com", ReturnSubscriptionArn=True)
+
+    response = client.get_subscription_attributes(
+        SubscriptionArn=resp["SubscriptionArn"]
+    )
+    response.should.contain("Attributes")
+    attributes = response["Attributes"]
+    attributes["PendingConfirmation"].should.equal("false")
+    attributes["ConfirmationWasAuthenticated"].should.equal("false")
+
+    resp = client.confirm_subscription(TopicArn=arn, Token="http://test.com")
+    resp.should.have.key("SubscriptionArn").match("arn:aws:sns:us-east-1:123456789012:some-topic:")
 
     response = client.get_subscription_attributes(
         SubscriptionArn=resp["SubscriptionArn"]
@@ -262,6 +338,7 @@ def test_creating_subscription_with_attributes():
         TopicArn=topic_arn,
         Protocol="http",
         Endpoint="http://example.com/",
+        ReturnSubscriptionArn=True,
         Attributes={
             "RawMessageDelivery": "true",
             "DeliveryPolicy": delivery_policy,
@@ -331,7 +408,8 @@ def test_set_subscription_attributes():
     response = conn.list_topics()
     topic_arn = response["Topics"][0]["TopicArn"]
 
-    conn.subscribe(TopicArn=topic_arn, Protocol="http", Endpoint="http://example.com/")
+    conn.subscribe(TopicArn=topic_arn, Protocol="http", Endpoint="http://example.com/",
+        ReturnSubscriptionArn=True)
 
     subscriptions = conn.list_subscriptions()["Subscriptions"]
     subscriptions.should.have.length_of(1)
@@ -527,18 +605,6 @@ def test_opt_in():
     response = conn.list_phone_numbers_opted_out()
     len(response["phoneNumbers"]).should.be.greater_than(0)
     len(response["phoneNumbers"]).should.be.lower_than(current_len)
-
-
-@mock_sns
-def test_confirm_subscription():
-    conn = boto3.client("sns", region_name="us-east-1")
-    response = conn.create_topic(Name="testconfirm")
-
-    conn.confirm_subscription(
-        TopicArn=response["TopicArn"],
-        Token="2336412f37fb687f5d51e6e241d59b68c4e583a5cee0be6f95bbf97ab8d2441cf47b99e848408adaadf4c197e65f03473d53c4ba398f6abbf38ce2e8ebf7b4ceceb2cd817959bcde1357e58a2861b05288c535822eb88cac3db04f592285249971efc6484194fc4a4586147f16916692",
-        AuthenticateOnUnsubscribe="true",
-    )
 
 
 @mock_sns

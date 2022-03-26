@@ -127,6 +127,19 @@ TestAccAWSSecurityGroupRule_
 TestAccAWSServiceDiscovery
 TestAccAWSSNSSMSPreferences
 TestAccAWSSNSTopicPolicy
+TestAccAWSSNSTopicSubscription
+  --> TestAccAWSSNSTopicSubscription_email  Attribute 'confirmation_was_authenticated' expected "false", got "true"
+  --> TestAccAWSSNSTopicSubscription_redrivePolicy aws_sns_topic_subscription.test: Attribute 'redrive_policy' expected "", got "None"
+  TestAccAWSSNSTopicSubscription_autoConfirmingEndpoint
+  TestAccAWSSNSTopicSubscription_autoConfirmingSecuredEndpoint ~ resource "aws_api_gateway_integration_response" "test" {
+                id                  = "agir-uplou625wj-6filila03u-POST-200"
+              ~ response_parameters = {
+                  + "method.response.header.Access-Control-Allow-Origin" = "'*'"
+                }
+                # (4 unchanged attributes hidden)
+            }
+  TestAccAWSSNSTopicSubscription_firehose  error InvalidParameter: AttributeName
+
 TestAccAWSSQSQueuePolicy
 TestAccAWSSSMDocument
 TestAccAWSSsmDocumentDataSource
@@ -145,6 +158,7 @@ TestAccDataSourceAwsEfsMountTarget
 TestAccDataSourceAWSLambdaLayerVersion
 TestAccDataSourceAwsLambdaInvocation
 TestAccDataSourceAwsNetworkInterface_
+TestAccDataSourceAwsSnsTopic
 TestAccDataSourceAwsSqsQueue
 TestAccDataSourceAWSELB
 TestValidateSSMDocumentPermissions

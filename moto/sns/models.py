@@ -177,7 +177,7 @@ class Topic(CloudFormationModel):
 
 
 class Subscription(BaseModel):
-    def __init__(self, topic, endpoint, protocol):
+    def __init__(self, topic, endpoint, protocol, return_subscription_arn):
         self.topic = topic
         self.endpoint = endpoint
         self.protocol = protocol
@@ -185,6 +185,18 @@ class Subscription(BaseModel):
         self.attributes = {}
         self._filter_policy = None  # filter policy as a dict, not json.
         self.confirmed = False
+        self._return_subscription_arn = return_subscription_arn
+
+    @property
+    def arn_if_confirmed(self):
+        if self.confirmed or self._return_subscription_arn:
+            return self.arn
+        else:
+            return "pending confirmation"
+
+    def confirm(self):
+        self.confirmed = True
+        self.attributes["ConfirmationWasAuthenticated"] = "true"
 
     def publish(
         self, message, message_id, subject=None, message_attributes=None, group_id=None
@@ -459,6 +471,24 @@ class SNSBackend(BaseBackend):
     def update_sms_attributes(self, attrs):
         self.sms_attributes.update(attrs)
 
+    def confirm_subscription(self, topic_arn, token):
+        """
+        Confirms a subscription created earlier. This is only required for ..?
+        The token is usually send to the endpoint.
+        For simplicity's sake, the token should be equal to the value of the endpoint.
+
+        .. sourcecode::
+
+            subscribe(TopicArn=.., Protocol="email", Endpoint="info@moto.org")
+            confirm_subscription(TopicArn=..., Token="info@moto.org")
+
+        """
+        for subscription in self.subscriptions.values():
+            if subscription.topic.arn == topic_arn and subscription.endpoint == token:
+                subscription.confirm()
+                return subscription.arn_if_confirmed
+        raise TopicNotFound
+
     def create_topic(self, name, attributes=None, tags=None):
 
         if attributes is None:
@@ -533,7 +563,7 @@ class SNSBackend(BaseBackend):
         topic = self.get_topic(topic_arn)
         setattr(topic, attribute_name, attribute_value)
 
-    def subscribe(self, topic_arn, endpoint, protocol):
+    def subscribe(self, topic_arn, endpoint, protocol, return_subscription_arn=False):
         if protocol == "sms":
             if re.search(r"[./-]{2,}", endpoint) or re.search(
                 r"(^[./-]|[./-]$)", endpoint
@@ -550,10 +580,10 @@ class SNSBackend(BaseBackend):
         if old_subscription:
             return old_subscription
         topic = self.get_topic(topic_arn)
-        subscription = Subscription(topic, endpoint, protocol)
+        subscription = Subscription(topic, endpoint, protocol, return_subscription_arn)
         attributes = {
             "PendingConfirmation": "false",
-            "ConfirmationWasAuthenticated": "true",
+            "ConfirmationWasAuthenticated": "true" if subscription.confirmed else "false",
             "Endpoint": endpoint,
             "TopicArn": topic_arn,
             "Protocol": protocol,
