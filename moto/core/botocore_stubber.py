@@ -21,13 +21,17 @@ class BotocoreStubber:
     def __init__(self):
         self.enabled = False
         self.methods = defaultdict(list)
+        self.patterns = defaultdict(list)
 
     def reset(self):
         self.methods.clear()
+        self.patterns.clear()
 
     def register_response(self, method, pattern, response):
-        matchers = self.methods[method]
-        matchers.append((pattern, response))
+        if pattern not in self.patterns[method]:
+            matchers = self.methods[method]
+            matchers.append((pattern, response))
+            self.patterns[method].append(pattern)
 
     def __call__(self, event_name, request, **kwargs):
         if not self.enabled:

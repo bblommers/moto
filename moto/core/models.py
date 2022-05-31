@@ -129,67 +129,9 @@ class BaseMockAWS:
         return wrapper
 
     def decorate_class(self, klass):
-        direct_methods = get_direct_methods_of(klass)
-        defined_classes = set(
-            x for x, y in klass.__dict__.items() if inspect.isclass(y)
-        )
 
-        # Get a list of all userdefined superclasses
-        superclasses = [
-            c for c in klass.__mro__ if c not in [unittest.TestCase, object]
-        ]
-        # Get a list of all userdefined methods
-        supermethods = list(
-            itertools.chain(*[get_direct_methods_of(c) for c in superclasses])
-        )
-        # Check whether the user has overridden the setUp-method
-        has_setup_method = (
-            ("setUp" in supermethods and unittest.TestCase in klass.__mro__)
-            or "setup" in supermethods
-            or "setup_method" in supermethods
-        )
-
-        for attr in itertools.chain(direct_methods, defined_classes):
-            if attr.startswith("_"):
-                continue
-
-            attr_value = getattr(klass, attr)
-            if not hasattr(attr_value, "__call__"):
-                continue
-            if not hasattr(attr_value, "__name__"):
-                continue
-
-            # Check if this is a classmethod. If so, skip patching
-            if inspect.ismethod(attr_value) and attr_value.__self__ is klass:
-                continue
-
-            # Check if this is a staticmethod. If so, skip patching
-            for cls in inspect.getmro(klass):
-                if attr_value.__name__ not in cls.__dict__:
-                    continue
-                bound_attr_value = cls.__dict__[attr_value.__name__]
-                if not isinstance(bound_attr_value, staticmethod):
-                    break
-            else:
-                # It is a staticmethod, skip patching
-                continue
-
-            try:
-                # Special case for UnitTests-class
-                is_test_method = attr.startswith(unittest.TestLoader.testMethodPrefix)
-                should_reset = False
-                if attr in ["setUp", "setup_method"]:
-                    should_reset = True
-                elif not has_setup_method and is_test_method:
-                    should_reset = True
-                else:
-                    # Method is unrelated to the test setup
-                    # Method is a test, but was already reset while executing the setUp-method
-                    pass
-                setattr(klass, attr, self(attr_value, reset=should_reset))
-            except TypeError:
-                # Sometimes we can't set this for built-in types
-                continue
+        custom_getattr = functools.partialmethod(_get_attribute_and_decorate, self)
+        setattr(klass, "__getattribute__", custom_getattr)
         return klass
 
     def mock_env_variables(self):
@@ -209,6 +151,43 @@ class BaseMockAWS:
                 os.environ[k] = v
             else:
                 del os.environ[k]
+
+
+def _get_attribute_and_decorate(self, decorator, item):
+    """
+    Get the attribute named 'item', and decorate/mock the result if it is a test method
+    """
+    value = object.__getattribute__(self, item)
+    # Ensure we enhance nested classes
+    if inspect.isclass(value):
+        custom_getattr = functools.partialmethod(_get_attribute_and_decorate, decorator)
+        setattr(value, "__getattribute__", custom_getattr)
+        return value
+    # Skip everything that is not a method
+    if not inspect.ismethod(value):
+        return value
+    # Skip hidden attributes
+    if item.startswith("_"):
+        return value
+
+    # Get a list of all userdefined superclasses
+    superclasses = [
+        c for c in self.__class__.__mro__ if c not in [unittest.TestCase, object]
+    ]
+    # Get a list of all userdefined methods
+    supermethods = list(
+        itertools.chain(*[get_direct_methods_of(c) for c in superclasses])
+    )
+    # Check whether the user has overridden a setUp-method
+    has_setup_method = (
+        ("setUp" in supermethods and unittest.TestCase in self.__class__.__mro__)
+        or "setup" in supermethods
+        or "setup_method" in supermethods
+    )
+    is_test_method = item.startswith(unittest.TestLoader.testMethodPrefix)
+    is_setup_method = item in ["setUp", "setup_method"]
+    should_reset = is_setup_method or (not has_setup_method and is_test_method)
+    return decorator.decorate_callable(value, reset=should_reset)
 
 
 def get_direct_methods_of(klass):

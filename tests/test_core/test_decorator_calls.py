@@ -92,9 +92,7 @@ class TesterWithSetup(unittest.TestCase):
     def test_still_the_same(self):
         buckets = self.client.list_buckets()["Buckets"]
         bucket_names = [b["Name"] for b in buckets]
-        # There is a potential bug in the class-decorator, where the reset API is not called on start.
-        # This leads to a situation where 'bucket_names' may contain buckets created by earlier tests
-        bucket_names.should.contain("mybucket")
+        bucket_names.should.equal(["mybucket"])
 
 
 @mock_s3
@@ -289,3 +287,36 @@ class TestWithNestedClasses:
 
             with pytest.raises(ClientError):
                 s3.head_bucket(Bucket="bucketinsidetest")
+
+    class TestThatDoesNotExtendUnitTest:
+        def test_should_not_have_initial_bucket(self):
+            list(boto3.resource("s3").buckets.all()).should.have.length_of(0)
+
+        def test_bucket_can_be_created(self):
+            s3 = boto3.client("s3", region_name="us-east-1")
+            s3.create_bucket(Bucket="test_bucket")
+            list(boto3.resource("s3").buckets.all()).should.have.length_of(1)
+
+
+@mock_s3
+class BaseClassWithSetupButDoesNotExtendTestCase:
+    def setUp(self):
+        self.client = boto3.client("s3")
+        self.client.create_bucket(Bucket="test_bucket")
+
+        list(boto3.resource("s3").buckets.all()).should.have.length_of(1)
+
+
+class TestClassExtendingMotoAndUnit(
+    BaseClassWithSetupButDoesNotExtendTestCase, unittest.TestCase
+):
+
+    # setUp is executed first, because we extend TestCase
+    # Moto should recognize this, and reset the state before the setUp-method
+    # (Even though, when declaring the decorator, Moto doesn't know yet that we will extend TestCase)
+    def test_bucket_created_in_parent_setup_exists(self):
+        list(boto3.resource("s3").buckets.all()).should.have.length_of(1)
+
+    def test_second_bucket_can_be_created(self):
+        self.client.create_bucket(Bucket="test_bucket2")
+        list(boto3.resource("s3").buckets.all()).should.have.length_of(2)
