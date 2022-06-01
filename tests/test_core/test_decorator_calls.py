@@ -141,6 +141,7 @@ class TestWithSetup_LowercaseU:
 
 @mock_s3
 class TestWithSetupMethod:
+    # Xunit style setup-method
     def setup_method(self, *args):  # pylint: disable=unused-argument
         # This method will be executed automatically using pytest
         s3 = boto3.client("s3", region_name="us-east-1")
@@ -160,13 +161,14 @@ class TestWithSetupMethod:
 class TestKinesisUsingSetupMethod:
     def setup_method(self, *args):  # pylint: disable=unused-argument
         self.stream_name = "test_stream"
-        self.boto3_kinesis_client = boto3.client("kinesis", region_name="us-east-1")
-        self.boto3_kinesis_client.create_stream(
-            StreamName=self.stream_name, ShardCount=1
-        )
+        print(f"setup on {self}")
+        #self.boto3_kinesis_client = boto3.client("kinesis", region_name="us-east-1")
+        #self.boto3_kinesis_client.create_stream(
+        #    StreamName=self.stream_name, ShardCount=1
+        #)
 
     def test_stream_creation(self):
-        pass
+        self.stream_name.should.equal("test_stream")
 
     def test_stream_recreation(self):
         # The setup-method will run again for this test
@@ -320,3 +322,40 @@ class TestClassExtendingMotoAndUnit(
     def test_second_bucket_can_be_created(self):
         self.client.create_bucket(Bucket="test_bucket2")
         list(boto3.resource("s3").buckets.all()).should.have.length_of(2)
+
+
+@mock_s3
+class TestWithTearDown_LowerCase:
+
+    def setup(self):
+        self.client = boto3.client("s3")
+
+    def test_teardown_is_mocked(self):
+        self.client.create_bucket(Bucket="test_bucket")
+
+    def teardown(self):
+        self.client.list_buckets()["Buckets"].should.have.length_of(1)
+
+
+@mock_s3
+class TestWithTearDown_Underscore:
+
+    def setup_method(self, *args):  # pylint: disable=unused-argument
+        print(self)
+        print("hi")
+        self.client = boto3.client("s3")
+        print(self.client)
+
+    def test_teardown_is_mocked(self):
+        print(self)
+        print("hi2")
+        print(self.client)
+        #self.client.create_bucket(Bucket="test_bucket")
+
+    #def teardown_method(self, *args):
+    #    print("hi3")
+    #    self.client.list_buckets()["Buckets"].should.have.length_of(1)
+
+# TODO: test teardown behaviour
+# TODO: test static setup methods
+# TODO: only decorate() around setup/test-/teardown methods, to improve performance

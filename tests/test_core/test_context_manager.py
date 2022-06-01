@@ -17,7 +17,7 @@ def test_context_manager_returns_mock():
 class TestCaseUsingMultipleMocks:
     def test_resets_using_multiple_contextmanagers(self):
         with mock_ec2():
-            client = boto3.client("ec2")
+            client = boto3.client("ec2", region_name="us-east-1")
             resp = client.run_instances(ImageId=EXAMPLE_AMI_ID, MinCount=1, MaxCount=1)
             my_id1 = resp["Instances"][0]["InstanceId"]
 

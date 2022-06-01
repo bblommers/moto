@@ -130,6 +130,7 @@ class BaseMockAWS:
 
     def decorate_class(self, klass):
 
+        print(f"decorate_class({klass}) (self={self})")
         custom_getattr = functools.partialmethod(_get_attribute_and_decorate, self)
         setattr(klass, "__getattribute__", custom_getattr)
         return klass
@@ -153,11 +154,12 @@ class BaseMockAWS:
                 del os.environ[k]
 
 
-def _get_attribute_and_decorate(self, decorator, item):
+def _get_attribute_and_decorate(instance, decorator, item):
     """
     Get the attribute named 'item', and decorate/mock the result if it is a test method
     """
-    value = object.__getattribute__(self, item)
+    print(instance)
+    value = object.__getattribute__(instance, item)
     # Ensure we enhance nested classes
     if inspect.isclass(value):
         custom_getattr = functools.partialmethod(_get_attribute_and_decorate, decorator)
@@ -170,9 +172,12 @@ def _get_attribute_and_decorate(self, decorator, item):
     if item.startswith("_"):
         return value
 
+    #print(value)
+    print(f"getattribute({item})=={value} (from {instance}) (decorator={decorator}) (class: {inspect.isclass(value)}) (method: {inspect.ismethod(value)})")
+
     # Get a list of all userdefined superclasses
     superclasses = [
-        c for c in self.__class__.__mro__ if c not in [unittest.TestCase, object]
+        c for c in instance.__class__.__mro__ if c not in [unittest.TestCase, object]
     ]
     # Get a list of all userdefined methods
     supermethods = list(
@@ -180,14 +185,27 @@ def _get_attribute_and_decorate(self, decorator, item):
     )
     # Check whether the user has overridden a setUp-method
     has_setup_method = (
-        ("setUp" in supermethods and unittest.TestCase in self.__class__.__mro__)
+        ("setUp" in supermethods and unittest.TestCase in instance.__class__.__mro__)
         or "setup" in supermethods
         or "setup_method" in supermethods
     )
     is_test_method = item.startswith(unittest.TestLoader.testMethodPrefix)
     is_setup_method = item in ["setUp", "setup_method"]
     should_reset = is_setup_method or (not has_setup_method and is_test_method)
-    return decorator.decorate_callable(value, reset=should_reset)
+    #print(f"Method {item} is_test:{is_test_method}, is_setup:{is_setup_method}, has_setup:{has_setup_method}, reset:{should_reset}")
+    def newfunc(*args, **kwargs):
+
+        decorator.start(reset=should_reset)
+        try:
+            result = value(*args, **kwargs)
+        finally:
+            decorator.stop()
+            pass
+
+        return result
+
+    setattr(instance, item, newfunc)
+    return instance.__getattribute__(item)
 
 
 def get_direct_methods_of(klass):
