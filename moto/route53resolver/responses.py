@@ -265,7 +265,6 @@ class Route53ResolverResponse(BaseResponse):
         resolver_endpoint_id = self._get_param("ResolverEndpointId")
         resolver_endpoint = (
             self.route53resolver_backend.associate_resolver_endpoint_ip_address(
-                region=self.region,
                 resolver_endpoint_id=resolver_endpoint_id,
                 ip_address=ip_address,
             )
