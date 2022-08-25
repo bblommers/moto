@@ -26,8 +26,6 @@ def test_cloudformation_server_get():
     ).groups()[0]
 
     list_stacks_resp = test_client.action_data("ListStacks")
-    stack_id_from_list_response = re.search(
-        "<StackId>(.*)</StackId>", list_stacks_resp
-    ).groups()[0]
-
-    stack_id_from_create_response.should.equal(stack_id_from_list_response)
+    list_stacks_resp.should.contain(
+        f"<StackId>{stack_id_from_create_response}</StackId>"
+    )
