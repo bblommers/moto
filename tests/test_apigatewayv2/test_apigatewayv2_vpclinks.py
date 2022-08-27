@@ -6,14 +6,6 @@ from moto import mock_apigatewayv2
 
 
 @mock_apigatewayv2
-def test_get_vpc_links_empty():
-    client = boto3.client("apigatewayv2", region_name="eu-west-1")
-
-    resp = client.get_vpc_links()
-    resp.should.have.key("Items").equals([])
-
-
-@mock_apigatewayv2
 def test_create_vpc_links():
     client = boto3.client("apigatewayv2", region_name="eu-west-1")
 
@@ -80,18 +72,19 @@ def test_get_vpc_links():
     )["VpcLinkId"]
 
     links = client.get_vpc_links()["Items"]
-    links.should.have.length_of(1)
-    links[0]["VpcLinkId"].should.equal(vpc_link_id)
+    [link["VpcLinkId"] for link in links].should.contain(vpc_link_id)
 
-    client.create_vpc_link(
+    vpc_link_id2 = client.create_vpc_link(
         Name="vpcl",
         SecurityGroupIds=["sg1", "sg2"],
         SubnetIds=["sid1", "sid2"],
         Tags={"key1": "value1"},
-    )
+    )["VpcLinkId"]
+    vpc_link_id.shouldnt.equal(vpc_link_id2)
 
     links = client.get_vpc_links()["Items"]
-    links.should.have.length_of(2)
+    [link["VpcLinkId"] for link in links].should.contain(vpc_link_id)
+    [link["VpcLinkId"] for link in links].should.contain(vpc_link_id2)
 
 
 @mock_apigatewayv2
@@ -105,13 +98,10 @@ def test_delete_vpc_link():
         Tags={"key1": "value1"},
     )["VpcLinkId"]
 
-    links = client.get_vpc_links()["Items"]
-    links.should.have.length_of(1)
-
     client.delete_vpc_link(VpcLinkId=vpc_link_id)
 
     links = client.get_vpc_links()["Items"]
-    links.should.have.length_of(0)
+    [link["VpcLinkId"] for link in links].shouldnt.contain(vpc_link_id)
 
 
 @mock_apigatewayv2

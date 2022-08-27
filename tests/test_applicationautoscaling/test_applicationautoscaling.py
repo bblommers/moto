@@ -3,6 +3,7 @@ import pytest
 import sure  # noqa # pylint: disable=unused-import
 from moto import mock_applicationautoscaling, mock_ecs
 from moto.core import DEFAULT_ACCOUNT_ID as ACCOUNT_ID
+from uuid import uuid4
 
 DEFAULT_REGION = "us-east-1"
 DEFAULT_ECS_CLUSTER = "default"
@@ -21,8 +22,8 @@ DEFAULT_SUSPENDED_STATE = {
 }
 
 
-def _create_ecs_defaults(ecs, create_service=True):
-    _ = ecs.create_cluster(clusterName=DEFAULT_ECS_CLUSTER)
+def _create_ecs_defaults(ecs, create_service=True, name=DEFAULT_ECS_CLUSTER):
+    _ = ecs.create_cluster(clusterName=name)
     _ = ecs.register_task_definition(
         family=DEFAULT_ECS_TASK,
         containerDefinitions=[
@@ -40,8 +41,8 @@ def _create_ecs_defaults(ecs, create_service=True):
         ],
     )
     if create_service:
-        _ = ecs.create_service(
-            cluster=DEFAULT_ECS_CLUSTER,
+        ecs.create_service(
+            cluster=name,
             serviceName=DEFAULT_ECS_SERVICE,
             taskDefinition=DEFAULT_ECS_TASK,
             desiredCount=2,
@@ -52,11 +53,13 @@ def _create_ecs_defaults(ecs, create_service=True):
 @mock_applicationautoscaling
 def test_describe_scalable_targets_one_basic_ecs_success():
     ecs = boto3.client("ecs", region_name=DEFAULT_REGION)
-    _create_ecs_defaults(ecs)
+    cluster_name = str(uuid4())[0:6]
+    _create_ecs_defaults(ecs, name=cluster_name)
     client = boto3.client("application-autoscaling", region_name=DEFAULT_REGION)
+    resource_id = f"service/{cluster_name}/sample-webapp"
     client.register_scalable_target(
         ServiceNamespace=DEFAULT_SERVICE_NAMESPACE,
-        ResourceId=DEFAULT_RESOURCE_ID,
+        ResourceId=resource_id,
         ScalableDimension=DEFAULT_SCALABLE_DIMENSION,
     )
     response = client.describe_scalable_targets(
@@ -66,7 +69,7 @@ def test_describe_scalable_targets_one_basic_ecs_success():
     len(response["ScalableTargets"]).should.equal(1)
     t = response["ScalableTargets"][0]
     t.should.have.key("ServiceNamespace").which.should.equal(DEFAULT_SERVICE_NAMESPACE)
-    t.should.have.key("ResourceId").which.should.equal(DEFAULT_RESOURCE_ID)
+    t.should.have.key("ResourceId").which.should.equal(resource_id)
     t.should.have.key("ScalableDimension").which.should.equal(
         DEFAULT_SCALABLE_DIMENSION
     )
@@ -77,17 +80,19 @@ def test_describe_scalable_targets_one_basic_ecs_success():
 @mock_applicationautoscaling
 def test_describe_scalable_targets_one_full_ecs_success():
     ecs = boto3.client("ecs", region_name=DEFAULT_REGION)
-    _create_ecs_defaults(ecs)
+    cluster_name = str(uuid4())[0:6]
+    _create_ecs_defaults(ecs, name=cluster_name)
     client = boto3.client("application-autoscaling", region_name=DEFAULT_REGION)
-    register_scalable_target(client)
+    resource_id = f"service/{cluster_name}/sample-webapp"
+    register_scalable_target(client, ResourceId=resource_id)
     response = client.describe_scalable_targets(
         ServiceNamespace=DEFAULT_SERVICE_NAMESPACE
     )
     response["ResponseMetadata"]["HTTPStatusCode"].should.equal(200)
-    len(response["ScalableTargets"]).should.equal(1)
-    t = response["ScalableTargets"][0]
+    targets = response["ScalableTargets"]
+    t = [t for t in targets if t["ResourceId"] == resource_id][0]
     t.should.have.key("ServiceNamespace").which.should.equal(DEFAULT_SERVICE_NAMESPACE)
-    t.should.have.key("ResourceId").which.should.equal(DEFAULT_RESOURCE_ID)
+    t.should.have.key("ResourceId").which.should.equal(resource_id)
     t.should.have.key("ScalableDimension").which.should.equal(
         DEFAULT_SCALABLE_DIMENSION
     )
@@ -106,51 +111,57 @@ def test_describe_scalable_targets_one_full_ecs_success():
 def test_describe_scalable_targets_only_return_ecs_targets():
     ecs = boto3.client("ecs", region_name=DEFAULT_REGION)
     _create_ecs_defaults(ecs, create_service=False)
+    target1 = str(uuid4())[0:6]
+    target2 = str(uuid4())[0:6]
     _ = ecs.create_service(
         cluster=DEFAULT_ECS_CLUSTER,
-        serviceName="test1",
+        serviceName=target1,
         taskDefinition=DEFAULT_ECS_TASK,
         desiredCount=2,
     )
     _ = ecs.create_service(
         cluster=DEFAULT_ECS_CLUSTER,
-        serviceName="test2",
+        serviceName=target2,
         taskDefinition=DEFAULT_ECS_TASK,
         desiredCount=2,
     )
     client = boto3.client("application-autoscaling", region_name=DEFAULT_REGION)
+    target3 = "instancegroup/j-2EEZNYKUA1NTV/ig-1791Y4E1L8YI0"
     register_scalable_target(
         client,
         ServiceNamespace="ecs",
-        ResourceId="service/{}/test1".format(DEFAULT_ECS_CLUSTER),
+        ResourceId=f"service/{DEFAULT_ECS_CLUSTER}/{target1}",
     )
     register_scalable_target(
         client,
         ServiceNamespace="ecs",
-        ResourceId="service/{}/test2".format(DEFAULT_ECS_CLUSTER),
+        ResourceId=f"service/{DEFAULT_ECS_CLUSTER}/{target2}",
     )
     register_scalable_target(
         client,
         ServiceNamespace="elasticmapreduce",
-        ResourceId="instancegroup/j-2EEZNYKUA1NTV/ig-1791Y4E1L8YI0",
+        ResourceId=target3,
         ScalableDimension="elasticmapreduce:instancegroup:InstanceCount",
     )
-    response = client.describe_scalable_targets(
+    targets = client.describe_scalable_targets(
         ServiceNamespace=DEFAULT_SERVICE_NAMESPACE
-    )
-    response["ResponseMetadata"]["HTTPStatusCode"].should.equal(200)
-    len(response["ScalableTargets"]).should.equal(2)
+    )["ScalableTargets"]
+    ids = [t["ResourceId"] for t in targets]
+    ids.should.contain(f"service/{DEFAULT_ECS_CLUSTER}/{target1}")
+    ids.should.contain(f"service/{DEFAULT_ECS_CLUSTER}/{target2}")
+    ids.shouldnt.contain(target3)
 
 
 @mock_ecs
 @mock_applicationautoscaling
 def test_describe_scalable_targets_next_token_success():
     ecs = boto3.client("ecs", region_name=DEFAULT_REGION)
-    _create_ecs_defaults(ecs, create_service=False)
+    cluster_name = str(uuid4())
+    _create_ecs_defaults(ecs, create_service=False, name=cluster_name)
     client = boto3.client("application-autoscaling", region_name=DEFAULT_REGION)
     for i in range(0, 100):
-        _ = ecs.create_service(
-            cluster=DEFAULT_ECS_CLUSTER,
+        ecs.create_service(
+            cluster=cluster_name,
             serviceName=str(i),
             taskDefinition=DEFAULT_ECS_TASK,
             desiredCount=2,
@@ -158,22 +169,19 @@ def test_describe_scalable_targets_next_token_success():
         register_scalable_target(
             client,
             ServiceNamespace="ecs",
-            ResourceId="service/{}/{}".format(DEFAULT_ECS_CLUSTER, i),
+            ResourceId="service/{}/{}".format(cluster_name, i),
         )
     response = client.describe_scalable_targets(
         ServiceNamespace=DEFAULT_SERVICE_NAMESPACE
     )
     response["ResponseMetadata"]["HTTPStatusCode"].should.equal(200)
     len(response["ScalableTargets"]).should.equal(50)
-    response["ScalableTargets"][0]["ResourceId"].should.equal("service/default/0")
     response.should.have.key("NextToken").which.should.equal("49")
     response = client.describe_scalable_targets(
         ServiceNamespace=DEFAULT_SERVICE_NAMESPACE, NextToken=str(response["NextToken"])
     )
     response["ResponseMetadata"]["HTTPStatusCode"].should.equal(200)
     len(response["ScalableTargets"]).should.equal(50)
-    response["ScalableTargets"][0]["ResourceId"].should.equal("service/default/50")
-    response.should_not.have.key("NextToken")
 
 
 def register_scalable_target(client, **kwargs):
@@ -260,9 +268,8 @@ def test_register_scalable_target_resource_id_variations():
         )
         response = client.describe_scalable_targets(ServiceNamespace=namespace)
         response["ResponseMetadata"]["HTTPStatusCode"].should.equal(200)
-        num_targets = 2 if namespace == "dynamodb" and "index" in resource_id else 1
-        len(response["ScalableTargets"]).should.equal(num_targets)
-        t = response["ScalableTargets"][-1]
+        targets = response["ScalableTargets"]
+        t = [t for t in targets if t["ResourceId"] == resource_id][0]
         t.should.have.key("ServiceNamespace").which.should.equal(namespace)
         t.should.have.key("ResourceId").which.should.equal(resource_id)
         t.should.have.key("ScalableDimension").which.should.equal(scalable_dimension)
@@ -273,9 +280,15 @@ def test_register_scalable_target_resource_id_variations():
 @mock_applicationautoscaling
 def test_register_scalable_target_updates_existing_target():
     ecs = boto3.client("ecs", region_name=DEFAULT_REGION)
+    dimension = "cassandra:table:ReadCapacityUnits"
     _create_ecs_defaults(ecs)
     client = boto3.client("application-autoscaling", region_name=DEFAULT_REGION)
-    register_scalable_target(client)
+    register_scalable_target(
+        client,
+        ServiceNamespace="cassandra",
+        ResourceId="table/else/table",
+        ScalableDimension=dimension,
+    )
 
     updated_min_capacity = 3
     updated_max_capacity = 10
@@ -286,16 +299,14 @@ def test_register_scalable_target_updates_existing_target():
     }
 
     client.register_scalable_target(
-        ServiceNamespace=DEFAULT_SERVICE_NAMESPACE,
-        ResourceId=DEFAULT_RESOURCE_ID,
-        ScalableDimension=DEFAULT_SCALABLE_DIMENSION,
+        ServiceNamespace="cassandra",
+        ResourceId="table/else/table",
+        ScalableDimension=dimension,
         MinCapacity=updated_min_capacity,
         MaxCapacity=updated_max_capacity,
         SuspendedState=updated_suspended_state,
     )
-    response = client.describe_scalable_targets(
-        ServiceNamespace=DEFAULT_SERVICE_NAMESPACE
-    )
+    response = client.describe_scalable_targets(ServiceNamespace="cassandra")
 
     len(response["ScalableTargets"]).should.equal(1)
     t = response["ScalableTargets"][0]
@@ -445,7 +456,7 @@ def test_describe_scaling_policies():
 def test_delete_scaling_policies():
     client = boto3.client("application-autoscaling", region_name=DEFAULT_REGION)
     namespace = "sagemaker"
-    resource_id = "endpoint/MyEndPoint/variant/MyVariant"
+    resource_id = f"endpoint/MyEndPoint/variant/{str(uuid4())}"
     scalable_dimension = "sagemaker:variant:DesiredInstanceCount"
 
     client.register_scalable_target(
@@ -456,7 +467,7 @@ def test_delete_scaling_policies():
         MaxCapacity=8,
     )
 
-    policy_name = "MyPolicy"
+    policy_name = str(uuid4())
     policy_type = "TargetTrackingScaling"
     policy_body = {
         "TargetValue": 70.0,
@@ -506,7 +517,7 @@ def test_delete_scaling_policies():
 def test_deregister_scalable_target():
     client = boto3.client("application-autoscaling", region_name=DEFAULT_REGION)
     namespace = "sagemaker"
-    resource_id = "endpoint/MyEndPoint/variant/MyVariant"
+    resource_id = f"endpoint/MyEndPoint/variant/{str(uuid4())}"
     scalable_dimension = "sagemaker:variant:DesiredInstanceCount"
 
     client.register_scalable_target(
@@ -517,8 +528,11 @@ def test_deregister_scalable_target():
         MaxCapacity=8,
     )
 
-    response = client.describe_scalable_targets(ServiceNamespace=namespace)
-    len(response["ScalableTargets"]).should.equal(1)
+    targets = client.describe_scalable_targets(ServiceNamespace=namespace)[
+        "ScalableTargets"
+    ]
+    ids = [t["ResourceId"] for t in targets]
+    ids.should.contain(resource_id)
 
     client.deregister_scalable_target(
         ServiceNamespace=namespace,
@@ -526,8 +540,11 @@ def test_deregister_scalable_target():
         ScalableDimension=scalable_dimension,
     )
 
-    response = client.describe_scalable_targets(ServiceNamespace=namespace)
-    len(response["ScalableTargets"]).should.equal(0)
+    targets = client.describe_scalable_targets(ServiceNamespace=namespace)[
+        "ScalableTargets"
+    ]
+    ids = [t["ResourceId"] for t in targets]
+    ids.shouldnt.contain(resource_id)
 
     with pytest.raises(client.exceptions.ValidationException) as e:
         client.deregister_scalable_target(
@@ -569,43 +586,43 @@ def test_delete_scheduled_action():
 @mock_applicationautoscaling
 def test_describe_scheduled_actions():
     client = boto3.client("application-autoscaling", region_name="eu-west-1")
-    resp = client.describe_scheduled_actions(ServiceNamespace="ecs")
-    resp.should.have.key("ScheduledActions").length_of(0)
+    namespace1 = str(uuid4())[0:6]
+    namespace2 = str(uuid4())[0:6]
 
     for i in range(3):
         client.put_scheduled_action(
-            ServiceNamespace="ecs",
+            ServiceNamespace=namespace1,
             ScheduledActionName=f"ecs_action_{i}",
             ResourceId=f"ecs:cluster:{i}",
             ScalableDimension="ecs:service:DesiredCount",
         )
         client.put_scheduled_action(
-            ServiceNamespace="dynamodb",
+            ServiceNamespace=namespace2,
             ScheduledActionName=f"ddb_action_{i}",
             ResourceId=f"table/table_{i}",
             ScalableDimension="dynamodb:table:ReadCapacityUnits",
         )
 
-    resp = client.describe_scheduled_actions(ServiceNamespace="ecs")
+    resp = client.describe_scheduled_actions(ServiceNamespace=namespace1)
     resp.should.have.key("ScheduledActions").length_of(3)
 
-    resp = client.describe_scheduled_actions(ServiceNamespace="ec2")
+    resp = client.describe_scheduled_actions(ServiceNamespace="sthelse")
     resp.should.have.key("ScheduledActions").length_of(0)
 
     resp = client.describe_scheduled_actions(
-        ServiceNamespace="dynamodb", ScheduledActionNames=["ddb_action_0"]
+        ServiceNamespace=namespace2, ScheduledActionNames=["ddb_action_0"]
     )
     resp.should.have.key("ScheduledActions").length_of(1)
 
     resp = client.describe_scheduled_actions(
-        ServiceNamespace="dynamodb",
+        ServiceNamespace=namespace2,
         ResourceId="table/table_0",
         ScalableDimension="dynamodb:table:ReadCapacityUnits",
     )
     resp.should.have.key("ScheduledActions").length_of(1)
 
     resp = client.describe_scheduled_actions(
-        ServiceNamespace="dynamodb",
+        ServiceNamespace=namespace2,
         ResourceId="table/table_0",
         ScalableDimension="dynamodb:table:WriteCapacityUnits",
     )

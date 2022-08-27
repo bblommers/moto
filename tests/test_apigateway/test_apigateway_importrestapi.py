@@ -41,7 +41,9 @@ def test_import_rest_api__invalid_api_creates_nothing():
             "Failed to parse the uploaded OpenAPI document due to: 'paths' is a required property"
         )
 
-    client.get_rest_apis().should.have.key("items").length_of(0)
+    apis = client.get_rest_apis()["items"]
+    api_names = [a["name"] for a in apis]
+    api_names.shouldnt.contain("invaliddoc")
 
 
 @mock_apigateway
@@ -52,6 +54,8 @@ def test_import_rest_api__methods_are_created():
     with open(path + "/resources/test_api.json", "rb") as api_json:
         resp = client.import_rest_api(body=api_json.read())
         api_id = resp["id"]
+
+    print(client.get_rest_apis())
 
     resources = client.get_resources(restApiId=api_id)
     root_id = [res for res in resources["items"] if res["path"] == "/"][0]["id"]

@@ -25,7 +25,7 @@ _lambda_region = "us-west-2"
 boto3.setup_default_session(region_name=_lambda_region)
 
 
-@pytest.mark.network
+@pytest.mark.xdist_group(name="docker")
 @mock_lambda
 def test_invoke_function_that_throws_error():
     conn = boto3.client("lambda", _lambda_region)
@@ -57,7 +57,7 @@ def test_invoke_function_that_throws_error():
     logs.should.contain("END RequestId:")
 
 
-@pytest.mark.network
+@pytest.mark.xdist_group(name="docker")
 @pytest.mark.parametrize("invocation_type", [None, "RequestResponse"])
 @pytest.mark.parametrize("key", ["FunctionName", "FunctionArn"])
 @mock_lambda
@@ -116,7 +116,7 @@ def test_invoke_requestresponse_function(invocation_type, key):
     assert "LogResult" not in success_result
 
 
-@pytest.mark.network
+@pytest.mark.xdist_group(name="docker")
 @mock_lambda
 def test_invoke_event_function():
     conn = boto3.client("lambda", _lambda_region)
@@ -145,7 +145,7 @@ def test_invoke_event_function():
     json.loads(success_result["Payload"].read().decode("utf-8")).should.equal(in_data)
 
 
-@pytest.mark.network
+@pytest.mark.xdist_group(name="docker")
 @mock_lambda
 def test_invoke_lambda_using_environment_port():
     if not settings.TEST_SERVER_MODE:
@@ -179,7 +179,7 @@ def test_invoke_lambda_using_environment_port():
     response["host"].should.match("http://.+:[0-9]{4}")
 
 
-@pytest.mark.network
+@pytest.mark.xdist_group(name="docker")
 @mock_lambda
 def test_invoke_lambda_using_networkmode():
     """
@@ -209,7 +209,7 @@ def test_invoke_lambda_using_networkmode():
     function_names.should.contain(function_name)
 
 
-@pytest.mark.network
+@pytest.mark.xdist_group(name="docker")
 @mock_lambda
 def test_invoke_function_with_multiple_files_in_zip():
     conn = boto3.client("lambda", _lambda_region)
@@ -235,7 +235,7 @@ def test_invoke_function_with_multiple_files_in_zip():
     )
 
 
-@pytest.mark.network
+@pytest.mark.xdist_group(name="docker")
 @mock_lambda
 def test_invoke_dryrun_function():
     conn = boto3.client("lambda", _lambda_region)
@@ -265,6 +265,7 @@ def test_invoke_dryrun_function():
 
 if settings.TEST_SERVER_MODE:
 
+    @pytest.mark.xdist_group(name="docker")
     @mock_ec2
     @mock_lambda
     def test_invoke_function_get_ec2_volume():
@@ -298,7 +299,7 @@ if settings.TEST_SERVER_MODE:
         actual_payload.should.equal(expected_payload)
 
 
-@pytest.mark.network
+@pytest.mark.xdist_group(name="docker")
 @mock_lambda
 def test_invoke_lambda_error():
     lambda_fx = """
@@ -332,7 +333,7 @@ def lambda_handler(event, context):
     assert result["FunctionError"] == "Handled"
 
 
-@pytest.mark.network
+@pytest.mark.xdist_group(name="docker")
 @pytest.mark.parametrize("key", ["FunctionName", "FunctionArn"])
 @mock_lambda
 def test_invoke_async_function(key):
@@ -358,7 +359,7 @@ def test_invoke_async_function(key):
     success_result["Status"].should.equal(202)
 
 
-@pytest.mark.network
+@pytest.mark.xdist_group(name="docker")
 @mock_lambda
 def test_invoke_function_large_response():
     # AWS Lambda should only return bodies smaller than 6 MB

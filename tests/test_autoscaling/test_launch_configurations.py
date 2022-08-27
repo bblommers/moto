@@ -1,20 +1,23 @@
 import base64
 import boto3
 from botocore.exceptions import ClientError
+from uuid import uuid4
 
 import pytest
 import sure  # noqa # pylint: disable=unused-import
 
 from moto import mock_autoscaling, mock_ec2
 from moto.core import DEFAULT_ACCOUNT_ID as ACCOUNT_ID
+from . import get_all_launch_configs
 from tests import EXAMPLE_AMI_ID
 
 
 @mock_autoscaling
 def test_create_launch_configuration():
+    lc_name = str(uuid4())
     client = boto3.client("autoscaling", region_name="us-east-1")
     client.create_launch_configuration(
-        LaunchConfigurationName="tester",
+        LaunchConfigurationName=lc_name,
         ImageId=EXAMPLE_AMI_ID,
         InstanceType="t1.micro",
         KeyName="the_keys",
@@ -27,8 +30,10 @@ def test_create_launch_configuration():
         SpotPrice="0.1",
     )
 
-    launch_config = client.describe_launch_configurations()["LaunchConfigurations"][0]
-    launch_config["LaunchConfigurationName"].should.equal("tester")
+    launch_config = client.describe_launch_configurations(
+        LaunchConfigurationNames=[lc_name]
+    )["LaunchConfigurations"][0]
+    launch_config["LaunchConfigurationName"].should.equal(lc_name)
     launch_config.should.have.key("LaunchConfigurationARN")
     launch_config["ImageId"].should.equal(EXAMPLE_AMI_ID)
     launch_config["InstanceType"].should.equal("t1.micro")
@@ -48,8 +53,9 @@ def test_create_launch_configuration():
 @mock_autoscaling
 def test_create_launch_configuration_with_block_device_mappings():
     client = boto3.client("autoscaling", region_name="us-east-1")
+    lc_name = str(uuid4())
     client.create_launch_configuration(
-        LaunchConfigurationName="tester",
+        LaunchConfigurationName=lc_name,
         ImageId=EXAMPLE_AMI_ID,
         InstanceType="t1.micro",
         KeyName="the_keys",
@@ -78,8 +84,10 @@ def test_create_launch_configuration_with_block_device_mappings():
         ],
     )
 
-    launch_config = client.describe_launch_configurations()["LaunchConfigurations"][0]
-    launch_config["LaunchConfigurationName"].should.equal("tester")
+    launch_config = client.describe_launch_configurations(
+        LaunchConfigurationNames=[lc_name]
+    )["LaunchConfigurations"][0]
+    launch_config["LaunchConfigurationName"].should.equal(lc_name)
 
     mappings = launch_config["BlockDeviceMappings"]
     mappings.should.have.length_of(3)
@@ -106,11 +114,12 @@ def test_create_launch_configuration_with_block_device_mappings():
 
 @mock_autoscaling
 def test_create_launch_configuration_additional_parameters():
+    lc_name = str(uuid4())
     client = boto3.client("autoscaling", region_name="us-east-1")
     client.create_launch_configuration(
         ClassicLinkVPCId="vpc_id",
         ClassicLinkVPCSecurityGroups=["classic_sg1"],
-        LaunchConfigurationName="tester",
+        LaunchConfigurationName=lc_name,
         ImageId=EXAMPLE_AMI_ID,
         InstanceType="t1.micro",
         EbsOptimized=True,
@@ -122,7 +131,9 @@ def test_create_launch_configuration_additional_parameters():
         },
     )
 
-    launch_config = client.describe_launch_configurations()["LaunchConfigurations"][0]
+    launch_config = client.describe_launch_configurations(
+        LaunchConfigurationNames=[lc_name]
+    )["LaunchConfigurations"][0]
     launch_config["ClassicLinkVPCId"].should.equal("vpc_id")
     launch_config["ClassicLinkVPCSecurityGroups"].should.equal(["classic_sg1"])
     launch_config["EbsOptimized"].should.equal(True)
@@ -139,6 +150,7 @@ def test_create_launch_configuration_additional_parameters():
 @mock_autoscaling
 @mock_ec2
 def test_create_launch_configuration_without_public_ip():
+    lc_name = str(uuid4())
     ec2 = boto3.resource("ec2", "us-east-1")
     vpc = ec2.create_vpc(CidrBlock="10.0.0.0/16")
     subnet = ec2.create_subnet(VpcId=vpc.id, CidrBlock="10.0.0.0/27")
@@ -148,13 +160,15 @@ def test_create_launch_configuration_without_public_ip():
 
     client = boto3.client("autoscaling", region_name="us-east-1")
     client.create_launch_configuration(
-        LaunchConfigurationName="tester",
+        LaunchConfigurationName=lc_name,
         ImageId=EXAMPLE_AMI_ID,
         InstanceType="t1.micro",
         AssociatePublicIpAddress=False,
     )
 
-    launch_config = client.describe_launch_configurations()["LaunchConfigurations"][0]
+    launch_config = client.describe_launch_configurations(
+        LaunchConfigurationNames=[lc_name]
+    )["LaunchConfigurations"][0]
     launch_config["AssociatePublicIpAddress"].should.equal(False)
 
     asg_name = f"asg-{random_image_id}"
@@ -177,31 +191,20 @@ def test_create_launch_configuration_without_public_ip():
 
 
 @mock_autoscaling
-def test_create_launch_configuration_additional_params_default_to_false():
-    client = boto3.client("autoscaling", region_name="us-east-1")
-    client.create_launch_configuration(
-        LaunchConfigurationName="tester",
-        ImageId=EXAMPLE_AMI_ID,
-        InstanceType="t1.micro",
-    )
-
-    launch_config = client.describe_launch_configurations()["LaunchConfigurations"][0]
-    launch_config["EbsOptimized"].should.equal(False)
-    launch_config["AssociatePublicIpAddress"].should.equal(False)
-
-
-@mock_autoscaling
 def test_create_launch_configuration_defaults():
     """Test with the minimum inputs and check that all of the proper defaults
     are assigned for the other attributes"""
     client = boto3.client("autoscaling", region_name="us-east-1")
+    lc_name = str(uuid4())
     client.create_launch_configuration(
-        LaunchConfigurationName="tester",
+        LaunchConfigurationName=lc_name,
         ImageId=EXAMPLE_AMI_ID,
         InstanceType="m1.small",
     )
 
-    launch_config = client.describe_launch_configurations()["LaunchConfigurations"][0]
+    launch_config = client.describe_launch_configurations(
+        LaunchConfigurationNames=[lc_name]
+    )["LaunchConfigurations"][0]
 
     # Defaults
     launch_config["KeyName"].should.equal("")
@@ -210,12 +213,15 @@ def test_create_launch_configuration_defaults():
     launch_config["InstanceMonitoring"].should.equal({"Enabled": False})
     launch_config.shouldnt.have.key("IamInstanceProfile")
     launch_config.shouldnt.have.key("SpotPrice")
+    launch_config["EbsOptimized"].should.equal(False)
+    launch_config["AssociatePublicIpAddress"].should.equal(False)
 
 
 @mock_autoscaling
 def test_launch_configuration_describe_filter():
     client = boto3.client("autoscaling", region_name="us-east-1")
-    for name in ["tester", "tester2", "tester3"]:
+    lc_names = [str(uuid4()), str(uuid4()), str(uuid4())]
+    for name in lc_names:
         client.create_launch_configuration(
             LaunchConfigurationName=name,
             ImageId=EXAMPLE_AMI_ID,
@@ -223,12 +229,14 @@ def test_launch_configuration_describe_filter():
         )
 
     configs = client.describe_launch_configurations(
-        LaunchConfigurationNames=["tester", "tester2"]
+        LaunchConfigurationNames=[lc_names[0], lc_names[2]]
     )
     configs["LaunchConfigurations"].should.have.length_of(2)
-    client.describe_launch_configurations()[
-        "LaunchConfigurations"
-    ].should.have.length_of(3)
+
+    all_lcs = get_all_launch_configs(client)
+    all_names = [lc["LaunchConfigurationName"] for lc in all_lcs]
+    for lc_name in lc_names:
+        all_names.should.contain(lc_name)
 
 
 @mock_autoscaling
@@ -250,26 +258,26 @@ def test_launch_configuration_describe_paginated():
     response2 = conn.describe_launch_configurations(NextToken=marker)
 
     lcs.extend(response2["LaunchConfigurations"])
-    lcs.should.have.length_of(51)
-    assert "NextToken" not in response2.keys()
+    len(lcs).should.be.above(50)
 
 
 @mock_autoscaling
 def test_launch_configuration_delete():
     client = boto3.client("autoscaling", region_name="us-east-1")
+    lc_name = str(uuid4())
     client.create_launch_configuration(
-        LaunchConfigurationName="tester",
+        LaunchConfigurationName=lc_name,
         ImageId=EXAMPLE_AMI_ID,
         InstanceType="m1.small",
     )
 
-    client.describe_launch_configurations()[
+    client.describe_launch_configurations(LaunchConfigurationNames=[lc_name])[
         "LaunchConfigurations"
     ].should.have.length_of(1)
 
-    client.delete_launch_configuration(LaunchConfigurationName="tester")
+    client.delete_launch_configuration(LaunchConfigurationName=lc_name)
 
-    client.describe_launch_configurations()[
+    client.describe_launch_configurations(LaunchConfigurationNames=[lc_name])[
         "LaunchConfigurations"
     ].should.have.length_of(0)
 
@@ -337,7 +345,8 @@ def test_launch_config_with_block_device_mappings__volumes_are_created():
     )
 
     instances = as_client.describe_auto_scaling_instances()["AutoScalingInstances"]
-    instance_id = instances[0]["InstanceId"]
+    instance = [i for i in instances if i["AutoScalingGroupName"] == asg_name][0]
+    instance_id = instance["InstanceId"]
 
     volumes = ec2_client.describe_volumes(
         Filters=[{"Name": "attachment.instance-id", "Values": [instance_id]}]

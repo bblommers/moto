@@ -142,23 +142,24 @@ def test_delete_graphql_api():
         "graphqlApi"
     ]["apiId"]
 
-    resp = client.list_graphql_apis()
-    resp.should.have.key("graphqlApis").length_of(1)
+    apis = client.list_graphql_apis()["graphqlApis"]
+    api_ids = [a["apiId"] for a in apis]
+    api_ids.should.contain(api_id)
 
     client.delete_graphql_api(apiId=api_id)
 
-    resp = client.list_graphql_apis()
-    resp.should.have.key("graphqlApis").length_of(0)
+    apis = client.list_graphql_apis()["graphqlApis"]
+    api_ids = [a["apiId"] for a in apis]
+    api_ids.shouldnt.contain(api_id)
 
 
 @mock_appsync
 def test_list_graphql_apis():
     client = boto3.client("appsync", region_name="ap-southeast-1")
-    resp = client.list_graphql_apis()
-    resp.should.have.key("graphqlApis").equals([])
 
     for _ in range(3):
         client.create_graphql_api(name="api1", authenticationType="API_KEY")
 
     resp = client.list_graphql_apis()
-    resp.should.have.key("graphqlApis").length_of(3)
+    resp.should.have.key("graphqlApis")
+    len(resp["graphqlApis"]).should.be.greater_than(2)

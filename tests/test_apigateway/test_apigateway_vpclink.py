@@ -6,14 +6,6 @@ from moto import mock_apigateway
 
 
 @mock_apigateway
-def test_get_vpc_links_empty():
-    client = boto3.client("apigateway", region_name="eu-west-1")
-
-    resp = client.get_vpc_links()
-    resp.should.have.key("items").equals([])
-
-
-@mock_apigateway
 def test_create_vpc_link():
     client = boto3.client("apigateway", region_name="eu-west-1")
 
@@ -76,18 +68,18 @@ def test_get_vpc_links():
     )["id"]
 
     links = client.get_vpc_links()["items"]
-    links.should.have.length_of(1)
-    links[0]["id"].should.equal(vpc_link_id)
+    [link["id"] for link in links].should.contain(vpc_link_id)
 
-    client.create_vpc_link(
+    vpc_link_id2 = client.create_vpc_link(
         name="vpcl2",
         description="my first vpc link",
         targetArns=["elb:target:arn"],
         tags={"key2": "value2"},
-    )
+    )["id"]
 
     links = client.get_vpc_links()["items"]
-    links.should.have.length_of(2)
+    [link["id"] for link in links].should.contain(vpc_link_id)
+    [link["id"] for link in links].should.contain(vpc_link_id2)
 
 
 @mock_apigateway

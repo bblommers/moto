@@ -175,7 +175,6 @@ def test_get_apis():
 
     api_id_1 = client.create_api(Name="api1", ProtocolType="HTTP")["ApiId"]
     api_id_2 = client.create_api(Name="api2", ProtocolType="WEBSOCKET")["ApiId"]
-    client.get_apis().should.have.key("Items").length_of(2)
 
     api_ids = [i["ApiId"] for i in client.get_apis()["Items"]]
     api_ids.should.contain(api_id_1)

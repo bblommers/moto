@@ -4,14 +4,16 @@ import boto3
 import sure  # noqa # pylint: disable=unused-import
 
 from moto import mock_athena
+from uuid import uuid4
 
 
 @mock_athena
 def test_create_work_group():
     client = boto3.client("athena", region_name="us-east-1")
 
-    response = client.create_work_group(
-        Name="athena_workgroup",
+    name = str(uuid4())
+    client.create_work_group(
+        Name=name,
         Description="Test work group",
         Configuration={
             "ResultConfiguration": {
@@ -25,10 +27,10 @@ def test_create_work_group():
         Tags=[],
     )
 
-    try:
+    with pytest.raises(ClientError) as exc:
         # The second time should throw an error
-        response = client.create_work_group(
-            Name="athena_workgroup",
+        client.create_work_group(
+            Name=name,
             Description="duplicate",
             Configuration={
                 "ResultConfiguration": {
@@ -40,18 +42,17 @@ def test_create_work_group():
                 }
             },
         )
-    except ClientError as err:
-        err.response["Error"]["Code"].should.equal("InvalidRequestException")
-        err.response["Error"]["Message"].should.equal("WorkGroup already exists")
-    else:
-        raise RuntimeError("Should have raised ResourceNotFoundException")
+    err = exc.value.response["Error"]
+    err["Code"].should.equal("InvalidRequestException")
+    err["Message"].should.equal("WorkGroup already exists")
 
     # Then test the work group appears in the work group list
-    response = client.list_work_groups()
+    groups = client.list_work_groups()["WorkGroups"]
+    ours = [g for g in groups if g["Name"] == name]
 
-    response["WorkGroups"].should.have.length_of(1)
-    work_group = response["WorkGroups"][0]
-    work_group["Name"].should.equal("athena_workgroup")
+    ours.should.have.length_of(1)
+    work_group = ours[0]
+    work_group["Name"].should.equal(name)
     work_group["Description"].should.equal("Test work group")
     work_group["State"].should.equal("ENABLED")
 
@@ -60,13 +61,14 @@ def test_create_work_group():
 def test_create_and_get_workgroup():
     client = boto3.client("athena", region_name="us-east-1")
 
-    create_basic_workgroup(client=client, name="athena_workgroup")
+    name = str(uuid4())
+    create_basic_workgroup(client=client, name=name)
 
-    work_group = client.get_work_group(WorkGroup="athena_workgroup")["WorkGroup"]
+    work_group = client.get_work_group(WorkGroup=name)["WorkGroup"]
     del work_group["CreationTime"]  # Were not testing creationtime atm
     work_group.should.equal(
         {
-            "Name": "athena_workgroup",
+            "Name": name,
             "State": "ENABLED",
             "Configuration": {
                 "ResultConfiguration": {"OutputLocation": "s3://bucket-name/prefix/"}
@@ -80,12 +82,13 @@ def test_create_and_get_workgroup():
 def test_start_query_execution():
     client = boto3.client("athena", region_name="us-east-1")
 
-    create_basic_workgroup(client=client, name="athena_workgroup")
+    name = str(uuid4())
+    create_basic_workgroup(client=client, name=name)
     response = client.start_query_execution(
         QueryString="query1",
         QueryExecutionContext={"Database": "string"},
         ResultConfiguration={"OutputLocation": "string"},
-        WorkGroup="athena_workgroup",
+        WorkGroup=name,
     )
     assert "QueryExecutionId" in response
 
@@ -220,54 +223,51 @@ def create_basic_workgroup(client, name):
 @mock_athena
 def test_create_data_catalog():
     client = boto3.client("athena", region_name="us-east-1")
-    response = client.create_data_catalog(
-        Name="athena_datacatalog",
+    name = str(uuid4())
+    client.create_data_catalog(
+        Name=name,
         Type="GLUE",
         Description="Test data catalog",
         Parameters={"catalog-id": "AWS Test account ID"},
         Tags=[],
     )
 
-    try:
+    with pytest.raises(ClientError) as exc:
         # The second time should throw an error
-        response = client.create_data_catalog(
-            Name="athena_datacatalog",
+        client.create_data_catalog(
+            Name=name,
             Type="GLUE",
             Description="Test data catalog",
             Parameters={"catalog-id": "AWS Test account ID"},
             Tags=[],
         )
-    except ClientError as err:
-        err.response["Error"]["Code"].should.equal("InvalidRequestException")
-        err.response["Error"]["Message"].should.equal("DataCatalog already exists")
-    else:
-        raise RuntimeError("Should have raised ResourceNotFoundException")
+    err = exc.value.response["Error"]
+    err["Code"].should.equal("InvalidRequestException")
+    err["Message"].should.equal("DataCatalog already exists")
 
     # Then test the work group appears in the work group list
-    response = client.list_data_catalogs()
-
-    response["DataCatalogsSummary"].should.have.length_of(1)
-    data_catalog = response["DataCatalogsSummary"][0]
-    data_catalog["CatalogName"].should.equal("athena_datacatalog")
-    data_catalog["Type"].should.equal("GLUE")
+    catalogs = client.list_data_catalogs()["DataCatalogsSummary"]
+    names = [c["CatalogName"] for c in catalogs]
+    names.should.contain(name)
 
 
 @mock_athena
 def test_create_and_get_data_catalog():
     client = boto3.client("athena", region_name="us-east-1")
 
+    name = str(uuid4())
     client.create_data_catalog(
-        Name="athena_datacatalog",
+        Name=name,
         Type="GLUE",
         Description="Test data catalog",
         Parameters={"catalog-id": "AWS Test account ID"},
         Tags=[],
     )
 
-    data_catalog = client.get_data_catalog(Name="athena_datacatalog")
+    data_catalog = client.get_data_catalog(Name=name)
     data_catalog["DataCatalog"].should.equal(
         {
-            "Name": "athena_datacatalog",
+            "Name": name,
             "Description": "Test data catalog",
             "Type": "GLUE",
             "Parameters": {"catalog-id": "AWS Test account ID"},

@@ -5,6 +5,7 @@ from moto.applicationautoscaling.exceptions import AWSValidationException
 import pytest
 import sure  # noqa # pylint: disable=unused-import
 from botocore.exceptions import ClientError
+from uuid import uuid4
 from .test_applicationautoscaling import register_scalable_target
 
 DEFAULT_REGION = "us-east-1"
@@ -71,7 +72,7 @@ def test_describe_scalable_targets_with_multiple_invalid_parameters_should_retur
 @mock_applicationautoscaling
 def test_register_scalable_target_ecs_with_non_existent_service_should_return_clusternotfound_exception():
     client = boto3.client("application-autoscaling", region_name=DEFAULT_REGION)
-    resource_id = "service/{}/foo".format(DEFAULT_ECS_CLUSTER)
+    resource_id = "service/{}/foo".format(str(uuid4()))
 
     with pytest.raises(ClientError) as ex:
         register_scalable_target(client, ServiceNamespace="ecs", ResourceId=resource_id)

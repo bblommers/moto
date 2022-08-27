@@ -93,11 +93,12 @@ def test_list_certificates():
     client = boto3.client("acm", region_name="eu-central-1")
     arn = _import_cert(client)
 
-    resp = client.list_certificates()
-    len(resp["CertificateSummaryList"]).should.equal(1)
+    certs = client.list_certificates()["CertificateSummaryList"]
+    ours = [c for c in certs if c["CertificateArn"] == arn]
+    ours.should.have.length_of(1)
 
-    resp["CertificateSummaryList"][0]["CertificateArn"].should.equal(arn)
-    resp["CertificateSummaryList"][0]["DomainName"].should.equal(SERVER_COMMON_NAME)
+    ours[0]["CertificateArn"].should.equal(arn)
+    ours[0]["DomainName"].should.equal(SERVER_COMMON_NAME)
 
 
 @mock_acm
@@ -106,22 +107,33 @@ def test_list_certificates_by_status():
     issued_arn = _import_cert(client)
     pending_arn = client.request_certificate(DomainName="google.com")["CertificateArn"]
 
-    resp = client.list_certificates()
-    len(resp["CertificateSummaryList"]).should.equal(2)
-    resp = client.list_certificates(CertificateStatuses=["EXPIRED", "INACTIVE"])
-    len(resp["CertificateSummaryList"]).should.equal(0)
-    resp = client.list_certificates(CertificateStatuses=["PENDING_VALIDATION"])
-    len(resp["CertificateSummaryList"]).should.equal(1)
-    resp["CertificateSummaryList"][0]["CertificateArn"].should.equal(pending_arn)
+    certs = client.list_certificates()["CertificateSummaryList"]
+    ours = [c for c in certs if c["CertificateArn"] in [issued_arn, pending_arn]]
+    ours.should.have.length_of(2)
 
-    resp = client.list_certificates(CertificateStatuses=["ISSUED"])
-    len(resp["CertificateSummaryList"]).should.equal(1)
-    resp["CertificateSummaryList"][0]["CertificateArn"].should.equal(issued_arn)
-    resp = client.list_certificates(
+    certs = client.list_certificates(CertificateStatuses=["EXPIRED", "INACTIVE"])[
+        "CertificateSummaryList"
+    ]
+    certs.should.have.length_of(0)
+
+    certs = client.list_certificates(CertificateStatuses=["PENDING_VALIDATION"])[
+        "CertificateSummaryList"
+    ]
+    ours = [c for c in certs if c["CertificateArn"] in [issued_arn, pending_arn]]
+    ours.should.have.length_of(1)
+    ours[0]["CertificateArn"].should.equal(pending_arn)
+
+    certs = client.list_certificates(CertificateStatuses=["ISSUED"])[
+        "CertificateSummaryList"
+    ]
+    ours = [c for c in certs if c["CertificateArn"] in [issued_arn, pending_arn]]
+    our_arns = {c["CertificateArn"] for c in certs}
+    our_arns.should.contain(issued_arn)
+
+    certs = client.list_certificates(
         CertificateStatuses=["ISSUED", "PENDING_VALIDATION"]
-    )
-    len(resp["CertificateSummaryList"]).should.equal(2)
-    arns = {cert["CertificateArn"] for cert in resp["CertificateSummaryList"]}
+    )["CertificateSummaryList"]
+    arns = {cert["CertificateArn"] for cert in certs}
     arns.should.contain(issued_arn)
     arns.should.contain(pending_arn)
 
