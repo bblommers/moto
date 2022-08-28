@@ -12,8 +12,17 @@ FAKE_CONTAINER = "382416733822.dkr.ecr.us-east-1.amazonaws.com/linear-learner:1"
 TEST_REGION_NAME = "us-east-1"
 
 
+@pytest.fixture(scope="function")
+def aws_credentials(monkeypatch):
+    """Mocked AWS Credentials for moto."""
+    monkeypatch.setenv("AWS_ACCESS_KEY_ID", "testing")
+    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "testing")
+    monkeypatch.setenv("AWS_SECURITY_TOKEN", "testing")
+    monkeypatch.setenv("AWS_SESSION_TOKEN", "testing")
+
+
 @pytest.fixture
-def sagemaker_client():
+def sagemaker_client(aws_credentials):
     return boto3.client("sagemaker", region_name=TEST_REGION_NAME)
 
 

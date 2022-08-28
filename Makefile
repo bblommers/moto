@@ -46,7 +46,7 @@ terraformtests:
 
 test_server:
 	@TEST_SERVER_MODE=true pytest -sv --cov=moto --cov-report xml ./tests/ $(TEST_EXCLUDE)
-	@TEST_SERVER_MODE=true MOTO_CALL_RESET_API=false pytest -n 4 $(PARALLEL_TESTS)
+	@TEST_SERVER_MODE=true MOTO_CALL_RESET_API=false pytest -n 4 $(PARALLEL_TESTS) -k 'not (test_kinesisvideoarchivedmedia)'
 
 aws_managed_policies:
 	scripts/update_managed_policies.py

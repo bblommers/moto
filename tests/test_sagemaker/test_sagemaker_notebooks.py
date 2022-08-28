@@ -26,8 +26,17 @@ FAKE_NAME_PARAM = "MyNotebookInstance"
 FAKE_INSTANCE_TYPE_PARAM = "ml.t2.medium"
 
 
+@pytest.fixture(scope="function")
+def aws_credentials(monkeypatch):
+    """Mocked AWS Credentials for moto."""
+    monkeypatch.setenv("AWS_ACCESS_KEY_ID", "testing")
+    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "testing")
+    monkeypatch.setenv("AWS_SECURITY_TOKEN", "testing")
+    monkeypatch.setenv("AWS_SESSION_TOKEN", "testing")
+
+
 @pytest.fixture
-def sagemaker_client():
+def sagemaker_client(aws_credentials):
     return boto3.client("sagemaker", region_name=TEST_REGION_NAME)
 
 
