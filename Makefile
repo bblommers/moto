@@ -6,9 +6,12 @@ TEST_NAMES = "*"
 ifeq ($(TEST_SERVER_MODE), true)
 	# exclude test_kinesisvideoarchivedmedia
 	# because testing with moto_server is difficult with data-endpoint
-	TEST_EXCLUDE := -k 'not (test_kinesisvideoarchivedmedia)'
+	TEST_EXCLUDE := -k 'not (test_kinesisvideoarchivedmedia or test_awslambda or test_batch or test_ec2 or test_sqs)'
+	# Parallel tests will be run separate
+	PARALLEL_TESTS := ./tests/test_awslambda ./tests/test_batch ./tests/test_ec2 ./tests/test_sqs
 else
 	TEST_EXCLUDE :=
+	PARALLEL_TESTS := ./tests/test_core
 endif
 
 init:
@@ -31,7 +34,7 @@ format:
 test-only:
 	rm -f .coverage
 	rm -rf cover
-	pytest -sv --cov=moto --cov-report xml -n 4 --dist loadfile ./tests/ $(TEST_EXCLUDE)
+	pytest -sv --cov=moto --cov-report xml -n 4 --dist loadfile ./tests/
 
 test: lint test-only
 
@@ -42,7 +45,8 @@ terraformtests:
 	cd tests/terraformtests && bin/run_go_test $(SERVICE_NAME) "$(TEST_NAMES)"
 
 test_server:
-	@TEST_SERVER_MODE=true pytest -sv --cov=moto --cov-report xml ./tests/
+	@TEST_SERVER_MODE=true pytest -sv --cov=moto --cov-report xml ./tests/ $(TEST_EXCLUDE)
+	@TEST_SERVER_MODE=true MOTO_CALL_RESET_API=false pytest -n 4 $(PARALLEL_TESTS)
 
 aws_managed_policies:
 	scripts/update_managed_policies.py

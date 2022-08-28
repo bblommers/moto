@@ -155,10 +155,8 @@ jobs:
         pip install -r requirements-dev.txt
         pip install "coverage<=4.5.4"
     - name: Test ServerMode/Coverage
-      env:
-        TEST_SERVER_MODE: ${{ true }}
       run: |
-        make test-only
+        make test_server
     - name: "Upload coverage to Codecov"
       if: ${{ github.repository == 'spulec/moto'}}
       uses: codecov/codecov-action@v1
