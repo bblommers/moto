@@ -36,7 +36,7 @@ format:
 test-only:
 	rm -f .coverage
 	rm -rf cover
-	pytest -sv --cov=moto --cov-report xml ./tests/ $(TEST_EXCLUDE)
+	pytest -sv --cov=moto --cov-report xml ./tests/ $(TEST_EXCLUDE) --durations 100
 	MOTO_CALL_RESET_API=false pytest --cov=moto --cov-report xml --cov-append -n 4 $(PARALLEL_TESTS)
 
 test: lint test-only
