@@ -861,7 +861,6 @@ class S3Response(BaseResponse):
             if self.body:
                 if self._create_bucket_configuration_is_empty(self.body):
                     raise MalformedXML()
-
                 try:
                     forced_region = xmltodict.parse(self.body)[
                         "CreateBucketConfiguration"
@@ -1561,6 +1560,7 @@ class S3Response(BaseResponse):
         self.backend.set_key_tags(new_key, tagging)
 
         response_headers.update(new_key.response_dict)
+        response_headers.pop("content-length", None)  # Remove content-length - the response body is empty for this request
         return 200, response_headers, ""
 
     def _key_response_head(self, bucket_name, query, key_name, headers):
