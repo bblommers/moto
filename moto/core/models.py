@@ -422,9 +422,11 @@ class ProxyModeMockAWS(BaseMockAWS):
             if "AWS_CA_BUNDLE" not in os.environ:
                 kwargs["verify"] = False
             if "config" in kwargs:
-                kwargs["config"].__dict__["proxies"] = {'https': self.test_proxy_mode_endpoint}
+                kwargs["config"].__dict__["proxies"] = {
+                    "https": self.test_proxy_mode_endpoint
+                }
             else:
-                config = Config(proxies={'https': self.test_proxy_mode_endpoint})
+                config = Config(proxies={"https": self.test_proxy_mode_endpoint})
                 kwargs["config"] = config
 
         def fake_boto3_client(*args: Any, **kwargs: Any) -> botocore.client.BaseClient:
