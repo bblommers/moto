@@ -1560,7 +1560,8 @@ class S3Response(BaseResponse):
         self.backend.set_key_tags(new_key, tagging)
 
         response_headers.update(new_key.response_dict)
-        response_headers.pop("content-length", None)  # Remove content-length - the response body is empty for this request
+        # Remove content-length - the response body is empty for this request
+        response_headers.pop("content-length", None)
         return 200, response_headers, ""
 
     def _key_response_head(self, bucket_name, query, key_name, headers):
