@@ -32,18 +32,20 @@ from moto.core import BackendDict, DEFAULT_ACCOUNT_ID
 
 def with_color(color: int, text: str):
     return "\x1b[%dm%s\x1b[0m" % (color, text)
-verbose = True
+verbose = False
+DEFAULT_PORT = 5005
 
 
 class MotoRequestHandler:
 
-    def __init__(self):
+    def __init__(self, port):
         self.lock = Lock()
+        self.port = port
 
     def get_backend_for_host(self, host):
         # TODO: there should be a better way to do this
         # Maybe pass variables to this class
-        if host == "http://localhost:5005":
+        if host == f"http://localhost:{self.port}":
             return "moto_api"
 
         for backend, pattern in backend_url_patterns:
@@ -76,10 +78,6 @@ class MotoRequestHandler:
             full_url = host + path
             request = AWSPreparedRequest(method, full_url, headers, body, stream_output=False)
             return handler(request, full_url, headers)
-
-
-
-MOTO_REQUEST_HANDLER = MotoRequestHandler()
 
 
 def join_with_script_dir(path):
@@ -192,7 +190,7 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
                 if req_body is not None:
                     print("\tbody\t" + with_color(color=31, text=req_body))
                 print(f"\theaders\t{with_color(color=31, text=dict(req.headers))}")
-            response = MOTO_REQUEST_HANDLER.parse_request(method=req.command, host=host, path=path, headers=req.headers, body=req_body)
+            response = ProxyRequestHandler.moto_request_handler.parse_request(method=req.command, host=host, path=path, headers=req.headers, body=req_body)
             if verbose:
                 print("\t=====RESPONSE========")
                 print("\t" + with_color(color=33, text=response))
@@ -270,10 +268,11 @@ def main(HandlerClass=ProxyRequestHandler, ServerClass=ThreadingHTTPServer, prot
     if sys.argv[1:]:
         port = int(sys.argv[1])
     else:
-        port = 5005
+        port = DEFAULT_PORT
     server_address = ('0.0.0.0', port)
 
     HandlerClass.protocol_version = protocol
+    HandlerClass.moto_request_handler = MotoRequestHandler(port)
     httpd = ServerClass(server_address, HandlerClass)
 
     sa = httpd.socket.getsockname()
@@ -291,7 +290,11 @@ def main(HandlerClass=ProxyRequestHandler, ServerClass=ThreadingHTTPServer, prot
     print(with_color(color=37, text="\taws cloudformation list-stacks --no-verify-ssl"))
     print("\n")
     print("Using pytest:")
-    print(with_color(color=37, text="\tTEST_PROXY_MODE=true pytest tests_dir"))
+    print(with_color(color=37, text=f"\tAWS_CA_BUNDLE={ProxyRequestHandler.cacert}"))
+    if port == DEFAULT_PORT:
+        print(with_color(color=37, text=f"\tTEST_PROXY_MODE=true pytest tests_dir"))
+    else:
+        print(with_color(color=37, text=f"\tMOTO_PROXY_PORT={port} TEST_PROXY_MODE=true pytest tests_dir"))
     # MOTO PROXY
     print("\n")
     print("Serving HTTP Proxy on", sa[0], "port", sa[1], "...")

@@ -419,7 +419,8 @@ class ProxyModeMockAWS(BaseMockAWS):
         from boto3 import client as real_boto3_client, resource as real_boto3_resource
 
         def _enhance_kwargs(kwargs):
-            kwargs["verify"] = False
+            if "AWS_CA_BUNDLE" not in os.environ:
+                kwargs["verify"] = False
             if "config" in kwargs:
                 kwargs["config"].__dict__["proxies"] = {'https': self.test_proxy_mode_endpoint}
             else:
