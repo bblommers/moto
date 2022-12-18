@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import sys
 import os
 import socket
 import ssl
@@ -8,8 +7,7 @@ import select
 import threading
 import time
 import re
-from http.server import BaseHTTPRequestHandler, HTTPServer
-from socketserver import ThreadingMixIn
+from http.server import BaseHTTPRequestHandler
 from subprocess import Popen, PIPE
 from threading import Lock
 
@@ -17,16 +15,9 @@ from botocore.awsrequest import AWSPreparedRequest
 from moto.backends import get_backend
 from moto.backend_index import backend_url_patterns
 from moto.core import BackendDict, DEFAULT_ACCOUNT_ID
+from . import debug, error, info, with_color
 
 # Adapted from https://github.com/xxlv/proxy3
-
-
-def with_color(color: int, text: str):
-    return f"\x1b[{color}m{text}\x1b[0m"
-
-
-verbose = False
-DEFAULT_PORT = 5005
 
 
 class MotoRequestHandler:
@@ -35,8 +26,6 @@ class MotoRequestHandler:
         self.port = port
 
     def get_backend_for_host(self, host):
-        # TODO: there should be a better way to do this
-        # Maybe pass variables to this class
         if host == f"http://localhost:{self.port}":
             return "moto_api"
 
@@ -78,19 +67,6 @@ def join_with_script_dir(path):
     return os.path.join(os.path.dirname(os.path.abspath(__file__)), path)
 
 
-class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
-    address_family = socket.AF_INET
-    daemon_threads = True
-
-    def handle_error(self, request, client_address):
-        # surpress socket/ssl related errors
-        cls, _ = sys.exc_info()[:2]
-        if cls is socket.error or cls is ssl.SSLError:
-            pass
-        else:
-            return HTTPServer.handle_error(self, request, client_address)
-
-
 class ProxyRequestHandler(BaseHTTPRequestHandler):
     cakey = join_with_script_dir("ca.key")
     cacert = join_with_script_dir("ca.crt")
@@ -100,9 +76,10 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
     lock = threading.Lock()
 
     def __init__(self, *args, **kwargs):
-        self.tls = threading.local()
-        self.tls.conns = {}
-
+        sock = [a for a in args if isinstance(a, socket.socket)][0]
+        _, port = sock.getsockname()
+        self.protocol_version = "HTTP/1.1"
+        self.moto_request_handler = MotoRequestHandler(port)
         BaseHTTPRequestHandler.__init__(self, *args, **kwargs)
 
     def do_CONNECT(self):
@@ -215,24 +192,20 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
         path = req.path
 
         try:
-            print(f"{with_color(33, req.command.upper())} {host}{path}")  # noqa
-            if verbose:
-                if req_body is not None:
-                    print("\tbody\t" + with_color(color=31, text=req_body))  # noqa
-                print(  # noqa
-                    f"\theaders\t{with_color(color=31, text=dict(req.headers))}"
-                )
-            response = ProxyRequestHandler.moto_request_handler.parse_request(
+            info(f"{with_color(33, req.command.upper())} {host}{path}")  # noqa
+            if req_body is not None:
+                debug("\tbody\t" + with_color(31, text=req_body))
+            debug(f"\theaders\t{with_color(31, text=dict(req.headers))}")
+            response = self.moto_request_handler.parse_request(
                 method=req.command,
                 host=host,
                 path=path,
                 headers=req.headers,
                 body=req_body,
             )
-            if verbose:
-                print("\t=====RESPONSE========")  # noqa
-                print("\t" + with_color(color=33, text=response))  # noqa
-                print("\n")  # noqa
+            debug("\t=====RESPONSE========")
+            debug("\t" + with_color(color=33, text=response))
+            debug("\n")
 
             if isinstance(response, tuple):
                 res_status, res_headers, res_body = response
@@ -244,7 +217,7 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
             res_reason = "OK"
 
         except Exception as e:
-            print(e)  # noqa
+            error(e)
             self.send_error(502)
             return
 
@@ -303,63 +276,3 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
         self.send_header("Connection", "close")
         self.end_headers()
         self.wfile.write(data)
-
-
-def main(
-    HandlerClass=ProxyRequestHandler,
-    ServerClass=ThreadingHTTPServer,
-    protocol="HTTP/1.1",
-):
-    if sys.argv[1:]:
-        port = int(sys.argv[1])
-    else:
-        port = DEFAULT_PORT
-    server_address = ("0.0.0.0", port)
-
-    HandlerClass.protocol_version = protocol
-    HandlerClass.moto_request_handler = MotoRequestHandler(port)
-    httpd = ServerClass(server_address, HandlerClass)
-
-    sa = httpd.socket.getsockname()
-    print(  # noqa
-        """
-    ##################################################################################
-    $$___$$_ __$$$___ $$$$$$_ __$$$___\t__$$$$$$__ $$$$$$__ __$$$___ $$___$$_ $$____$$_
-    $$$_$$$_ _$$_$$__ __$$___ _$$_$$__\t__$$___$$_ $$___$$_ _$$_$$__ $$$_$$$_ _$$__$$__
-    $$$$$$$_ $$___$$_ __$$___ $$___$$_\t__$$___$$_ $$___$$_ $$___$$_ _$$$$$__ __$$$$___
-    $$_$_$$_ $$___$$_ __$$___ $$___$$_\t__$$$$$$__ $$$$$$__ $$___$$_ _$$$$$__ ___$$____
-    $$___$$_ _$$_$$__ __$$___ _$$_$$__\t__$$______ $$___$$_ _$$_$$__ $$$_$$$_ ___$$____
-    $$___$$_ __$$$___ __$$___ __$$$___\t__$$______ $$___$$_ __$$$___ $$___$$_ ___$$____
-    ##################################################################################"""
-    )
-    print("Using the CLI:")  # noqa
-    print(  # noqa
-        with_color(color=37, text=f"\texport HTTPS_PROXY=http://{sa[0]}:{sa[1]}")
-    )
-    print(  # noqa
-        with_color(color=37, text="\taws cloudformation list-stacks --no-verify-ssl")
-    )
-    print("\n")  # noqa
-    print("Using pytest:")  # noqa
-    print(  # noqa
-        with_color(color=37, text=f"\tAWS_CA_BUNDLE={ProxyRequestHandler.cacert}")
-    )
-    if port == DEFAULT_PORT:
-        print(  # noqa
-            with_color(color=37, text="\tTEST_PROXY_MODE=true pytest tests_dir")
-        )
-    else:
-        print(  # noqa
-            with_color(
-                color=37,
-                text=f"\tMOTO_PROXY_PORT={port} TEST_PROXY_MODE=true pytest tests_dir",
-            )
-        )
-    # MOTO PROXY
-    print("\n")  # noqa
-    print("Serving HTTP Proxy on", sa[0], "port", sa[1], "...")  # noqa
-    httpd.serve_forever()
-
-
-if __name__ == "__main__":
-    main()

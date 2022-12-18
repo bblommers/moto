@@ -198,7 +198,8 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Start MotoProxy
       run: |
-        python setup.py sdist
+        pip install ".[proxy]"
+        moto_proxy --help
         nohup moto_proxy &
     - name: Get pip cache dir
       id: pip-cache
