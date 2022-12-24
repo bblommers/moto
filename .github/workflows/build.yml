@@ -217,6 +217,7 @@ jobs:
         moto_proxy --help
         mkdir proxylogs
         nohup moto_proxy &
+        echo "Running"
     - name: Test ProxyMode
       env:
         TEST_PROXY_MODE: ${{ true }}
