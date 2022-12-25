@@ -221,6 +221,8 @@ jobs:
     - name: Test ProxyMode
       env:
         TEST_PROXY_MODE: ${{ true }}
+        HTTPS_PROXY: "http://localhost:5005"
+        AWS_CA_BUNDLE: "/opt/hostedtoolcache/Python/3.11.1/x64/lib/python3.11/site-packages/moto/moto_proxy/ca.crt"
       run: |
         pytest tests/test_acmpca
     - name: Archive Proxy logs
