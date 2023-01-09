@@ -10,6 +10,7 @@ import re
 from http.server import BaseHTTPRequestHandler
 from subprocess import Popen, PIPE
 from threading import Lock
+from uuid import uuid4
 
 from botocore.awsrequest import AWSPreparedRequest
 from moto.backends import get_backend
@@ -75,6 +76,34 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
     timeout = 5
     lock = threading.Lock()
 
+    @staticmethod
+    def validate():
+        cwd = os.path.dirname(os.path.abspath(__file__))
+        debug(f"Current working directory: {cwd}")
+        debug(f": {list(os.scandir(cwd))}")
+        if not os.path.isfile(ProxyRequestHandler.cakey):
+            raise Exception(f"Cannot find {ProxyRequestHandler.cakey}")
+        if not os.path.isfile(ProxyRequestHandler.cacert):
+            raise Exception(f"Cannot find {ProxyRequestHandler.cacert}")
+        if not os.path.isfile(ProxyRequestHandler.certkey):
+            raise Exception(f"Cannot find {ProxyRequestHandler.certkey}")
+        if not os.path.isdir(ProxyRequestHandler.certdir):
+            raise Exception(f"Cannot find {ProxyRequestHandler.certdir}")
+        try:
+            test_file_location = f"{ProxyRequestHandler.certdir}/{uuid4()}.txt"
+            debug(
+                f"Writing test file to {test_file_location} to verify the directory is writable"
+            )
+            with open(test_file_location, "w") as file:
+                file.write("test")
+            os.remove(test_file_location)
+        except Exception:
+            info("Failed to write test file")
+            info(
+                f"The directory {ProxyRequestHandler.certdir} does not seem to be writable"
+            )
+            raise
+
     def __init__(self, *args, **kwargs):
         sock = [a for a in args if isinstance(a, socket.socket)][0]
         _, port = sock.getsockname()
@@ -83,17 +112,6 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
         BaseHTTPRequestHandler.__init__(self, *args, **kwargs)
 
     def do_CONNECT(self):
-        if (
-            os.path.isfile(self.cakey)
-            and os.path.isfile(self.cacert)
-            and os.path.isfile(self.certkey)
-            and os.path.isdir(self.certdir)
-        ):
-            self.connect_intercept()
-        else:
-            self.connect_relay()
-
-    def connect_intercept(self):
         hostname = self.path.split(":")[0]
         certpath = f"{self.certdir.rstrip('/')}/{hostname}.crt"
 

@@ -216,7 +216,7 @@ jobs:
         pip install ".[proxy]"
         moto_proxy --help
         mkdir proxylogs
-        nohup moto_proxy &
+        nohup moto_proxy -v &
         echo "Running"
     - name: Test ProxyMode
       env:

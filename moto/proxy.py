@@ -1,4 +1,5 @@
 import argparse
+import logging
 import os
 import signal
 import socket
@@ -7,6 +8,7 @@ import sys
 from http.server import HTTPServer
 from socketserver import ThreadingMixIn
 
+from moto.moto_proxy import logger
 from moto.moto_proxy.proxy3 import ProxyRequestHandler, with_color
 
 
@@ -70,17 +72,19 @@ def main(argv=None):
         help="Port number to use for connection",
         default=int(os.environ.get("MOTO_PROXY_PORT", 5005)),
     )
-    # parser.add_argument(
-    #    "--help",
-    #    help="Show documentation",
-    #    default=False,
-    # )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Add verbose logging",
+    )
 
     args = parser.parse_args(argv)
 
-    # if args.help:
-    #    print_help_msg()
-    #    return
+    if args.verbose:
+        logger.setLevel(logging.DEBUG)
+
+    ProxyRequestHandler.validate()
 
     if "MOTO_PORT" not in os.environ:
         os.environ["MOTO_PORT"] = f"{args.port}"
