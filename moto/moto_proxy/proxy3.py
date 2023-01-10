@@ -8,7 +8,7 @@ import threading
 import time
 import re
 from http.server import BaseHTTPRequestHandler
-from subprocess import Popen, PIPE
+from subprocess import Popen, PIPE, check_output, CalledProcessError
 from threading import Lock
 from uuid import uuid4
 
@@ -79,8 +79,10 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
     @staticmethod
     def validate():
         cwd = os.path.dirname(os.path.abspath(__file__))
+        debug("Starting initial validation...")
         debug(f"Current working directory: {cwd}")
-        debug(f": {list(os.scandir(cwd))}")
+        debug(f"Files within this directory: {list(os.scandir(cwd))}")
+        # Verify the CertificateAuthority files exist
         if not os.path.isfile(ProxyRequestHandler.cakey):
             raise Exception(f"Cannot find {ProxyRequestHandler.cakey}")
         if not os.path.isfile(ProxyRequestHandler.cacert):
@@ -89,10 +91,11 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
             raise Exception(f"Cannot find {ProxyRequestHandler.certkey}")
         if not os.path.isdir(ProxyRequestHandler.certdir):
             raise Exception(f"Cannot find {ProxyRequestHandler.certdir}")
+        # Verify the `certs` dir is reachable
         try:
             test_file_location = f"{ProxyRequestHandler.certdir}/{uuid4()}.txt"
             debug(
-                f"Writing test file to {test_file_location} to verify the directory is writable"
+                f"Writing test file to {test_file_location} to verify the directory is writable..."
             )
             with open(test_file_location, "w") as file:
                 file.write("test")
@@ -102,6 +105,14 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
             info(
                 f"The directory {ProxyRequestHandler.certdir} does not seem to be writable"
             )
+            raise
+        # Validate the openssl command is available
+        try:
+            debug("Verifying SSL version...")
+            svn_output = check_output(["openssl", "version"])
+            debug(svn_output)
+        except CalledProcessError as e:
+            info(e.output)
             raise
 
     def __init__(self, *args, **kwargs):
@@ -117,7 +128,7 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
 
         with self.lock:
             if not os.path.isfile(certpath):
-                epoch = f"{(time.time() * 1000)}"
+                epoch = f"{int(time.time() * 1000)}"
                 p1 = Popen(
                     [
                         "openssl",
@@ -150,6 +161,7 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
                     stderr=PIPE,
                 )
                 p2.communicate()
+                debug(f"Created certificate for {hostname}")
 
         self.wfile.write(
             f"{self.protocol_version} 200 Connection Established\r\n".encode("utf-8")
