@@ -16,7 +16,9 @@ from botocore.awsrequest import AWSPreparedRequest
 from moto.backends import get_backend
 from moto.backend_index import backend_url_patterns
 from moto.core import BackendDict, DEFAULT_ACCOUNT_ID
+from moto.core.exceptions import RESTError
 from . import debug, error, info, with_color
+from http import HTTPStatus
 
 # Adapted from https://github.com/xxlv/proxy3
 
@@ -35,6 +37,8 @@ class MotoRequestHandler:
                 return backend
 
     def get_handler_for_host(self, host: str, path: str):
+        # We do not match against URL parameters
+        path = path.split("?")[0]
         backend_name = self.get_backend_for_host(host)
         backend_dict = get_backend(backend_name)
 
@@ -55,13 +59,12 @@ class MotoRequestHandler:
         return None
 
     def parse_request(self, method, host, path, headers, body: bytes):
-        with self.lock:
-            handler = self.get_handler_for_host(host=host, path=path)
-            full_url = host + path
-            request = AWSPreparedRequest(
-                method, full_url, headers, body, stream_output=False
-            )
-            return handler(request, full_url, headers)
+        handler = self.get_handler_for_host(host=host, path=path)
+        full_url = host + path
+        request = AWSPreparedRequest(
+            method, full_url, headers, body, stream_output=False
+        )
+        return handler(request, full_url, headers)
 
 
 def join_with_script_dir(path):
@@ -172,6 +175,7 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
         self.connection = ssl.wrap_socket(
             self.connection, keyfile=self.certkey, certfile=certpath, server_side=True
         )
+        self.connection.settimeout(0.5)
         self.rfile = self.connection.makefile("rb", self.rbufsize)
         self.wfile = self.connection.makefile("wb", self.wbufsize)
 
@@ -242,27 +246,48 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
             else:
                 res_status, res_headers, res_body = (200, {}, response)
 
-            if isinstance(res_body, str):
-                res_body = res_body.encode("utf-8")
-            res_reason = "OK"
+        except RESTError as e:
+            if type(e.get_headers()) == list:
+                res_headers = dict(e.get_headers())
+            else:
+                res_headers = e.get_headers()
+            res_status = e.code
+            res_body = e.get_body()
 
         except Exception as e:
             error(e)
             self.send_error(502)
             return
 
-        if "content-length" not in res_headers:
+        res_reason = "OK"
+        if isinstance(res_body, str):
+            res_body = res_body.encode("utf-8")
+
+        if "content-length" not in res_headers and res_body:
             res_headers["Content-Length"] = str(len(res_body))
 
         self.wfile.write(
             f"{self.protocol_version} {res_status} {res_reason}\r\n".encode("utf-8")
         )
-        for k, v in res_headers.items():
-            self.send_header(k, v)
-        self.end_headers()
+        if res_headers:
+            for k, v in res_headers.items():
+                self.send_header(k, v)
+            self.end_headers()
         if res_body:
             self.wfile.write(res_body)
-        self.wfile.flush()
+
+    def handle(self):
+        """Handle multiple requests if necessary."""
+        self.close_connection = True
+
+        self.handle_one_request()
+        while not self.close_connection:
+            try:
+                self.handle_one_request()
+            except TimeoutError:
+                # Some POST requests do not have a body - reading them may cause a timeout
+                # We can safely ignore that
+                pass
 
     def relay_streaming(self, res):
         self.wfile.write(f"{self.protocol_version} {res.status} {res.reason}\r\n")
@@ -283,7 +308,7 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
     def decode_request_body(self, headers, body):
         if body is None:
             return body
-        if True or headers.get("Content-Type", "") in [
+        if headers.get("Content-Type", "") in [
             "application/x-amz-json-1.1",
             "application/x-www-form-urlencoded; charset=utf-8",
         ]:
@@ -293,6 +318,7 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
     do_HEAD = do_GET
     do_POST = do_GET
     do_PUT = do_GET
+    do_PATCH = do_GET
     do_DELETE = do_GET
     do_OPTIONS = do_GET
 

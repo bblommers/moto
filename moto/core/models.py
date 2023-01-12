@@ -398,8 +398,6 @@ class ProxyModeMockAWS(BaseMockAWS):
     RESET_IN_PROGRESS = False
 
     def __init__(self, *args: Any, **kwargs: Any):
-        print("===========")  # noqa
-        print(settings.test_proxy_mode_endpoint())  # noqa
         self.test_proxy_mode_endpoint = settings.test_proxy_mode_endpoint()
         super().__init__(*args, **kwargs)
 
@@ -421,8 +419,6 @@ class ProxyModeMockAWS(BaseMockAWS):
         from boto3 import client as real_boto3_client, resource as real_boto3_resource
 
         def _enhance_kwargs(kwargs: Any) -> None:
-            print(f"_enhance_kwargs({kwargs})")  # noqa
-            print(self.test_proxy_mode_endpoint)  # noqa
             if "AWS_CA_BUNDLE" not in os.environ:
                 kwargs["verify"] = False
             if "config" in kwargs:
@@ -432,7 +428,6 @@ class ProxyModeMockAWS(BaseMockAWS):
             else:
                 config = Config(proxies={"https": self.test_proxy_mode_endpoint})
                 kwargs["config"] = config
-            print(kwargs)  # noqa
 
         def fake_boto3_client(*args: Any, **kwargs: Any) -> botocore.client.BaseClient:
             _enhance_kwargs(kwargs)
@@ -460,8 +455,6 @@ class base_decorator:
         self.backends = backends
 
     def __call__(self, func: Optional[Callable[..., Any]] = None) -> BaseMockAWS:
-        print(f"Server: {settings.TEST_SERVER_MODE}")  # noqa
-        print(f"Proxy  : {settings.TEST_PROXY_MODE}")  # noqa
         if settings.TEST_SERVER_MODE:
             mocked_backend: BaseMockAWS = ServerModeMockAWS(self.backends)
         elif settings.TEST_PROXY_MODE:

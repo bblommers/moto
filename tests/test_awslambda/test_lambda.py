@@ -265,7 +265,7 @@ def test_create_function_from_stubbed_ecr():
 def test_create_function_from_mocked_ecr_image_tag(
     with_ecr_mock,
 ):  # pylint: disable=unused-argument
-    if settings.TEST_SERVER_MODE:
+    if not settings.TEST_DECORATOR_MODE:
         raise SkipTest(
             "Envars not easily set in server mode, feature off by default, skipping..."
         )
@@ -309,7 +309,7 @@ def test_create_function_from_mocked_ecr_image_tag(
 def test_create_function_from_mocked_ecr_image_digest(
     with_ecr_mock,
 ):  # pylint: disable=unused-argument
-    if settings.TEST_SERVER_MODE:
+    if not settings.TEST_DECORATOR_MODE:
         raise SkipTest(
             "Envars not easily set in server mode, feature off by default, skipping..."
         )
@@ -338,7 +338,7 @@ def test_create_function_from_mocked_ecr_image_digest(
 def test_create_function_from_mocked_ecr_missing_image(
     with_ecr_mock,
 ):  # pylint: disable=unused-argument
-    if settings.TEST_SERVER_MODE:
+    if not settings.TEST_DECORATOR_MODE:
         raise SkipTest(
             "Envars not easily set in server mode, feature off by default, skipping..."
         )

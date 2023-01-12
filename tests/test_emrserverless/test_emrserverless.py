@@ -29,7 +29,7 @@ def fixture_client():
 def fixture_application_factory(client):
     application_list = []
 
-    if settings.TEST_SERVER_MODE:
+    if not settings.TEST_DECORATOR_MODE:
         resp = client.create_application(
             name="test-emr-serverless-application-STARTED",
             type="SPARK",
@@ -133,7 +133,7 @@ class TestDeleteApplication:
                 (0, "STARTED", pytest.raises(ClientError)),
                 (1, "STOPPED", does_not_raise()),
             ]
-            if settings.TEST_SERVER_MODE
+            if not settings.TEST_DECORATOR_MODE
             else [
                 (0, "STARTED", pytest.raises(ClientError)),
                 (1, "STOPPED", does_not_raise()),
@@ -322,7 +322,7 @@ class TestListApplication:
                 ({"states": ["FOOBAA"]}, 0),
                 ({"maxResults": 1}, 1),
             ]
-            if settings.TEST_SERVER_MODE
+            if not settings.TEST_DECORATOR_MODE
             else [
                 ({}, 7),
                 ({"states": ["CREATED"]}, 1),
@@ -337,7 +337,7 @@ class TestListApplication:
         assert len(resp["applications"]) == job_count
 
     def test_next_token(self):
-        if settings.TEST_SERVER_MODE:
+        if not settings.TEST_DECORATOR_MODE:
             resp = self.client.list_applications(maxResults=1)
             assert len(resp["applications"]) == 1
 
@@ -430,7 +430,7 @@ class TestUpdateApplication:
                 (0, "STARTED", pytest.raises(ClientError)),
                 (1, "STOPPED", does_not_raise()),
             ]
-            if settings.TEST_SERVER_MODE
+            if not settings.TEST_DECORATOR_MODE
             else [
                 (0, "STARTED", pytest.raises(ClientError)),
                 (1, "STOPPED", does_not_raise()),

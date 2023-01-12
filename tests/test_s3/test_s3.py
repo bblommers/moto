@@ -112,7 +112,7 @@ def test_key_save_to_missing_bucket():
 
 @mock_s3
 def test_missing_key_request():
-    if settings.TEST_SERVER_MODE:
+    if not settings.TEST_DECORATOR_MODE:
         raise SkipTest("Only test status code in non-ServerMode")
     s3 = boto3.client("s3", region_name=DEFAULT_REGION_NAME)
     s3.create_bucket(Bucket="foobar")
@@ -225,7 +225,7 @@ def test_last_modified():
     resp["LastModified"].should.be.a(datetime.datetime)
     as_header = resp["ResponseMetadata"]["HTTPHeaders"]["last-modified"]
     as_header.should.be.a(str)
-    if not settings.TEST_SERVER_MODE:
+    if settings.TEST_DECORATOR_MODE:
         as_header.should.equal("Sun, 01 Jan 2012 12:00:00 GMT")
 
 
@@ -316,7 +316,7 @@ def test_get_all_buckets():
 
 @mock_s3
 def test_post_to_bucket():
-    if settings.TEST_SERVER_MODE:
+    if not settings.TEST_DECORATOR_MODE:
         # ServerMode does not allow unauthorized requests
         raise SkipTest()
 
@@ -333,7 +333,7 @@ def test_post_to_bucket():
 
 @mock_s3
 def test_post_with_metadata_to_bucket():
-    if settings.TEST_SERVER_MODE:
+    if not settings.TEST_DECORATOR_MODE:
         # ServerMode does not allow unauthorized requests
         raise SkipTest()
     client = boto3.client("s3", region_name=DEFAULT_REGION_NAME)
@@ -541,7 +541,7 @@ def test_restore_key():
     key = bucket.put_object(Key="the-key", Body=b"somedata", StorageClass="GLACIER")
     key.restore.should.equal(None)
     key.restore_object(RestoreRequest={"Days": 1})
-    if settings.TEST_SERVER_MODE:
+    if not settings.TEST_DECORATOR_MODE:
         key.restore.should.contain('ongoing-request="false"')
     else:
         key.restore.should.equal(
@@ -550,7 +550,7 @@ def test_restore_key():
 
     key.restore_object(RestoreRequest={"Days": 2})
 
-    if settings.TEST_SERVER_MODE:
+    if not settings.TEST_DECORATOR_MODE:
         key.restore.should.contain('ongoing-request="false"')
     else:
         key.restore.should.equal(
@@ -561,7 +561,7 @@ def test_restore_key():
 @freeze_time("2012-01-01 12:00:00")
 @mock_s3
 def test_restore_key_transition():
-    if settings.TEST_SERVER_MODE:
+    if not settings.TEST_DECORATOR_MODE:
         raise SkipTest("Can't set transition directly in ServerMode")
 
     state_manager.set_transition(
@@ -2920,7 +2920,7 @@ def test_paths_with_leading_slashes_work():
 
 @mock_s3
 def test_root_dir_with_empty_name_works():
-    if settings.TEST_SERVER_MODE:
+    if not settings.TEST_DECORATOR_MODE:
         raise SkipTest("Does not work in server mode due to error in Workzeug")
     store_and_read_back_a_key("/")
 
