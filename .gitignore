@@ -30,3 +30,4 @@ htmlcov/
 docs/_build
 moto_recording
 moto/moto_proxy/certs/*.crt
+moto/moto_proxy/certs/*.csr

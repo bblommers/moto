@@ -9,7 +9,7 @@ from http.server import HTTPServer
 from socketserver import ThreadingMixIn
 
 from moto.moto_proxy import logger
-from moto.moto_proxy.proxy3 import ProxyRequestHandler, with_color
+from moto.moto_proxy.proxy3 import ProxyRequestHandler, with_color, CertificateCreator
 
 
 def signal_handler(signum, frame):  # pylint: disable=unused-argument
@@ -35,7 +35,7 @@ def get_help_msg() -> str:
     msg += "\n"
     msg += "Using pytest:"
     msg += "\n"
-    msg += with_color(37, text=f"\texport AWS_CA_BUNDLE={ProxyRequestHandler.cacert}")
+    msg += with_color(37, text=f"\texport AWS_CA_BUNDLE={CertificateCreator.cacert}")
     msg += "\n"
     msg += with_color(
         37, text="\tMOTO_PROXY_PORT=5005 TEST_PROXY_MODE=true pytest tests_dir\n"

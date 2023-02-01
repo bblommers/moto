@@ -1,16 +1,12 @@
 # -*- coding: utf-8 -*-
-import os
 import socket
 import ssl
 import select
 
-import threading
-import time
 import re
 from http.server import BaseHTTPRequestHandler
-from subprocess import Popen, PIPE, check_output, CalledProcessError
+from subprocess import check_output, CalledProcessError
 from threading import Lock
-from uuid import uuid4
 
 from botocore.awsrequest import AWSPreparedRequest
 from moto.backends import get_backend
@@ -18,7 +14,7 @@ from moto.backend_index import backend_url_patterns
 from moto.core import BackendDict, DEFAULT_ACCOUNT_ID
 from moto.core.exceptions import RESTError
 from . import debug, error, info, with_color
-from http import HTTPStatus
+from .certificate_creator import CertificateCreator
 
 # Adapted from https://github.com/xxlv/proxy3
 
@@ -67,48 +63,21 @@ class MotoRequestHandler:
         return handler(request, full_url, headers)
 
 
-def join_with_script_dir(path):
-    return os.path.join(os.path.dirname(os.path.abspath(__file__)), path)
-
-
 class ProxyRequestHandler(BaseHTTPRequestHandler):
-    cakey = join_with_script_dir("ca.key")
-    cacert = join_with_script_dir("ca.crt")
-    certkey = join_with_script_dir("cert.key")
-    certdir = join_with_script_dir("certs/")
     timeout = 5
-    lock = threading.Lock()
+
+    def __init__(self, *args, **kwargs):
+        sock = [a for a in args if isinstance(a, socket.socket)][0]
+        _, port = sock.getsockname()
+        self.protocol_version = "HTTP/1.1"
+        self.moto_request_handler = MotoRequestHandler(port)
+        self.cert_creator = CertificateCreator()
+        BaseHTTPRequestHandler.__init__(self, *args, **kwargs)
 
     @staticmethod
     def validate():
-        cwd = os.path.dirname(os.path.abspath(__file__))
         debug("Starting initial validation...")
-        debug(f"Current working directory: {cwd}")
-        debug(f"Files within this directory: {list(os.scandir(cwd))}")
-        # Verify the CertificateAuthority files exist
-        if not os.path.isfile(ProxyRequestHandler.cakey):
-            raise Exception(f"Cannot find {ProxyRequestHandler.cakey}")
-        if not os.path.isfile(ProxyRequestHandler.cacert):
-            raise Exception(f"Cannot find {ProxyRequestHandler.cacert}")
-        if not os.path.isfile(ProxyRequestHandler.certkey):
-            raise Exception(f"Cannot find {ProxyRequestHandler.certkey}")
-        if not os.path.isdir(ProxyRequestHandler.certdir):
-            raise Exception(f"Cannot find {ProxyRequestHandler.certdir}")
-        # Verify the `certs` dir is reachable
-        try:
-            test_file_location = f"{ProxyRequestHandler.certdir}/{uuid4()}.txt"
-            debug(
-                f"Writing test file to {test_file_location} to verify the directory is writable..."
-            )
-            with open(test_file_location, "w") as file:
-                file.write("test")
-            os.remove(test_file_location)
-        except Exception:
-            info("Failed to write test file")
-            info(
-                f"The directory {ProxyRequestHandler.certdir} does not seem to be writable"
-            )
-            raise
+        CertificateCreator().validate()
         # Validate the openssl command is available
         try:
             debug("Verifying SSL version...")
@@ -118,53 +87,8 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
             info(e.output)
             raise
 
-    def __init__(self, *args, **kwargs):
-        sock = [a for a in args if isinstance(a, socket.socket)][0]
-        _, port = sock.getsockname()
-        self.protocol_version = "HTTP/1.1"
-        self.moto_request_handler = MotoRequestHandler(port)
-        BaseHTTPRequestHandler.__init__(self, *args, **kwargs)
-
     def do_CONNECT(self):
-        hostname = self.path.split(":")[0]
-        certpath = f"{self.certdir.rstrip('/')}/{hostname}.crt"
-
-        with self.lock:
-            if not os.path.isfile(certpath):
-                epoch = f"{int(time.time() * 1000)}"
-                p1 = Popen(
-                    [
-                        "openssl",
-                        "req",
-                        "-new",
-                        "-key",
-                        self.certkey,
-                        "-subj",
-                        f"/CN={hostname}",
-                    ],
-                    stdout=PIPE,
-                )
-                p2 = Popen(
-                    [
-                        "openssl",
-                        "x509",
-                        "-req",
-                        "-days",
-                        "3650",
-                        "-CA",
-                        self.cacert,
-                        "-CAkey",
-                        self.cakey,
-                        "-set_serial",
-                        epoch,
-                        "-out",
-                        certpath,
-                    ],
-                    stdin=p1.stdout,
-                    stderr=PIPE,
-                )
-                p2.communicate()
-                debug(f"Created certificate for {hostname}")
+        certpath = self.cert_creator.create(self.path)
 
         self.wfile.write(
             f"{self.protocol_version} 200 Connection Established\r\n".encode("utf-8")
@@ -173,7 +97,10 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
         self.end_headers()
 
         self.connection = ssl.wrap_socket(
-            self.connection, keyfile=self.certkey, certfile=certpath, server_side=True
+            self.connection,
+            keyfile=CertificateCreator.certkey,
+            certfile=certpath,
+            server_side=True,
         )
         self.connection.settimeout(0.5)
         self.rfile = self.connection.makefile("rb", self.rbufsize)
