@@ -10,7 +10,7 @@ from unittest import SkipTest
 
 @mock_apigateway
 def test_http_integration():
-    if settings.TEST_SERVER_MODE:
+    if not settings.TEST_DECORATOR_MODE:
         raise SkipTest("Cannot test mock of execute-api.apigateway in ServerMode")
     responses_mock.add(
         responses_mock.GET, "http://httpbin.org/robots.txt", body="a fake response"
@@ -57,7 +57,7 @@ def test_http_integration():
 @mock_apigateway
 @mock_dynamodb
 def test_aws_integration_dynamodb():
-    if settings.TEST_SERVER_MODE:
+    if not settings.TEST_DECORATOR_MODE:
         raise SkipTest("Cannot test mock of execute-api.apigateway in ServerMode")
 
     client = boto3.client("apigateway", region_name="us-west-2")
@@ -82,7 +82,7 @@ def test_aws_integration_dynamodb():
 @mock_apigateway
 @mock_dynamodb
 def test_aws_integration_dynamodb_multiple_stages():
-    if settings.TEST_SERVER_MODE:
+    if not settings.TEST_DECORATOR_MODE:
         raise SkipTest("Cannot test mock of execute-api.apigateway in ServerMode")
 
     client = boto3.client("apigateway", region_name="us-west-2")
@@ -119,7 +119,7 @@ def test_aws_integration_dynamodb_multiple_stages():
 @mock_apigateway
 @mock_dynamodb
 def test_aws_integration_dynamodb_multiple_resources():
-    if settings.TEST_SERVER_MODE:
+    if not settings.TEST_DECORATOR_MODE:
         raise SkipTest("Cannot test mock of execute-api.apigateway in ServerMode")
 
     client = boto3.client("apigateway", region_name="us-west-2")

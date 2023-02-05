@@ -148,7 +148,7 @@ def test_invoke_event_function():
 @pytest.mark.network
 @mock_lambda
 def test_invoke_lambda_using_environment_port():
-    if settings.TEST_DECORATOR_MODE:
+    if not settings.TEST_DECORATOR_MODE:
         raise SkipTest("Cannot test MOTO_HTTP_ENDPOINT variable in decorator mode")
     conn = boto3.client("lambda", _lambda_region)
     function_name = str(uuid4())[0:6]
