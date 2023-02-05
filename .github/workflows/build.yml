@@ -223,7 +223,7 @@ jobs:
         HTTPS_PROXY: "http://localhost:5005"
         AWS_CA_BUNDLE: "${{ steps.pip-cache.outputs.dir }}/moto/moto_proxy/ca.crt"
       run: |
-        pytest tests/test_acmpca tests/test_apigatewayv2 tests/test_awslambda tests/test_ebs tests/test_emrserverless
+        pytest tests/test_a* tests/test_ebs tests/test_emrserverless
     - name: Archive Proxy logs
       if: always()
       uses: actions/upload-artifact@v3
