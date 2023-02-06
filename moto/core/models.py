@@ -393,61 +393,6 @@ class ServerModeMockAWS(BaseMockAWS):
             self._resource_patcher.stop()
 
 
-class ProxyModeMockAWS(BaseMockAWS):
-
-    RESET_IN_PROGRESS = False
-
-    def __init__(self, *args: Any, **kwargs: Any):
-        self.test_proxy_mode_endpoint = settings.test_proxy_mode_endpoint()
-        super().__init__(*args, **kwargs)
-
-    def reset(self) -> None:
-        call_reset_api = os.environ.get("MOTO_CALL_RESET_API")
-        if not call_reset_api or call_reset_api.lower() != "false":
-            if not ProxyModeMockAWS.RESET_IN_PROGRESS:
-                ProxyModeMockAWS.RESET_IN_PROGRESS = True
-                import requests
-
-                requests.post(f"{self.test_proxy_mode_endpoint}/moto-api/reset")
-                ProxyModeMockAWS.RESET_IN_PROGRESS = False
-
-    def enable_patching(self, reset: bool = True) -> None:
-        if self.__class__.nested_count == 1 and reset:
-            # Just started
-            self.reset()
-
-        from boto3 import client as real_boto3_client, resource as real_boto3_resource
-
-        def _enhance_kwargs(kwargs: Any) -> None:
-            if "AWS_CA_BUNDLE" not in os.environ:
-                kwargs["verify"] = False
-            if "config" in kwargs:
-                kwargs["config"].__dict__["proxies"] = {
-                    "https": self.test_proxy_mode_endpoint
-                }
-            else:
-                config = Config(proxies={"https": self.test_proxy_mode_endpoint})
-                kwargs["config"] = config
-
-        def fake_boto3_client(*args: Any, **kwargs: Any) -> botocore.client.BaseClient:
-            _enhance_kwargs(kwargs)
-            return real_boto3_client(*args, **kwargs)
-
-        def fake_boto3_resource(*args: Any, **kwargs: Any) -> Any:
-            _enhance_kwargs(kwargs)
-            return real_boto3_resource(*args, **kwargs)
-
-        self._client_patcher = patch("boto3.client", fake_boto3_client)
-        self._resource_patcher = patch("boto3.resource", fake_boto3_resource)
-        self._client_patcher.start()
-        self._resource_patcher.start()
-
-    def disable_patching(self) -> None:
-        if self._client_patcher:
-            self._client_patcher.stop()
-            self._resource_patcher.stop()
-
-
 class base_decorator:
     mock_backend = MockAWS
 
@@ -457,8 +402,6 @@ class base_decorator:
     def __call__(self, func: Optional[Callable[..., Any]] = None) -> BaseMockAWS:
         if settings.TEST_SERVER_MODE:
             mocked_backend: BaseMockAWS = ServerModeMockAWS(self.backends)
-        elif settings.TEST_PROXY_MODE:
-            mocked_backend = ProxyModeMockAWS(self.backends)
         else:
             mocked_backend = self.mock_backend(self.backends)
 

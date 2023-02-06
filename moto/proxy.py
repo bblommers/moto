@@ -37,9 +37,7 @@ def get_help_msg() -> str:
     msg += "\n"
     msg += with_color(37, text=f"\texport AWS_CA_BUNDLE={CertificateCreator.cacert}")
     msg += "\n"
-    msg += with_color(
-        37, text="\tMOTO_PROXY_PORT=5005 TEST_PROXY_MODE=true pytest tests_dir\n"
-    )
+    msg += with_color(37, text="\tMOTO_PROXY_PORT=5005 pytest tests_dir\n")
     return msg
 
 

@@ -1,3 +1,4 @@
+import os
 from collections import defaultdict
 from io import BytesIO
 from botocore.awsrequest import AWSResponse
@@ -37,6 +38,8 @@ class BotocoreStubber:
 
     def __call__(self, event_name: str, request: Any, **kwargs: Any) -> AWSResponse:
         if not self.enabled:
+            return None
+        if "HTTPS_PROXY" in os.environ:
             return None
 
         from moto.moto_api import recorder

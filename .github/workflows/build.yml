@@ -222,8 +222,6 @@ jobs:
       env:
         HTTPS_PROXY: "http://localhost:5005"
         AWS_CA_BUNDLE: "${{ steps.pip-cache.outputs.dir }}/moto/moto_proxy/ca.crt"
-        MOTO_PROXY_PORT: "5005"
-        TEST_PROXY_MODE: "true"
       run: |
         pytest tests/test_a* tests/test_ebs tests/test_emrserverless
     - name: Archive Proxy logs
