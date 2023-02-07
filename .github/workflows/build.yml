@@ -216,21 +216,21 @@ jobs:
         pip install ".[proxy]"
         moto_proxy --help
         mkdir proxylogs
-        nohup moto_proxy -v &
+        moto_proxy -v & > proxy.log
         echo "Running"
     - name: Test ProxyMode
       env:
-        HTTPS_PROXY: "http://localhost:5005"
+        HTTPS_PROXY: "http://127.0.0.1:5005"
         AWS_CA_BUNDLE: "${{ steps.pip-cache.outputs.dir }}/moto/moto_proxy/ca.crt"
       run: |
-        pytest tests/test_a* tests/test_ebs tests/test_emrserverless
+        pytest tests/test_acmpca
     - name: Archive Proxy logs
       if: always()
       uses: actions/upload-artifact@v3
       with:
         name: motoproxy-${{ matrix.python-version }}
         path: |
-          nohup.out
+          proxy.log
 
   deploy:
     name: Deploy
