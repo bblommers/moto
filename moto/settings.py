@@ -7,7 +7,7 @@ from typing import Optional
 
 
 TEST_SERVER_MODE = os.environ.get("TEST_SERVER_MODE", "0").lower() == "true"
-TEST_PROXY_MODE = os.environ.get("TEST_PROXY_MODE", "0").lower() == "true"
+TEST_PROXY_MODE = "HTTPS_PROXY" in os.environ
 TEST_DECORATOR_MODE = not TEST_SERVER_MODE and not TEST_PROXY_MODE
 
 INITIAL_NO_AUTH_ACTION_COUNT = float(
