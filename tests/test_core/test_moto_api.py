@@ -1,3 +1,5 @@
+import os
+
 import sure  # noqa # pylint: disable=unused-import
 import requests
 
@@ -7,7 +9,7 @@ import pytest
 from botocore.exceptions import ClientError
 from moto import mock_autoscaling, mock_s3, mock_sqs, settings
 from moto.core.model_instances import model_data, reset_model_data
-from unittest import SkipTest, TestCase
+from unittest import SkipTest, TestCase, mock
 
 base_url = (
     "http://localhost:5000"
@@ -114,6 +116,17 @@ def test_model_data_is_emptied_as_necessary():
             model_data["sqs"]["Queue"].instances.should.have.length_of(1)
         # The data should still be here - the inner mock has exited, but the outer mock is still active
         model_data["sqs"]["Queue"].instances.should.have.length_of(1)
+    model_data["sqs"]["Queue"].instances.should.have.length_of(0)
+
+    # We can explicitly configure the data to not be deleted
+    with mock.patch.dict(os.environ, {"MOTO_DELETE_DATA_ON_EXIT": "False"}):
+        with mock_sqs():
+            conn = boto3.client("sqs", region_name="us-west-1")
+            conn.create_queue(QueueName="queue1")
+        model_data["sqs"]["Queue"].instances.should.have.length_of(1)
+
+    with mock_sqs():
+        pass
 
 
 @mock_sqs

@@ -107,7 +107,7 @@ class BaseMockAWS:
                     pass
                 self.unmock_env_variables()
                 self.__class__.mocks_active = False
-                if remove_data:
+                if remove_data and settings.delete_data_on_exit():
                     # Reset the data across all backends
                     for backend in self.backends.values():
                         backend.reset()

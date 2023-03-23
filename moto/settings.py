@@ -74,6 +74,10 @@ def allow_unknown_region() -> bool:
     return os.environ.get("MOTO_ALLOW_NONEXISTENT_REGION", "false").lower() == "true"
 
 
+def delete_data_on_exit() -> bool:
+    return os.environ.get("MOTO_DELETE_DATA_ON_EXIT", "true").lower() != "false"
+
+
 def lambda_stub_ecr() -> bool:
     # Whether to stub or mock ecr backend when deploying image based lambdas.
     # True => don't requiring image presence in moto ecr backend for `create_function`.
