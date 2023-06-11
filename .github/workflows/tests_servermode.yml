@@ -42,6 +42,7 @@ jobs:
       env:
         TEST_SERVER_MODE: ${{ true }}
       run: |
+        mkdir ~/.aws && touch ~/.aws/credentials && echo -e "[default]\naws_access_key_id = test\naws_secret_access_key = test" > ~/.aws/credentials
         make test-only
     - name: "Upload coverage to Codecov"
       if: ${{ github.repository == 'getmoto/moto'}}
