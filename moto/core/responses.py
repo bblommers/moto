@@ -16,6 +16,7 @@ from moto.core.utils import (
     camelcase_to_underscores,
     method_names_from_class,
     params_sort_function,
+    clean_werkzeug_url,
 )
 from moto.utilities.utils import load_resource
 from jinja2 import Environment, DictLoader, Template
@@ -30,7 +31,7 @@ from typing import (
     ClassVar,
     Callable,
 )
-from urllib.parse import parse_qs, parse_qsl, urlparse
+from urllib.parse import parse_qs, parse_qsl, urlparse, unquote, quote
 from werkzeug.exceptions import HTTPException
 from xml.dom.minidom import parseString as parseXML
 
@@ -236,6 +237,7 @@ class BaseResponse(_TemplateEnvironmentMixin, ActionAuthenticatorMixin):
         """
         use_raw_body: Use incoming bytes if True, encode to string otherwise
         """
+        self.is_werkzeug_request = "werkzeug" in str(type(request))
         querystring: Dict[str, Any] = OrderedDict()
         if hasattr(request, "body"):
             # Boto
@@ -295,8 +297,12 @@ class BaseResponse(_TemplateEnvironmentMixin, ActionAuthenticatorMixin):
         except UnicodeDecodeError:
             pass  # ignore decoding errors, as the body may not contain a legitimate querystring
 
-        self.uri = full_url
-        self.path = urlparse(full_url).path
+        if self.is_werkzeug_request:
+            self.uri = clean_werkzeug_url(full_url)
+        else:
+            self.uri = full_url
+        print(f"Changed {full_url} into {self.uri}")
+        self.path = urlparse(self.uri).path
         self.querystring = querystring
         self.data = querystring
         self.method = request.method

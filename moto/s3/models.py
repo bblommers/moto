@@ -152,7 +152,11 @@ class FakeKey(BaseModel, ManagedState):
 
     def safe_name(self, encoding_type: Optional[str] = None) -> str:
         if encoding_type == "url":
-            return urllib.parse.quote(self.name)
+            quoted_name = urllib.parse.quote(self.name)
+            #position_of_q_mark = self.name.find(urllib.parse.quote("?"))
+            #if position_of_q_mark > 0:
+            #    return quoted_name[0:position_of_q_mark] + "?" + quoted_name[position_of_q_mark + 5:]
+            return quoted_name
         return self.name
 
     @property
@@ -1904,7 +1908,8 @@ class S3Backend(BaseBackend, CloudWatchMetricProvider):
         lock_until: Optional[str] = None,
         checksum_value: Optional[str] = None,
     ) -> FakeKey:
-        key_name = clean_key_name(key_name)
+        print(f"put_object({key_name})")
+        #key_name = clean_key_name(key_name)
         if storage is not None and storage not in STORAGE_CLASS:
             raise InvalidStorageClass(storage=storage)
 
@@ -2025,8 +2030,9 @@ class S3Backend(BaseBackend, CloudWatchMetricProvider):
         part_number: Optional[str] = None,
         key_is_clean: bool = False,
     ) -> Optional[FakeKey]:
-        if not key_is_clean:
-            key_name = clean_key_name(key_name)
+        print(f"get_object({key_name}) (clean={key_is_clean})")
+        #if not key_is_clean:
+        #    key_name = clean_key_name(key_name)
         bucket = self.get_bucket(bucket_name)
 
         key = None
@@ -2044,6 +2050,7 @@ class S3Backend(BaseBackend, CloudWatchMetricProvider):
             if part_number and key and key.multipart:
                 key = key.multipart.parts[part_number]
 
+        print(f"after:: {bucket.keys}")
         if isinstance(key, FakeKey):
             key.advance()
             return key
@@ -2360,7 +2367,7 @@ class S3Backend(BaseBackend, CloudWatchMetricProvider):
         version_id: Optional[str] = None,
         bypass: bool = False,
     ) -> Tuple[bool, Optional[Dict[str, Any]]]:
-        key_name = clean_key_name(key_name)
+        #key_name = clean_key_name(key_name)
         bucket = self.get_bucket(bucket_name)
 
         response_meta = {}
@@ -2423,7 +2430,7 @@ class S3Backend(BaseBackend, CloudWatchMetricProvider):
             version_id = object_.get("VersionId", None)
 
             self.delete_object(
-                bucket_name, undo_clean_key_name(key_name), version_id=version_id
+                bucket_name, key_name, version_id=version_id
             )
             deleted_objects.append((key_name, version_id))
         return deleted_objects
@@ -2444,6 +2451,7 @@ class S3Backend(BaseBackend, CloudWatchMetricProvider):
         lock_legal_status: Optional[str] = None,
         lock_until: Optional[str] = None,
     ) -> None:
+        print(f"copy_object({src_key.name}, {dest_key_name})")
         bucket = self.get_bucket(dest_bucket_name)
         if src_key.name == dest_key_name and src_key.bucket_name == dest_bucket_name:
             if src_key.encryption and src_key.encryption != "AES256" and not encryption:

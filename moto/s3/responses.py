@@ -10,13 +10,13 @@ from moto.core.utils import (
     extract_region_from_aws_authorization,
     str_to_rfc_1123_datetime,
 )
-from urllib.parse import parse_qs, urlparse, unquote, urlencode, urlunparse
+from urllib.parse import parse_qs, urlparse, quote, unquote, urlencode, urlunparse
 
 import xmltodict
 
 from moto.core.common_types import TYPE_RESPONSE
 from moto.core.responses import BaseResponse
-from moto.core.utils import path_url
+from moto.core.utils import path_url, clean_werkzeug_url
 
 from moto.s3bucket_path.utils import (
     bucket_name_from_url as bucketpath_bucket_name_from_url,
@@ -1208,7 +1208,7 @@ class S3Response(BaseResponse):
         response_headers: Dict[str, Any] = {}
 
         try:
-            response = self._key_response(request, full_url, self.headers)
+            response = self._key_response(request, self.uri, self.headers)
         except S3ClientError as s3error:
             response = s3error.code, {}, s3error.description
 
@@ -1250,6 +1250,7 @@ class S3Response(BaseResponse):
         elif hasattr(request, "requestline"):
             signed_url = "Signature=" in request.path
         try:
+            print("_key_response::get_object")
             key = self.backend.get_object(bucket_name, key_name)
             bucket = self.backend.get_bucket(bucket_name)
         except S3ClientError:
@@ -1399,6 +1400,7 @@ class S3Response(BaseResponse):
         if_none_match = headers.get("If-None-Match", None)
         if_unmodified_since = headers.get("If-Unmodified-Since", None)
 
+        print("_key_response_get::get_object")
         key = self.backend.get_object(bucket_name, key_name, version_id=version_id)
         if key is None and version_id is None:
             raise MissingKey(key=key_name)
@@ -1461,6 +1463,7 @@ class S3Response(BaseResponse):
         query: Dict[str, Any],
         key_name: str,
     ) -> TYPE_RESPONSE:
+        print(f"key_response_put({key_name})")
         self._set_action("KEY", "PUT", query)
         self._authenticate_and_authorize_s3_action()
 
@@ -1472,8 +1475,9 @@ class S3Response(BaseResponse):
                 copy_source = request.headers.get("x-amz-copy-source")
                 if isinstance(copy_source, bytes):
                     copy_source = copy_source.decode("utf-8")
+                print(f"Copy source from header: {copy_source}")
                 copy_source_parsed = urlparse(copy_source)
-                src_bucket, src_key = copy_source_parsed.path.lstrip("/").split("/", 1)
+                src_bucket, src_key = clean_werkzeug_url(copy_source_parsed.path, always=True).lstrip("/").split("/", 1)
                 src_version_id = parse_qs(copy_source_parsed.query).get(
                     "versionId", [None]  # type: ignore
                 )[0]
@@ -1487,6 +1491,7 @@ class S3Response(BaseResponse):
                 except ValueError:
                     start_byte, end_byte = None, None
 
+                print("key_response_put::get_object")
                 if self.backend.get_object(
                     src_bucket, src_key, version_id=src_version_id
                 ):
@@ -1501,6 +1506,7 @@ class S3Response(BaseResponse):
                         end_byte,
                     )
                 else:
+                    print("this 404")
                     return 404, response_headers, ""
 
                 template = self.response_template(S3_MULTIPART_UPLOAD_RESPONSE)
@@ -1607,6 +1613,7 @@ class S3Response(BaseResponse):
             return 200, response_headers, ""
 
         if "tagging" in query:
+            print("key_response_put::tagging::get_object")
             key_to_tag = self.backend.get_object(
                 bucket_name, key_name, version_id=version_id
             )
@@ -1629,6 +1636,7 @@ class S3Response(BaseResponse):
                 "versionId", [None]  # type: ignore
             )[0]
 
+            print("key_response_put::copy-source::get_object")
             key_to_copy = self.backend.get_object(
                 src_bucket, src_key, version_id=src_version_id, key_is_clean=True
             )
@@ -1666,6 +1674,7 @@ class S3Response(BaseResponse):
             else:
                 raise MissingKey(key=src_key)
 
+            print("key_response_put::copy-new")
             new_key: FakeKey = self.backend.get_object(bucket_name, key_name)  # type: ignore
 
             if acl is not None:
@@ -2258,6 +2267,7 @@ class S3Response(BaseResponse):
         elif "restore" in query:
             es = minidom.parseString(body).getElementsByTagName("Days")
             days = es[0].childNodes[0].wholeText
+            print("key_response_post::restore::get_object")
             key = self.backend.get_object(bucket_name, key_name)  # type: ignore
             if key.storage_class not in ARCHIVE_STORAGE_CLASSES:
                 raise InvalidObjectState(storage_class=key.storage_class)
@@ -2384,7 +2394,7 @@ S3_BUCKET_GET_RESPONSE_V2 = """<?xml version="1.0" encoding="UTF-8"?>
 {% endif %}
   {% for key in result_keys %}
     <Contents>
-      <Key>{{ key.safe_name(encoding_type) }}</Key>
+      <Key><![CDATA[{{ key.safe_name(encoding_type) }}]]></Key>
       <LastModified>{{ key.last_modified_ISO8601 }}</LastModified>
       <ETag>{{ key.etag }}</ETag>
       <Size>{{ key.size }}</Size>

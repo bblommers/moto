@@ -3,8 +3,17 @@ import inspect
 import re
 from botocore.exceptions import ClientError
 from typing import Any, Optional, List, Callable, Dict, Tuple
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, parse_qsl, urlparse, unquote, quote
 from .common_types import TYPE_RESPONSE
+from moto.utilities.distutils_version import LooseVersion
+
+try:
+    from importlib.metadata import version
+except ImportError:
+    from importlib_metadata import version
+
+
+WERKZEUG_VERSION = version("werkzeug")
 
 
 def camelcase_to_underscores(argument: str) -> str:
@@ -321,3 +330,40 @@ def params_sort_function(item: Tuple[str, Any]) -> Tuple[str, Any]:
         member_num = int(key.split(".")[2])
         return ("Tags.member", member_num)
     return item
+
+
+def clean_werkzeug_url(url: str, always: bool = False):
+    if LooseVersion(WERKZEUG_VERSION) <= LooseVersion("2.2.3") or always:
+        # Older versions of werkzeug expose a HTML quoted url
+        # Such as /%40connections
+        # We're unquoting it here manually, so that downstream we don't have to faff around with encodings
+        # (E.g. /@connections)
+
+        ########### TODO
+        # 3.7
+        # test_key_name_encoding_in_listing
+        # test_copy_key_boto3[key-with?question-mark]
+
+        # 3.8
+        # test_key_name_encoding_in_listing
+        # test_delete_objects_with_url_encoded_key[foo/run_dt%3D2019-01-01%252012%253A30%253A00]
+        # test_get_object_versions_with_prefix[file another]
+        # test_delete_objects_with_empty_keyname
+
+        unquoted_url = unquote(url)
+
+        # Werkzeug keeps the '?' quoted, to ensure it doesn't interfere with the querystring
+        # So we have to manually un-unquote? re-quote? this
+        position_of_q_mark = url.find(quote("?"))
+        if position_of_q_mark > 0:
+            return unquoted_url[0:position_of_q_mark] + quote("?") + unquoted_url[position_of_q_mark + 1:]
+    else:
+        # Werkzeug keeps the '?' quoted, to ensure it doesn't interfere with the querystring
+        # So we have to manually un-unquote? re-quote? this
+        position_of_q_mark = url.find(quote("?"))
+        if position_of_q_mark > 0:
+            return url[0:position_of_q_mark] + quote("?") + url[position_of_q_mark + 3:]
+
+        unquoted_url = url
+
+    return unquoted_url
