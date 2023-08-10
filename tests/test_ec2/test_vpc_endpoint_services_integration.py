@@ -246,6 +246,8 @@ def test_describe_vpc_default_endpoint_services():
 
     # Extract one service and verify all the fields.  This time the data is
     # extracted from the actual response.
+    all_services = ec2.describe_vpc_endpoint_services()["ServiceDetails"]
+    print(all_services)  # noqa
     config_service = ec2.describe_vpc_endpoint_services(
         ServiceNames=["com.amazonaws.us-west-1.config"]
     )

@@ -118,6 +118,8 @@ def test_create_vpc_endpoint_service_configuration_with_options():
     }
 
     service_name = config["ServiceName"]
+    all_services = client.describe_vpc_endpoint_services()["ServiceDetails"]
+    print(all_services)  # noqa
     detail = client.describe_vpc_endpoint_services(ServiceNames=[service_name])[
         "ServiceDetails"
     ][0]
