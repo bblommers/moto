@@ -1,3 +1,4 @@
+from ._mock_all import MockAWS
 from .models import DEFAULT_ACCOUNT_ID  # noqa
 from .base_backend import BaseBackend, BackendDict  # noqa
 from .common_models import BaseModel  # noqa
@@ -8,3 +9,6 @@ from .responses import ActionAuthenticatorMixin
 set_initial_no_auth_action_count = (
     ActionAuthenticatorMixin.set_initial_no_auth_action_count
 )
+
+
+mock_aws = MockAWS()

@@ -1,8 +1,10 @@
 import importlib
 import moto
 import sys
-from moto.core import BackendDict
-from typing import Iterable, Tuple
+
+from typing import Iterable, Tuple, TYPE_CHECKING
+if TYPE_CHECKING:
+    from moto.core import BackendDict
 
 
 decorators = [d for d in dir(moto) if d.startswith("mock_") and not d == "mock_all"]
@@ -14,23 +16,24 @@ BACKENDS["instance_metadata"] = ("instance_metadata", "instance_metadata_backend
 BACKENDS["s3bucket_path"] = ("s3", "s3_backends")
 
 
-def _import_backend(module_name: str, backends_name: str) -> BackendDict:
+def _import_backend(module_name: str, backends_name: str) -> "BackendDict":
     module = importlib.import_module("moto." + module_name)
     return getattr(module, backends_name)
 
 
-def backends() -> Iterable[BackendDict]:
+def backends() -> Iterable["BackendDict"]:
     for module_name, backends_name in BACKENDS.values():
         yield _import_backend(module_name, backends_name)
 
 
-def service_backends() -> Iterable[BackendDict]:
+def service_backends() -> Iterable["BackendDict"]:
     services = [(f.name, f.backend) for f in decorator_functions]
     for module_name, backends_name in sorted(set(services)):
         yield _import_backend(module_name, backends_name)
 
 
-def loaded_backends() -> Iterable[Tuple[str, BackendDict]]:
+def loaded_backends() -> Iterable[Tuple[str, "BackendDict"]]:
+    return []
     loaded_modules = sys.modules.keys()
     moto_modules = [m for m in loaded_modules if m.startswith("moto.")]
     imported_backends = [
@@ -38,11 +41,13 @@ def loaded_backends() -> Iterable[Tuple[str, BackendDict]]:
         for name, (module_name, _) in BACKENDS.items()
         if f"moto.{module_name}" in moto_modules
     ]
+    print(imported_backends)
     for name in imported_backends:
         module_name, backends_name = BACKENDS[name]
+        print(f"importing {module_name} in {backends_name}")
         yield name, _import_backend(module_name, backends_name)
 
 
-def get_backend(name: str) -> BackendDict:
+def get_backend(name: str) -> "BackendDict":
     module_name, backends_name = BACKENDS[name]
     return _import_backend(module_name, backends_name)
