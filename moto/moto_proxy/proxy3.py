@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import socket
 import ssl
-import select
 
 import re
 from http.server import BaseHTTPRequestHandler
@@ -64,7 +63,7 @@ class MotoRequestHandler:
 
 
 class ProxyRequestHandler(BaseHTTPRequestHandler):
-    timeout = 5
+    timeout = 1
 
     def __init__(self, *args, **kwargs):
         sock = [a for a in args if isinstance(a, socket.socket)][0]
@@ -102,7 +101,6 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
             certfile=certpath,
             server_side=True,
         )
-        self.connection.settimeout(0.5)
         self.rfile = self.connection.makefile("rb", self.rbufsize)
         self.wfile = self.connection.makefile("wb", self.wbufsize)
 
@@ -110,32 +108,7 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
         if self.protocol_version == "HTTP/1.1" and conntype.lower() != "close":
             self.close_connection = 0
         else:
-            self.close_connection = 1
-
-    def connect_relay(self):
-        address = self.path.split(":", 1)
-        address[1] = int(address[1]) or 443
-        try:
-            s = socket.create_connection(address, timeout=self.timeout)
-        except Exception:
-            self.send_error(502)
-            return
-        self.send_response(200, "Connection Established")
-        self.end_headers()
-
-        conns = [self.connection, s]
-        self.close_connection = 0
-        while not self.close_connection:
-            rlist, _, xlist = select.select(conns, [], conns, self.timeout)
-            if xlist or not rlist:
-                break
-            for r in rlist:
-                other = conns[1] if r is conns[0] else conns[0]
-                data = r.recv(8192)
-                if not data:
-                    self.close_connection = 1
-                    break
-                other.sendall(data)
+            self.close_connection = 0
 
     def do_GET(self):
         if self.path == "http://proxy2.test/":
@@ -143,8 +116,26 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
             return
 
         req = self
-        content_length = int(req.headers.get("Content-Length", 0))
-        req_body = self.rfile.read(content_length) if content_length else None
+        req_body = b""
+        if "Content-Length" in req.headers:
+            content_length = int(req.headers["Content-Length"])
+            req_body = self.rfile.read(content_length)
+        elif "chunked" in self.headers.get("Transfer-Encoding", ""):
+            # https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Transfer-Encoding
+            while True:
+                line = self.rfile.readline().strip()
+                chunk_length = int(line, 16)
+                if chunk_length != 0:
+                    req_body += self.rfile.read(chunk_length)
+
+                # Each chunk is followed by an additional empty newline
+                self.rfile.readline()
+
+                # a chunk size of 0 is an end indication
+                # AWS does add additional (checksum-)headers, but we ignore those
+                if chunk_length == 0:
+                    break
+
         req_body = self.decode_request_body(req.headers, req_body)
         if isinstance(self.connection, ssl.SSLSocket):
             host = "https://" + req.headers["Host"]
@@ -215,22 +206,6 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
                 # Some POST requests do not have a body - reading them may cause a timeout
                 # We can safely ignore that
                 pass
-
-    def relay_streaming(self, res):
-        self.wfile.write(f"{self.protocol_version} {res.status} {res.reason}\r\n")
-        for line in res.headers.headers:
-            self.wfile.write(line)
-        self.end_headers()
-        try:
-            while True:
-                chunk = res.read(8192)
-                if not chunk:
-                    break
-                self.wfile.write(chunk)
-            self.wfile.flush()
-        except socket.error:
-            # connection closed by client
-            pass
 
     def decode_request_body(self, headers, body):
         if body is None:

@@ -37,7 +37,7 @@ def get_help_msg() -> str:
     msg += "\n"
     msg += with_color(37, text=f"\texport AWS_CA_BUNDLE={CertificateCreator.cacert}")
     msg += "\n"
-    msg += with_color(37, text="\tMOTO_PROXY_PORT=5005 pytest tests_dir\n")
+    msg += with_color(37, text="\tHTTPS_PROXY=http://localhost:5005 MOTO_PROXY_PORT=5005 pytest tests_dir\n")
     return msg
 
 
@@ -98,6 +98,8 @@ def main(argv=None):
     httpd = ThreadingHTTPServer(server_address, ProxyRequestHandler)
 
     sa = httpd.socket.getsockname()
+
+    print("Call `moto_proxy -h` for example invocations")
     print(f"Serving HTTP Proxy on {sa[0]}:{sa[1]} ...")  # noqa
     httpd.serve_forever()
 
