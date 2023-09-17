@@ -1,16 +1,17 @@
+from unittest import SkipTest
+
 import boto3
 import pytest
-import sure  # noqa # pylint: disable=unused-import
+
 from moto import mock_s3
 from moto import settings
-from unittest import SkipTest
 
 
 @pytest.fixture(scope="function", name="aws_credentials")
 def fixture_aws_credentials(monkeypatch):
+    """Mocked AWS Credentials for moto."""
     if settings.TEST_SERVER_MODE:
         raise SkipTest("No point in testing this in ServerMode.")
-    """Mocked AWS Credentials for moto."""
     monkeypatch.setenv("AWS_ACCESS_KEY_ID", "testing")
     monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "testing")
     monkeypatch.setenv("AWS_SECURITY_TOKEN", "testing")
@@ -25,7 +26,7 @@ def test_mock_works_with_client_created_inside(
     client = boto3.client("s3", region_name="us-east-1")
 
     b = client.list_buckets()
-    b["Buckets"].should.equal([])
+    assert b["Buckets"] == []
     m.stop()
 
 
@@ -45,7 +46,7 @@ def test_mock_works_with_client_created_outside(
     patch_client(outside_client)
 
     b = outside_client.list_buckets()
-    b["Buckets"].should.equal([])
+    assert b["Buckets"] == []
     m.stop()
 
 
@@ -59,13 +60,34 @@ def test_mock_works_with_resource_created_outside(
     m = mock_s3()
     m.start()
 
-    # So remind us to mock this client
+    # So remind us to mock this resource
     from moto.core import patch_resource
 
     patch_resource(outside_resource)
 
-    b = list(outside_resource.buckets.all())
-    b.should.equal([])
+    assert not list(outside_resource.buckets.all())
+    m.stop()
+
+
+def test_patch_can_be_called_on_a_mocked_client():
+    # start S3 after the mock, ensuring that the client contains our event-handler
+    m = mock_s3()
+    m.start()
+    client = boto3.client("s3", region_name="us-east-1")
+
+    from moto.core import patch_client
+
+    patch_client(client)
+    patch_client(client)
+
+    # At this point, our event-handler should only be registered once, by `mock_s3`
+    # `patch_client` should not re-register the event-handler
+    test_object = b"test_object_text"
+    client.create_bucket(Bucket="buck")
+    client.put_object(Bucket="buck", Key="to", Body=test_object)
+    got_object = client.get_object(Bucket="buck", Key="to")["Body"].read()
+    assert got_object == test_object
+
     m.stop()
 
 
@@ -96,7 +118,6 @@ class ImportantBusinessLogic:
 def test_mock_works_when_replacing_client(
     aws_credentials,
 ):  # pylint: disable=unused-argument
-
     logic = ImportantBusinessLogic()
 
     m = mock_s3()
@@ -106,11 +127,11 @@ def test_mock_works_when_replacing_client(
     try:
         logic.do_important_things()
     except Exception as e:
-        str(e).should.contain("InvalidAccessKeyId")
+        assert str(e) == "InvalidAccessKeyId"
 
     client_initialized_after_mock = boto3.client("s3", region_name="us-east-1")
     logic._s3 = client_initialized_after_mock
     # This will work, as we now use a properly mocked client
-    logic.do_important_things().should.equal([])
+    assert logic.do_important_things() == []
 
     m.stop()

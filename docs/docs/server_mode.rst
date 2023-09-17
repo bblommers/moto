@@ -83,19 +83,36 @@ See the following example:
 
             in_mem_client = boto3.client("s3")
             buckets = in_mem_client.list_buckets()["Buckets"]
-            [b["Name"] for b in buckets].should.equal(["test"])
-
+            self.assertEqual([b["Name"] for b in buckets], ["test"])
 This example shows it is possible to create state using the TreadedMotoServer, and access that state using the usual decorators.  :raw-html:`<br />`
 Note that the decorators will destroy any resources on start, so make sure to not accidentally destroy any resources created by the ThreadedMotoServer that should be kept.
 
 
 Run using Docker
 ----------------------
-You could also use the official Docker image from https://hub.docker.com/r/motoserver/moto/tags:
+You could also use the official Docker image.
+This is stored in two different repositories:
+
+ - https://hub.docker.com/r/motoserver/moto/tags
+ - https://github.com/getmoto/moto/pkgs/container/motoserver
 
 .. code-block:: bash
 
     docker run motoserver/moto:latest
+    docker run ghcr.io/getmoto/motoserver:latest
+
+Example docker-compose.yaml 
+ Look at `server.py <https://github.com/getmoto/moto/blob/master/moto/server.py>`_ to find more environment variables.
+
+.. code-block:: yaml
+
+  motoserver:
+    image: motoserver/moto:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - MOTO_PORT=3000 # set moto listener port with env var
+   
 
 Example Usage
 --------------
@@ -131,7 +148,7 @@ In Scala:
 
 In Terraform:
 
-.. code-block::
+.. code-block:: bash
 
     provider "aws" {
         region                      = "us-east-1"

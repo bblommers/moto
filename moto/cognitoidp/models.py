@@ -9,8 +9,10 @@ from jose import jws
 from collections import OrderedDict
 from typing import Any, Dict, List, Tuple, Optional, Set
 from moto.core import BaseBackend, BackendDict, BaseModel
+from moto.core.utils import utcnow
 from moto.moto_api._internal import mock_random as random
 from .exceptions import (
+    AliasExistsException,
     GroupExistsException,
     NotAuthorizedError,
     ResourceNotFoundError,
@@ -369,12 +371,18 @@ DEFAULT_USER_POOL_CONFIG: Dict[str, Any] = {
         "EmailSubject": "Your verification code",
         "DefaultEmailOption": "CONFIRM_WITH_CODE",
     },
+    "AccountRecoverySetting": {
+        "RecoveryMechanisms": [
+            {"Priority": 1, "Name": "verified_email"},
+            {"Priority": 2, "Name": "verified_phone_number"},
+        ]
+    },
 }
 
 
 class CognitoIdpUserPool(BaseModel):
 
-    MAX_ID_LENGTH = 56
+    MAX_ID_LENGTH = 55
 
     def __init__(
         self, account_id: str, region: str, name: str, extended_config: Dict[str, Any]
@@ -408,8 +416,8 @@ class CognitoIdpUserPool(BaseModel):
                 "EmailMessage"
             )
 
-        self.creation_date = datetime.datetime.utcnow()
-        self.last_modified_date = datetime.datetime.utcnow()
+        self.creation_date = utcnow()
+        self.last_modified_date = utcnow()
 
         self.mfa_config = "OFF"
         self.sms_mfa_config: Optional[Dict[str, Any]] = None
@@ -462,19 +470,6 @@ class CognitoIdpUserPool(BaseModel):
                 if upd.user_pool_id == self.id
             ),
             None,
-        )
-
-    def _account_recovery_setting(self) -> Any:
-        # AccountRecoverySetting is not present in DescribeUserPool response if the pool was created without
-        # specifying it, ForgotPassword works on default settings nonetheless
-        return self.extended_config.get(
-            "AccountRecoverySetting",
-            {
-                "RecoveryMechanisms": [
-                    {"Priority": 1, "Name": "verified_phone_number"},
-                    {"Priority": 2, "Name": "verified_email"},
-                ]
-            },
         )
 
     def _base_json(self) -> Dict[str, Any]:
@@ -538,7 +533,7 @@ class CognitoIdpUserPool(BaseModel):
             "token_use": token_use,
             "auth_time": now,
             "exp": now + expires_in,
-            "username": username,
+            "username" if token_use == "access" else "cognito:username": username,
         }
         payload.update(extra_data or {})
         headers = {"kid": "dummy"}  # KID as present in jwks-public.json
@@ -566,6 +561,9 @@ class CognitoIdpUserPool(BaseModel):
 
     def create_id_token(self, client_id: str, username: str) -> Tuple[str, int]:
         extra_data = self.get_user_extra_data_by_client_id(client_id, username)
+        user = self._get_user(username)
+        if len(user.groups) > 0:
+            extra_data["cognito:groups"] = [group.group_name for group in user.groups]
         id_token, expires_in = self.create_jwt(
             client_id, username, "id", extra_data=extra_data
         )
@@ -680,7 +678,15 @@ class CognitoIdpUserPoolClient(BaseModel):
         self.id = create_id()
         self.secret = str(random.uuid4())
         self.generate_secret = generate_secret or False
-        self.extended_config = extended_config or {}
+        # Some default values - may be overridden by the user
+        self.extended_config: Dict[str, Any] = {
+            "AllowedOAuthFlowsUserPoolClient": False,
+            "AuthSessionValidity": 3,
+            "EnablePropagateAdditionalUserContextData": False,
+            "EnableTokenRevocation": True,
+            "RefreshTokenValidity": 30,
+        }
+        self.extended_config.update(extended_config or {})
 
     def _base_json(self) -> Dict[str, Any]:
         return {
@@ -706,8 +712,8 @@ class CognitoIdpIdentityProvider(BaseModel):
     def __init__(self, name: str, extended_config: Optional[Dict[str, Any]]):
         self.name = name
         self.extended_config = extended_config or {}
-        self.creation_date = datetime.datetime.utcnow()
-        self.last_modified_date = datetime.datetime.utcnow()
+        self.creation_date = utcnow()
+        self.last_modified_date = utcnow()
 
         if "AttributeMapping" not in self.extended_config:
             self.extended_config["AttributeMapping"] = {"username": "sub"}
@@ -794,8 +800,8 @@ class CognitoIdpUser(BaseModel):
         self.enabled = True
         self.attributes = attributes
         self.attribute_lookup = flatten_attrs(attributes)
-        self.create_date = datetime.datetime.utcnow()
-        self.last_modified_date = datetime.datetime.utcnow()
+        self.create_date = utcnow()
+        self.last_modified_date = utcnow()
         self.sms_mfa_enabled = False
         self.software_token_mfa_enabled = False
         self.token_verified = False
@@ -957,8 +963,8 @@ class CognitoIdpBackend(BaseBackend):
             "MfaConfiguration": user_pool.mfa_config,
         }
 
-    @paginate(pagination_model=PAGINATION_MODEL)
-    def list_user_pools(self) -> List[CognitoIdpUserPool]:  # type: ignore[misc]
+    @paginate(pagination_model=PAGINATION_MODEL)  # type: ignore[misc]
+    def list_user_pools(self) -> List[CognitoIdpUserPool]:
         return list(self.user_pools.values())
 
     def describe_user_pool(self, user_pool_id: str) -> CognitoIdpUserPool:
@@ -1030,8 +1036,10 @@ class CognitoIdpBackend(BaseBackend):
         user_pool.clients[user_pool_client.id] = user_pool_client
         return user_pool_client
 
-    @paginate(pagination_model=PAGINATION_MODEL)
-    def list_user_pool_clients(self, user_pool_id: str) -> List[CognitoIdpUserPoolClient]:  # type: ignore[misc]
+    @paginate(pagination_model=PAGINATION_MODEL)  # type: ignore[misc]
+    def list_user_pool_clients(
+        self, user_pool_id: str
+    ) -> List[CognitoIdpUserPoolClient]:
         user_pool = self.describe_user_pool(user_pool_id)
 
         return list(user_pool.clients.values())
@@ -1077,8 +1085,10 @@ class CognitoIdpBackend(BaseBackend):
         user_pool.identity_providers[name] = identity_provider
         return identity_provider
 
-    @paginate(pagination_model=PAGINATION_MODEL)
-    def list_identity_providers(self, user_pool_id: str) -> List[CognitoIdpIdentityProvider]:  # type: ignore[misc]
+    @paginate(pagination_model=PAGINATION_MODEL)  # type: ignore[misc]
+    def list_identity_providers(
+        self, user_pool_id: str
+    ) -> List[CognitoIdpIdentityProvider]:
         user_pool = self.describe_user_pool(user_pool_id)
 
         return list(user_pool.identity_providers.values())
@@ -1143,8 +1153,8 @@ class CognitoIdpBackend(BaseBackend):
 
         return user_pool.groups[group_name]
 
-    @paginate(pagination_model=PAGINATION_MODEL)
-    def list_groups(self, user_pool_id: str) -> List[CognitoIdpGroup]:  # type: ignore[misc]
+    @paginate(pagination_model=PAGINATION_MODEL)  # type: ignore[misc]
+    def list_groups(self, user_pool_id: str) -> List[CognitoIdpGroup]:
         user_pool = self.describe_user_pool(user_pool_id)
 
         return list(user_pool.groups.values())
@@ -1184,8 +1194,10 @@ class CognitoIdpBackend(BaseBackend):
         group.users.add(user)
         user.groups.add(group)
 
-    @paginate(pagination_model=PAGINATION_MODEL)
-    def list_users_in_group(self, user_pool_id: str, group_name: str) -> List[CognitoIdpUser]:  # type: ignore[misc]
+    @paginate(pagination_model=PAGINATION_MODEL)  # type: ignore[misc]
+    def list_users_in_group(
+        self, user_pool_id: str, group_name: str
+    ) -> List[CognitoIdpUser]:
         user_pool = self.describe_user_pool(user_pool_id)
         group = self.get_group(user_pool_id, group_name)
         return list(filter(lambda user: user in group.users, user_pool.users.values()))
@@ -1320,8 +1332,8 @@ class CognitoIdpBackend(BaseBackend):
                 return user
         raise NotAuthorizedError("Invalid token")
 
-    @paginate(pagination_model=PAGINATION_MODEL)
-    def list_users(self, user_pool_id: str) -> List[CognitoIdpUser]:  # type: ignore[misc]
+    @paginate(pagination_model=PAGINATION_MODEL)  # type: ignore[misc]
+    def list_users(self, user_pool_id: str) -> List[CognitoIdpUser]:
         user_pool = self.describe_user_pool(user_pool_id)
 
         return list(user_pool.users.values())
@@ -1412,6 +1424,9 @@ class CognitoIdpBackend(BaseBackend):
             password: str = auth_parameters.get("PASSWORD")  # type: ignore[assignment]
             user = self.admin_get_user(user_pool_id, username)
 
+            if not user.enabled:
+                raise NotAuthorizedError("User is disabled.")
+
             if user.password != password:
                 raise NotAuthorizedError(username)
 
@@ -1429,7 +1444,7 @@ class CognitoIdpBackend(BaseBackend):
                 }
 
             return self._log_user_in(user_pool, client, username)
-        elif auth_flow is AuthFlow.REFRESH_TOKEN:
+        elif auth_flow in (AuthFlow.REFRESH_TOKEN, AuthFlow.REFRESH_TOKEN_AUTH):
             refresh_token: str = auth_parameters.get("REFRESH_TOKEN")  # type: ignore[assignment]
             (
                 access_token,
@@ -1470,6 +1485,9 @@ class CognitoIdpBackend(BaseBackend):
         if challenge_name == "NEW_PASSWORD_REQUIRED":
             username: str = challenge_responses.get("USERNAME")  # type: ignore[assignment]
             new_password = challenge_responses.get("NEW_PASSWORD")
+            if not new_password:
+                raise InvalidPasswordException()
+            self._validate_password(user_pool.id, new_password)
             user = self.admin_get_user(user_pool.id, username)
 
             user.password = new_password
@@ -1507,6 +1525,15 @@ class CognitoIdpBackend(BaseBackend):
                     "ChallengeName": "SMS_MFA",
                     "Session": session,
                     "ChallengeParameters": {},
+                }
+
+            if user.status == UserStatus.FORCE_CHANGE_PASSWORD:
+                return {
+                    "ChallengeName": "NEW_PASSWORD_REQUIRED",
+                    "ChallengeParameters": {
+                        "USERNAME": username,
+                    },
+                    "Session": session,
                 }
 
             del self.sessions[session]
@@ -1565,7 +1592,7 @@ class CognitoIdpBackend(BaseBackend):
         """
         for user_pool in self.user_pools.values():
             if client_id in user_pool.clients:
-                recovery_settings = user_pool._account_recovery_setting()
+                recovery_settings = user_pool.extended_config["AccountRecoverySetting"]
                 user = user_pool._get_user(username)
                 break
         else:
@@ -1636,6 +1663,9 @@ class CognitoIdpBackend(BaseBackend):
     ) -> None:
         user = self.admin_get_user(user_pool_id, username)
 
+        email = self._find_attr("email", attributes)
+        self._verify_email_is_not_used(user_pool_id, email)
+
         user.update_attributes(attributes)
 
     def admin_delete_user_attributes(
@@ -1675,6 +1705,25 @@ class CognitoIdpBackend(BaseBackend):
         resource_server = CognitoResourceServer(user_pool_id, identifier, name, scopes)
         user_pool.resource_servers[identifier] = resource_server
         return resource_server
+
+    def describe_resource_server(
+        self, user_pool_id: str, identifier: str
+    ) -> CognitoResourceServer:
+        user_pool = self.user_pools.get(user_pool_id)
+        if not user_pool:
+            raise ResourceNotFoundError(f"User pool {user_pool_id} does not exist.")
+
+        resource_server = user_pool.resource_servers.get(identifier)
+        if not resource_server:
+            raise ResourceNotFoundError(f"Resource server {identifier} does not exist.")
+
+        return resource_server
+
+    @paginate(pagination_model=PAGINATION_MODEL)  # type: ignore[misc]
+    def list_resource_servers(self, user_pool_id: str) -> List[CognitoResourceServer]:
+        user_pool = self.user_pools[user_pool_id]
+        resource_servers = list(user_pool.resource_servers.values())
+        return resource_servers
 
     def sign_up(
         self,
@@ -1791,11 +1840,14 @@ class CognitoIdpBackend(BaseBackend):
             if client.generate_secret:
                 secret_hash: str = auth_parameters.get("SECRET_HASH")  # type: ignore[assignment]
                 if not check_secret_hash(
-                    client.secret, client.id, username, secret_hash  # type: ignore[arg-type]
+                    client.secret, client.id, username, secret_hash
                 ):
-                    raise NotAuthorizedError(secret_hash)  # type: ignore[arg-type]
+                    raise NotAuthorizedError(secret_hash)
 
-            user = self.admin_get_user(user_pool.id, username)  # type: ignore[arg-type]
+            user = self.admin_get_user(user_pool.id, username)
+
+            if not user.enabled:
+                raise NotAuthorizedError("User is disabled.")
 
             if user.status is UserStatus.UNCONFIRMED:
                 raise UserNotConfirmedException("User is not confirmed.")
@@ -1822,6 +1874,9 @@ class CognitoIdpBackend(BaseBackend):
 
             if not user:
                 raise UserNotFoundError(username)
+
+            if not user.enabled:
+                raise NotAuthorizedError("User is disabled.")
 
             if user.password != password:
                 raise NotAuthorizedError("Incorrect username or password.")
@@ -1992,7 +2047,7 @@ class CognitoIdpBackend(BaseBackend):
         # If we require symbols, we assume False - and check a symbol is present
         # If we don't require symbols, we assume True - and we could technically skip the for-loop
         flag_sc = not require_symbols
-        sc = "^ $ * . [ ] { } ( ) ? ! @ # % & / \\ , > < ' : ; | _ ~ ` = + -"
+        sc = "^ $ * . [ ] { } ( ) ? \" ! @ # % & / \\ , > < ' : ; | _ ~ ` = + -"
         for i in password:
             if i in sc:
                 flag_sc = True
@@ -2031,10 +2086,31 @@ class CognitoIdpBackend(BaseBackend):
                 _, username = user_pool.access_tokens[access_token]
                 user = self.admin_get_user(user_pool.id, username)
 
+                email = self._find_attr("email", attributes)
+                self._verify_email_is_not_used(user_pool.id, email)
+
                 user.update_attributes(attributes)
                 return
 
         raise NotAuthorizedError(access_token)
+
+    def _find_attr(self, name: str, attrs: List[Dict[str, str]]) -> Optional[str]:
+        return next((a["Value"] for a in attrs if a["Name"] == name), None)
+
+    def _verify_email_is_not_used(
+        self, user_pool_id: str, email: Optional[str]
+    ) -> None:
+        if not email:
+            # We're not updating emails
+            return
+        user_pool = self.describe_user_pool(user_pool_id)
+        if "email" not in user_pool.extended_config.get("UsernameAttributes", []):
+            # email is not used as a username - duplicate emails are allowed
+            return
+
+        for user in user_pool.users.values():
+            if user.attribute_lookup.get("email", "") == email:
+                raise AliasExistsException
 
 
 class RegionAgnosticBackend:

@@ -1,10 +1,715 @@
 Moto Changelog
 ==============
 
+4.2.3
+-----
+Docker Digest for 4.2.3: <autopopulateddigest>
+
+    New Services:
+        * RoboMaker:
+            * create_robot_application()
+            * delete_robot_application()
+            * describe_robot_application()
+            * list_robot_applications()
+
+    New Methods:
+        * ElasticBeanstalk:
+            * delete_application()
+
+        * Events:
+            * create_partner_event_source()
+            * delete_partner_event_source()
+            * describe_event_source()
+            * describe_partner_event_source()
+            * put_partner_events()
+
+    Miscellaneous:
+        * Core: The mocked ACCESS_KEY has been changed from `foobar_key` to `FOOBARKEY`, to align with AWS guidelines
+        * Core: set_initial_no_auth_action_count() now supports SSM actions
+        * Core: Fixed a memory leak when comparing requests (introduced in 4.1.13)
+        * Athena: get_query_execution() now returns a StatementType dependent on the provided query
+        * DynamoDB: query() now throws an exception when the KeyConditionExpression contains a literal value
+        * EBS: put_snapshot_block() now supports random bytes
+        * EC2: describe_transit_gateways() now supports filtering by tags
+        * ELBv2: describe_target_groups() now throws an exception for invalid input parameters
+        * ELBv2: describe_target_groups() now sorts the result before returning it
+        * ELBv2: create_target_group() now has improved validation and default values
+        * ELBv2: create_rule() now creates links between the TargetGroups and LoadBalancers
+        * Events: put_events() now support HTTP targets
+        * IAM policy validation now takes the provided Resource-argument into account when validating access to STS-resources
+        * IAM: get_role() now returns the LastUsed-parameter, provided the role was assumed and used
+        * KMS: sign/verify now uses the original message when signing, not the base64-version
+        * Lambda: invoke() now loads any Layers provided in the create_function()
+        * S3: put_bucket_logging() now supports bucket policies (as well as ACP's)
+        * S3: Range requests are now more permissive (following AWS' behaviour)
+        * SFN: list_executions() now returns the StopDate-attribute
+
+4.2.2
+------
+Docker Digest for 4.2.2: <autopopulateddigest>
+
+    See 4.2.1 - no functional changes.
+
+4.2.1
+------
+Docker Digest for 4.2.1: <autopopulateddigest>
+
+    New Services:
+        * Sagemaker Runtime:
+            * invoke_endpoint()
+
+    New Methods:
+        * CognitoIDP:
+            * describe_resource_server()
+            * list_resource_servers()
+
+        * CognitoIDP:
+            * create_cache_cluster()
+            * delete_cache_cluster()
+            * describe_cache_clusters()
+
+        * IdentityStore:
+            * list_users()
+
+        * Logs:
+            * describe_query_results()
+            * get_query_results()
+            * list_tags_for_resource()
+            * tag_resource()
+            * untag_resource()
+
+        * Sagemaker:
+            * list_notebook_instances()
+
+    Miscellaneous:
+        * EC2: describe_transit_gateways() now returns the ARN
+        * IAM policies now allow S3 accesspoint arns
+        * KMS: sign() now supports RSASSA_PSS_SHA_384, RSASSA_PSS_SHA_512 and RSASSA_PKCS1_* algorithms
+        * Logs: Now supports two subscription filters
+        * RDS: Clusters now support the ServerlessV2ScalingConfiguration parameter
+        * ResourceGroupsTaggingAPI: tag_resource() now supports RDS resources
+        * S3: CrossAccount access can now be disabled, using MOTO_S3_ALLOW_CROSSACCOUNT_ACCESS=false
+        * SecretsManager: Allow creation/update of secrets without values
+        * SES: set_identity_mail_from_domain() - the Identity can now also be an email
+
+
+4.2.0
+------
+Docker Digest for 4.2.0: _sha256:92e59875783037b2558067d2d3f9dd2502c140881ff5c44c44ddbce6658a89b7_
+
+    General:
+        The Docker image is now based on Python 3.11 (instead of 3.7)
+
+4.1.15
+------
+Docker Digest for 4.1.15: _sha256:eb63b1e0cbbd757e4596844e6ac1865660cbf8e358203b79e5404d57de94dd69_
+
+    New Services:
+        * APIGateway Management API:
+            * delete_connection()
+            * get_connection()
+            * post_to_connection()
+
+    New Methods:
+        * Autoscaling:
+            * delete_warm_pool()
+            * describe_warm_pool()
+            * put_warm_pool()
+
+        * IdentityStore:
+            * list_groups()
+
+        * IOTData:
+            * list_named_shadows_for_thing()
+
+        * MQ:
+            * list_tags()
+
+        * ServiceDiscovery:
+            * update_private_dns_namespace()
+            * update_public_dns_namespace()
+
+    Miscellaneous:
+        * ACM-PCA: create_certificate_authority() now supports the KeyStorageSecurityStandard-parameter
+        * Batch: create_job_definition() now returns more default fields in the containerProperties field
+        * CloudTrail: get_trail_status now works with MultiRegion trails
+        * CognitoIDP: UserPools now return the AccountRecoverySetting-field by default
+        * DynamoDB: query() now throws an exception when providing empty ProjectionExpressions/FilterExpressions
+        * EC2: describe_vpc_endpoint_services() now returns user-defined ones
+        * EC2: run_instances() now supports the Monitoring-attribute
+        * IOT: group names can now contain special characters
+        * IOTData now supports named shadows
+        * KMS: create_key() now supports KeySpecs RSA_3072 and RSA_4096
+        * KMS: create_key() now validates the provided KeySpec
+        * Lambda: create_function() now fails when creating a function with a name that already exists
+        * Lambda: put_function_concurrency() now errors on a quota that exceeds the value set by MOTO_LAMBDA_CONCURRENCY_QUOTA
+        * Lambda: update_function_code() now supports the ImageUri-attribute
+        * RDS: describe_db_cluster_snapshots() now returns the TagList-property
+        * ResourceTaggingsAPI: Now supports Glue resources
+        * S3: Authentication now allows specific resources in the IAM access policy 
+        * S3: select_object_content() now takes RecordDelimiter into account
+        * Scheduler: create_scheduler() now errors on duplicate names
+        * TimestreamWrite: create_table() now supports the Schema-attribute
+
+
+4.1.14
+------
+Docker Digest for 4.1.14: _sha256:4cc82c0803c6b578d5c4146a8e38ff0387dec565483cfaa63eb238cb867e97e6_
+
+    New Methods:
+        * SageMaker:
+            * create_model_package()
+            * create_model_package_group()
+            * describe_model_package()
+            * list_model_packages()
+
+    Miscellaneous:
+        * CloudFormation: describe_stack_instances() now returns the StackInstanceStatus-attribute
+        * CloudFront: update_distribution() now supports the DefaultRootObject-parameter
+        * CloudWatch: get_metric_data() now support (simple) Expressions
+        * CognitoIDP: initiate_auth() and admin_initiate_auth() now throw a NotAuthorizedError for disabled users
+        * EC2 VPC's: Add CloudFront, Ground Station and Lattice prefix lists
+        * IOT: search_index() now returns the connectivity-attribute
+        * Organizations: Introduce more trusted service principals
+        * RDS: create_db_cluster() now supports the VpcSecurityGroupIds-parameter
+        * S3: Optional support for CRC32C checksums
+        * SNS: publish_batch() now sends the required `MessageDeduplicationId` for FIFO queues
+        * SQS: send_message_batch() now only throws a `BatchRequestTooLong` if the sum of all messages exceed the limit 
+
+4.1.13
+------
+Docker Digest for 4.1.13: _sha256:ec471bcfbf66def946466398f002e8edfbb667bde7b1d8033aedbdd4453fbb8e_
+
+    General:
+        * The ISO-regions introduced in 4.1.12 are now locked behind an environment variable: `MOTO_ENABLE_ISO_REGIONS`
+        * General performance improvements in the URL matching logic - especially `mock_all` users should notice improvements
+
+    New Methods:
+        * APIGatewayV2:
+            * create_stage()
+            * delete_stage()
+            * get_stage()
+            * get_stages()
+
+        * CloudFront:
+            * create_origin_access_control()
+            * delete_origin_access_control()
+            * get_origin_access_control()
+            * list_origin_access_controls()
+            * update_origin_access_control()
+
+        * Lambda:
+            * list_aliases()
+
+        * Logs:
+            * delete_destination()
+            * describe_destinations()
+            * get_destination()
+            * put_destination()
+            * put_destination_policy()
+
+        * Route53:
+            * get_health_check_status()
+
+        * SSM:
+            * deregister_task_from_maintenance_window()
+            * describe_maintenance_window_tasks()
+            * register_task_with_maintenance_window()
+
+    Miscellaneous:
+        * Batch: create_compute_environment() now validates instanceRole and minvCpu
+        * CloudFront: create_distribution() now correctly handles a single alias
+        * CloudFront - CustomOrigins now have default timeouts if not supplied
+        * DynamoDB: delete_item() now throws the correct error when the table is not found
+        * EC2: describe_security_group_rules() now returns the GroupId
+        * ECR: create_repository() now validates the repositoryName-parameter
+        * Lambda: create_function() now returns the ImageConfigResponse and EphemeralStorage parameters
+        * IOTData: publish() can now handle non-Unicode bytes
+        * RDS: Automated snapshots now have the appropriate SnapshotType
+        * Route53: create_hosted_zone() now returns the Location
+        * Scheduler: get_schedule() now returns the CreationDate and LastModificationDate
+        * SecretsManager: delete_secret() now throws an error when setting the Recovery to 0 days
+        * StepFunctions: start_execution() now validates the name-length
+
+
+4.1.12
+------
+Docker Digest for 4.1.12: _sha256:38e34a1ee4042fd52f15703c2e750780fe0fd809b2745fd263b2d1de33566590_
+
+    General:
+        * Support for ISO regions
+        * The official Docker image now comes with curl pre-installed
+
+    New Services:
+        * AppConfig:
+            * create_application()
+            * create_configuration_profile()
+            * create_hosted_configuration_version()
+            * delete_application()
+            * delete_configuration_profile()
+            * delete_hosted_configuration_version()
+            * get_application()
+            * get_configuration_profile()
+            * get_hosted_configuration_version()
+            * list_configuration_profiles()
+            * list_tags_for_resource()
+            * tag_resource()
+            * untag_resource()
+            * update_application()
+            * update_configuration_profile()
+
+    New Methods:
+        * IdentityStore:
+            * create_user()
+            * describe_user()
+            * delete_user()
+            * get_group_id()
+            * delete_group()
+            * create_group_membership()
+            * get_group_memberships()
+            * delete_group_membership()
+
+        * SSM:
+            * create_patch_baseline()
+            * describe_patch_baselines()
+            * delete_patch_baseline()
+            * register_target_with_maintenance_window()
+            * describe_maintenance_window_targets()
+            * deregister_target_from_maintenance_window()
+
+
+    Miscellaneous:
+        * Moto Dashboard no longer fails to load after an S3 file is overwritten
+        * CloudFormation: AWS:SSM::Parameter now exposes the PhysicalResourceId
+        * CloudFront: create_invalidation() now behaves correctly when supplying a single Path
+        * CloudWatch: get_metrics_data() now validates the provided start/end times
+        * CodeBuild: create_project() now accepts all ServiceRole ARN's, not just ARN's that end in /service-role/
+        * Config: put_configuration_recorder() now supports resource type exclusions
+        * DMS: describe_replication_tasks() now returns TableMappings and ReplicationTaskSettings in the correct format
+        * DynamoDB now supports ProjectionExpressions on (nested) lists
+        * EC2: New availability zones have been added for ap-south-1, sa-east-1, ca-central-1, us-west-2
+        * EC2: create_flow_logs() now allows different LogDestinations for a single ResourceId
+        * EC2: replace_route() now returns the appropriate error when called with missing route
+        * EC2: create_volume() now supports the Throughput-parameter
+        * ECR: put_image() now correctly overwrites tags on images with multiple tags
+        * IAM: add_role_to_instance_profile() now validates whether a role was already attached (only one is allowed)
+        * Lambda: delete_layer_version() now also accepts function ARNs
+        * MediaConnect: create_flow_payload() no longer requires the Entitlements-parameter
+        * RDS: Further improve Global Cluster behaviour
+        * S3: GET/PUT requests now return Access-Control headers, if a CORS configuration has been set
+        * S3: put_bucket_lifecycle_configuration() now supports multiple Transitions
+        * SESv2: create_contact_list() now correctly reads Topics with special characters
+        * SESv2: send_email() now correctly reads raw emails
+
+
+4.1.11
+------
+Docker Digest for 4.1.11: _sha256:0ac1ec726e428bd3134c10c32639d72f814bbe002b9d2010420850aab8bc2550_
+
+    New Methods:
+
+        * AppSync:
+            * get_introspection_schema()
+
+        * Comprehend:
+            * detect_key_phrases()
+            * detect_pii_entities()
+            * detect_sentiment()
+
+    Miscellaneous:
+        * EC2: describe_key_pairs() now returns the CreateTime-attribute
+        * EC2: describe_spot_fleet_requests() now returns the Tags-attribute
+        * ECR: put_image(): now behaves correctly on duplicate images with duplicate tags
+        * Organizations: create_policy() now supports the Tags-parameter
+        * RDS: creation times of all objects are now in UTC
+        * Redshift: creation times of all objects are now in UTC
+        * S3: Bucket names are now global, meaning they have to be unique across accounts
+        * S3: select_object_content() now supports None-values
+        * S3: select_object_content() now supports nested FROM-clauses (from x.y as xy)
+        * SecretsManager - update_secret() now supports the Description-parameter
+        * SNS now returns the correct error message for non-existing topics
+        * SNS: Topics are no longer accessible across regions (only across accounts)
+        * SNS: delete_topic() is now idempotent and no longer throws an error for non-existent topics
+        * SQS: Requests and responses in JSON-format are now supported
+        * SSM: MaintenanceWindows now have tagging support
+
+4.1.10
+------
+Docker Digest for 4.1.10: _sha256:095d1dfadc71b4c68f05240129a32acf6dd7ba722c78afd4f01d8c7c3af0ebb4_
+
+    New Services:
+        * Glue:
+            * create_session()
+            * delete_session()
+            * get_session()
+            * list_sessions()
+            * stop_session()
+
+        * Sagemaker:
+            * create_transform_job()
+            * describe_transform_job()
+            * list_transform_jobs()
+
+    Miscellaneous:
+        * Core: The `date`-header is now returned for all operations (set to the current date)
+        * AutoScaling: describe_policies() now returns the field `TargetTrackingConfiguration.CustomizedMetricSpecification.Metrics`
+        * Cloudformation: delete_stack_instances() now behaves correctly when deleting multiple regions
+        * EC2: create_route() now takes the `VpcEndpointId`-parameter into account
+        * EC2: describe_instances() now throws an exception when both the InstanceIds and PaginationConfig parameters are supplied
+        * IAM: get_group() now returns the fields `CreateDate` and `PasswordLastUsed`
+        * RDS: start_export_task() now returns the field `SourceType`
+        * S3: aligned checksum calculation with how AWS behaves
+        * S3: now returns `Accept-Ranges`-headers, instead of `AcceptRanges`, in-line with AWS
+        * S3: copy_object() now behaves correctly when copying objects in encrypted buckets
+        * S3: put_object_legal_hold() now takes the VersionId-parameter into account
+        * S3: put_object_retention() now takes the VersionId-parameter into account
+        * SecretsManager: list_secrets now returns the fields `LastRotatedDate` and `NextRotationDate`
+        * SNS: Topics can now be accessed across accounts
+        * SNS: Fixed a bug so that topics without properties can now be deleted using CloudFormation
+
+
+4.1.9
+-----
+Docker Digest for 4.1.9: _sha256:121a51dcf0e42e53a601803bdeb25324d18b2d45f08a79923c65034f4f14448a_
+
+    New Services:
+        * Glue:
+            * batch_get_triggers
+            * create_trigger
+            * delete_trigger
+            * get_trigger
+            * get_triggers
+            * list_triggers
+            * start_trigger
+            * stop_trigger
+
+        * Glue:
+            * create_contact
+            * create_contact_list
+            * delete_contact
+            * delete_contact_list
+            * get_contact
+            * get_contact_list
+            * list_contact_lists
+            * list_contacts
+            * send_email
+
+    Miscellaneous:
+        * Kinesis: Improve calculations on stream limits
+        * EC2: Improve logic behind describe_image_attribute()
+        * S3: Various improvements to the logic behind copy_object()
+        * Scheduler: update_schedule() now supports the GroupName-parameter
+        * SNS: Improve and enhance validation of numeric parameters
+        * SNS: MessageDeduplicationId is now forwarded to SQS queues (Fixes a bug in 4.1.7)
+
+
+4.1.8
+-----
+Docker Digest for 4.1.8: _sha256:e83d868df71b193d625d9fb031282f6632c6c80d0314cfca6780f9a3f37d1f61_
+
+    New Methods:
+        * DynamoDB:
+            * batch_execute_statement()
+            * execute_statement()
+            * execute_transaction()
+
+        * Glue:
+            * batch_get_jobs()
+            * delete_job()
+
+        * KMS:
+            * get_public_key()
+
+    Miscellaneous:
+        * Athena: Fixed a bug causing every call to `get_workgroup(WorkGroup="primary")` to fail
+        * AWSLambda: Performance improvement: Docker images are no longer re-downloaded if they already exist
+        * BatchSimple now uses the environment variable MOTO_SIMPLE_BATCH_FAIL_AFTER=0 to determine whether the job should fail, and after how many seconds
+        * EC2: replace_route() now supports the NetworkInterfaceId-parameter
+        * ECR: batch_get_image() now correctly returns images when requested using an older tag
+        * ELBv2: describe_target_health() now returns the correct error message for unregistered targets
+        * S3: copy_object() now adds a checksum to a copied object if requested
+        * S3: get_object() no longer returns a VersionId for non-versioned buckets
+        * SES: Templates now allow a single curly brace, and no longer assume it's part of a variable
+        * SSM: describe_parameters() now allows filtering by existence of tag-name
+        * StepFunctions: The SF_EXECUTION_HISTORY_TYPE=FAILURE environment variable can now be used to generate failure responses for all operations
+        * STS: assume_role() now stores the AccessKey in the requesting account
+
+
+4.1.7
+-----
+Docker Digest for 4.1.7: _sha256:6b877d5efe86562d27f296638d6b163c7987913c203874578d00fa1f83eea000_
+
+    New Services:
+        * LakeFormation:
+            * batch_grant_permissions()
+            * batch_revoke_permissions()
+            * create_lf_tag()
+            * delete_lf_tag()
+            * deregister_resource()
+            * describe_resource()
+            * get_data_lake_settings()
+            * get_lf_tag()
+            * grant_permissions()
+            * list_data_cells_filter()
+            * list_lf_tags()
+            * list_permissions()
+            * list_resources()
+            * put_data_lake_settings()
+            * register_resource()
+            * revoke_permissions()
+        * RDS Data:
+            * execute_statement()
+        * Scheduler:
+            * create_schedule()
+            * create_schedule_group()
+            * delete_schedule()
+            * delete_schedule_group()
+            * get_schedule()
+            * get_schedule_group()
+            * list_schedule_groups()
+            * list_schedules()
+            * list_tags_for_resource()
+            * tag_resource()
+            * untag_resource()
+            * update_schedule()
+
+    New Methods:
+        * Config: 
+            * delete_retention_configuration()
+            * describe_retention_configurations()
+            * put_retention_configuration()
+        * EC2: 
+            * get_launch_template_data()
+        * RDS:
+            * create_db_cluster_parameter_group()
+            * create_global_cluster()
+            * delete_db_cluster_parameter_group()
+            * delete_global_cluster()
+            * describe_db_cluster_parameter_groups()
+            * describe_db_cluster_parameters()
+            * describe_db_subnet_groups()
+            * describe_global_clusters()
+            * promote_read_replica_db_cluster()
+            * remove_from_global_cluster()
+
+    Miscellaneous:
+        * APIGateway now allows semicolons in paths
+        * CloudFormation now supports Fn::ToJsonString
+        * DynamoDB: update_item() now supports number-sets in the AttributeUpdates-parameter
+        * DynamoDB: query() - The KeyConditionExpression now allows enclosing the sort key condition in brackets
+        * EC2: assign_private_ip_addresses() now supports the PrivateIpAddresses-argument
+        * ECR: put_image() now supports the imageManifestMediaType parameter
+        * ECS: run_task() now validates the provided launch-type
+        * Logs: put_subscription_filter() now supports KinesisStream destinations
+        * RDS: describe_db_clusters() now supports filtering by db-cluster-id and engine
+        * RDS: describe_db_clusters() now returns the parameters KmsKeyId, NetworkType, DBSubnetGroupName, ScalingConfiguration
+        * S3: head_object() now returns the AcceptRanges header
+        * SQS: Improvements in the deduplication-logic
+
+4.1.6
+-----
+Docker Digest for 4.1.6: _sha256:36122dca33cb8f70d84734d1a0a6a5931f7a533fab3c58edd7ca0b2ebe325797_
+
+    New Services:
+        * OpenSearch:
+            * add_tags()
+            * create_domain()
+            * delete_domain()
+            * describe_domain()
+            * describe_domain_config()
+            * get_compatible_versions()
+            * list_tags()
+            * remove_tags()
+            * update_domain_config()
+
+    Methods:
+        * S3: select_object_content()
+
+    Miscellaneous:
+        * Batch: The AWS_BATCH_JOB_MAIN_NODE_PRIVATE_IPV4_ADDRESS-variable now plays nicely with custom Docker networks
+        * CloudFormation now supports deletion of AWS::EC2::Subnet, AWS::EC2::VPC
+        * CloudFormation now supports variable mapping inside "Fn::Sub"
+        * CloudFormation: delete_stack() now adheres to "DeletionPolicy": "Retain" set for individual resources
+        * Events: The EventBusName-parameter is now supported for these methods:
+          delete_rule(), describe_rule(), disable_rule(), enable_rule(), list_rule_names_by_target(), list_rules(), list_targets_by_rule()
+        * RDS: describe_db_clusters() now accepts an ARN as identifier
+        * RDS: describe_db_snapshots() now returns the TagList-attribute
+        * S3: get_object() now returns the AcceptRanges header
+        * S3: head_bucket() now returns the region-header
+        * SecretsManager now supports partial ARN's
+
+
+4.1.5
+-----
+Docker Digest for 4.1.5: _sha256:0e43c36e1b1390106ec43b2e383486c45fef27646838acaa8073cbd2b4a97a31_
+
+    General: 
+        * Our Docker-images are now also hosted in GHCR:
+          https://github.com/getmoto/moto/pkgs/container/motoserver
+
+    New Methods:
+        * Athena:
+            * create_prepared_statement()
+            * get_prepared_statement()
+            * list_named_queries()
+
+        * S3:
+            * get_object_attributes()
+
+        * SecretsManager:
+            * delete_resource_policy()
+            * put_resource_policy()
+
+    Miscellaneous:
+        * Athena: Now automatically creates the default WorkGroup called `primary`
+        * AWSLambda: the default data dir for Docker containers can now be customized using the environment variable MOTO_LAMBDA_DATA_DIR
+        * CloudFormation now supports the resource AWS::CloudFormation::Stack 
+        * CognitoIDP: the ID-token now uses the key cognito:username, instead of username
+        * EC2: describe_security_group_rules() now provides the correct value for the IsEgress-parameter
+        * EC2: revoke_security_group_egress() no longer throws an error when the IPProtocol-argument is not provided
+        * Glue: get_job() now supports the parameters CodeGenConfigurationNodes, ExecutionClass, SourceControlDetails
+        * IOT: delete_certificate() now supports the forceDelete-parameter
+
+
+4.1.4
+-----
+Docker Digest for 4.1.4: _sha256:32ed22e2c69826a90482d0e473c460d60c3c7dc60819d95c0c165e0e978208db_
+
+    General:
+        Data is now deleted after the mock ends. If you use manual mocks, you can still choose the keep the data:
+        mock = mock_sqs()
+        mock.start()
+        mock.stop(remove_data=False)
+
+    New Services:
+        * Neptune:
+            * create_db_cluster()
+            * create_global_cluster()
+            * delete_db_cluster()
+            * delete_global_cluster()
+            * describe_db_clusters()
+            * describe_global_clusters()
+            * describe_orderable_db_instance_options()
+            * modify_db_cluster()
+            * start_db_cluster()
+
+    New Methods:
+        * Glue:
+            * get_jobs()
+            * get_table_version()
+
+    Miscellaneous:
+        * APIGateway: update_rest_api() now updates the policy-attribute
+        * Athena now exposes an endpoint to store mock query results. See http://docs.getmoto.org/en/latest/docs/services/athena.html
+        * CognitoIDP: The idToken now contains the cognito:groups attribute
+        * DynamoDB: scan() now respects the Projection-attribute of a GSI/LSI
+        * KMS: encrypt(), decrypt(), re_encrypt() now accept aliases as arguments
+        * KMS: list_aliases() now supports the KeyId-parameter
+        * Lambda: FIFO Queues are now supported event sources
+        * RDS: create_option_group() now returns the OptionGroupArn-attribute
+        * ResourceGroupsTaggingAPI: get_resources() now supports RDS Clusters and ClusterSnapshots
+        * SSM now includes the parameters at /aws/service/ecs/optimized-ami 
+
+
+4.1.3
+-----
+Docker Digest for 4.1.3: _sha256:3139cdae44d5da35d92d9e385cb878581eef8df3514cbda5cbc3e103488095a7_
+
+    New Services:
+        * IdentityStore:
+            * create_group()
+
+    Miscellaneous:
+        * DynamoDB: create_table() now deals correctly with non-key attributes supplied as part of the KeySchema
+        * Glue: get_partitions() now supports nano-second precision when filtering timestamps
+        * Glue: get_table_version() now returns the Table.VersionId and Table.UpdateTime-attributes
+        * Transcribe: start_transcription_job() now supports the IdentifyMultipleLanguages-parameter
+
+
+4.1.2
+-----
+Docker Digest for 4.1.2: _sha256:742bd95faadb80133aa7082ca6f4d1d71af2f4802833e92348b082b11ec8d4ed_
+
+    New Methods:
+        * Batch:
+            * create_scheduling_policy()
+            * delete_scheduling_policy()
+            * describe_scheduling_policies()
+            * list_scheduling_policies()
+            * update_scheduling_policy()
+
+        * EC2:
+            * allocate_hosts()
+            * describe_hosts()
+            * modify_hosts()
+            * release_hosts()
+
+        * ECS:
+            * put_cluster_capacity_providers()
+            * update_capacity_provider()
+            * update_cluster()
+
+        * Glue:
+            * batch_get_crawlers()
+
+    Miscellaneous:
+        * AWSLambda: Base Images are now pulled from multiple repositories, increasing the number of supported language/versions out of the box
+        * CognitoIDP: admin_update_user_attributes() now checks for duplicate emails
+        * ECS: create_cluster() now supports the parameters configuration, capacityProviders, defaultCapacityProviderStrategy
+        * ECS: delete_cluster() now marks the cluster as INACTIVE, rather than removing it outright, in-line with how AWS behaves
+        * ECS: register_task_definition() now supports the parameters proxyConfiguration, inferenceAccelerators, runtimePlatform, ipcMode, pidMode, ephemeralStorage
+        * ECS: run_task() no longer crashes when providing launchType=FARGATE
+        * ECS now has improved tagging-support
+        * EKS: create_nodegroup() now returns the correct launchTemplate-attributes
+        * Kinesis now supports the streamARN-parameter for all arguments
+        * S3: Improved bucket policy enforcement
+
+
+
+4.1.1
+-----
+Docker Digest for 4.1.1: _sha256:abb85db28568fc355636dac710a8108ba3cdb01bf1c129118cf1ce49eb8c5f07_
+
+    New Methods:
+        * APIGateway:
+            * get_export()
+
+        * EC2:
+            * describe_security_group_rules()
+
+        * Glue:
+            * delete_registry()
+            * get_registry()
+            * get_schema()
+            * list_registries()
+            * update_schema()
+
+        * Sagemaker:
+            * describe_pipeline()
+            * describe_pipeline_definition_for_execution()
+            * describe_pipeline_execution()
+            * list_pipeline_executions()
+            * list_pipeline_parameters_for_execution()
+            * start_pipeline()
+
+    Miscellaneous:
+        * APIGateway: put_integration() now supports the connectionType-parameter
+        * Batch: register_job_definition() now supports type="multinode"
+        * EC2: describe_launch_template_versions() now supports $Latest and $Default versions
+        * ECS: list_services() now throws correct error when providing unknown cluster
+        * ECS: start_task() now supports the tags-parameter
+        * Events: put_events() now supports sending events to an eventbus in another region/account
+        * KMS: list_aliases() now returns the TargetKeyId-attribute
+        * S3: put_bucket_logging() now actually logs incoming requests, when enabled
+        * SES: Fixed a bug where the service was not region-aware, i.e. all resources were shared across regions
+        * SES: improved parser support for email templates
+        * SSM: put_parameter() now validates the value of the Type-parameter
+        * RDS: create_db_instance() now supports the PreferredMaintenanceWindow and PreferredBackupWindow-parameters
+
 
 4.1.0
 -----
-Docker Digest for 4.1.0: <autopopulateddigest>
+Docker Digest for 4.1.0: _sha256:1c38613f7273054650d08f3cb3ce118753296d08ffbfee8c96400c89a529c9ca_
 
     General:
         * Dropped support for Py 3.6

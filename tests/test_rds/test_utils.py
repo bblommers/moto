@@ -5,10 +5,13 @@ from moto.rds.utils import (
     apply_filter,
     merge_filters,
     validate_filters,
+    encode_orderable_db_instance,
+    decode_orderable_db_instance,
+    ORDERABLE_DB_INSTANCE_ENCODING,
 )
 
 
-class TestFilterValidation(object):
+class TestFilterValidation:
     @classmethod
     def setup_class(cls):
         cls.filter_defs = {
@@ -34,13 +37,13 @@ class TestFilterValidation(object):
             validate_filters(filters, self.filter_defs)
 
 
-class Resource(object):
+class Resource:
     def __init__(self, identifier, **kwargs):
         self.identifier = identifier
         self.__dict__.update(kwargs)
 
 
-class TestResourceFiltering(object):
+class TestResourceFiltering:
     @classmethod
     def setup_class(cls):
         cls.filter_defs = {
@@ -61,31 +64,31 @@ class TestResourceFiltering(object):
     def test_filtering_on_nested_attribute(self):
         filters = {"nested-resource": ["nested-id-1"]}
         filtered_resources = apply_filter(self.resources, filters, self.filter_defs)
-        filtered_resources.should.have.length_of(1)
-        filtered_resources.should.have.key("identifier-3")
+        assert len(filtered_resources) == 1
+        assert "identifier-3" in filtered_resources
 
     def test_filtering_on_common_attribute(self):
         filters = {"common-attr": ["common"]}
         filtered_resources = apply_filter(self.resources, filters, self.filter_defs)
-        filtered_resources.should.have.length_of(2)
-        filtered_resources.should.have.key("identifier-1")
-        filtered_resources.should.have.key("identifier-4")
+        assert len(filtered_resources) == 2
+        assert "identifier-1" in filtered_resources
+        assert "identifier-4" in filtered_resources
 
     def test_filtering_on_multiple_attributes(self):
         filters = {"multiple-attrs": ["common"]}
         filtered_resources = apply_filter(self.resources, filters, self.filter_defs)
-        filtered_resources.should.have.length_of(3)
-        filtered_resources.should.have.key("identifier-1")
-        filtered_resources.should.have.key("identifier-4")
-        filtered_resources.should.have.key("identifier-5")
+        assert len(filtered_resources) == 3
+        assert "identifier-1" in filtered_resources
+        assert "identifier-4" in filtered_resources
+        assert "identifier-5" in filtered_resources
 
     def test_filters_with_multiple_values(self):
         filters = {"identifier": ["identifier-0", "identifier-3", "identifier-5"]}
         filtered_resources = apply_filter(self.resources, filters, self.filter_defs)
-        filtered_resources.should.have.length_of(3)
-        filtered_resources.should.have.key("identifier-0")
-        filtered_resources.should.have.key("identifier-3")
-        filtered_resources.should.have.key("identifier-5")
+        assert len(filtered_resources) == 3
+        assert "identifier-0" in filtered_resources
+        assert "identifier-3" in filtered_resources
+        assert "identifier-5" in filtered_resources
 
     def test_multiple_filters(self):
         filters = {
@@ -94,11 +97,11 @@ class TestResourceFiltering(object):
             "multiple-attrs": ["common"],
         }
         filtered_resources = apply_filter(self.resources, filters, self.filter_defs)
-        filtered_resources.should.have.length_of(1)
-        filtered_resources.should.have.key("identifier-1")
+        assert len(filtered_resources) == 1
+        assert "identifier-1" in filtered_resources
 
 
-class TestMergingFilters(object):
+class TestMergingFilters:
     def test_when_filters_to_update_is_none(self):
         filters_to_update = {"filter-name": ["value1"]}
         merged = merge_filters(filters_to_update, None)
@@ -132,5 +135,72 @@ class TestMergingFilters(object):
         }
         merged = merge_filters(filters_to_update, filters_to_merge)
         assert len(merged.keys()) == 4
-        for key in merged.keys():
-            assert merged[key] == ["value1", "value2"]
+        for value in merged.values():
+            assert value == ["value1", "value2"]
+
+
+def test_encode_orderable_db_instance():
+    """Verify the data can be encoded/decoded to something more compact.
+
+    Data from AWS comes in a specific format.
+    """
+    original = {
+        "Engine": "neptune",
+        "EngineVersion": "1.0.3.0",
+        "DBInstanceClass": "db.r4.2xlarge",
+        "LicenseModel": "amazon-license",
+        "AvailabilityZones": [
+            {"Name": "us-east-1a"},
+            {"Name": "us-east-1b"},
+            {"Name": "us-east-1c"},
+            {"Name": "us-east-1d"},
+            {"Name": "us-east-1e"},
+            {"Name": "us-east-1f"},
+        ],
+        "MultiAZCapable": False,
+        "ReadReplicaCapable": False,
+        "Vpc": True,
+        "SupportsStorageEncryption": True,
+        "StorageType": "aurora",
+        "SupportsIops": False,
+        "SupportsEnhancedMonitoring": False,
+        "SupportsIAMDatabaseAuthentication": True,
+        "SupportsPerformanceInsights": False,
+        "AvailableProcessorFeatures": [],
+        "SupportedEngineModes": ["provisioned"],
+        "SupportsKerberosAuthentication": False,
+        "OutpostCapable": False,
+        "SupportedActivityStreamModes": [],
+        "SupportsGlobalDatabases": False,
+        "SupportsClusters": True,
+        "Support    edNetworkTypes": ["IPV4"],
+    }
+    short = encode_orderable_db_instance(original)
+    assert decode_orderable_db_instance(short) == original
+
+
+def test_encode_orderable_db_instance__short_format():
+    """Verify this works in a random format.
+
+    We don't know for sure what AWS returns, so it should always work
+    regardless of the input.
+    """
+    short = {
+        "Engine": "neptune",
+        "EngineVersion": "1.0.3.0",
+        "DBInstanceClass": "db.r4.2xlarge",
+        "LicenseModel": "amazon-license",
+        "SupportsKerberosAuthentication": False,
+        "OutpostCapable": False,
+        "SupportedActivityStreamModes": [],
+        "SupportsGlobalDatabases": False,
+        "SupportsClusters": True,
+        "SupportedNetworkTypes": ["IPV4"],
+    }
+    assert decode_orderable_db_instance(encode_orderable_db_instance(short)) == short
+
+
+def test_verify_encoding_is_unique():
+    assert len(set(ORDERABLE_DB_INSTANCE_ENCODING.values())) == len(
+        ORDERABLE_DB_INSTANCE_ENCODING.keys()
+    )

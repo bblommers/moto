@@ -4,6 +4,7 @@ import time
 from datetime import datetime, timedelta
 
 import boto3
+from botocore.config import Config
 from botocore.exceptions import ClientError
 from unittest import SkipTest
 import pytest
@@ -11,8 +12,7 @@ import pytest
 from moto import mock_s3
 from moto.config import mock_config
 from moto.core import DEFAULT_ACCOUNT_ID as ACCOUNT_ID
-
-import sure  # noqa # pylint: disable=unused-import
+from moto.core.utils import utcnow
 
 
 @mock_config
@@ -39,7 +39,7 @@ def test_put_configuration_recorder():
         in ce.value.response["Error"]["Message"]
     )
 
-    # With resource types and flags set to True:
+    # With a combination of bad things:
     bad_groups = [
         {
             "allSupported": True,
@@ -47,9 +47,33 @@ def test_put_configuration_recorder():
             "resourceTypes": ["item"],
         },
         {
+            "allSupported": True,
+            "includeGlobalResourceTypes": True,
+            "resourceTypes": ["item"],
+            "exclusionByResourceTypes": {"resourceTypes": ["item"]},
+        },
+        {
+            "allSupported": True,
+            "includeGlobalResourceTypes": True,
+            "exclusionByResourceTypes": {"resourceTypes": ["item"]},
+        },
+        {
+            "allSupported": True,
+            "includeGlobalResourceTypes": True,
+            "recordingStrategy": {"useOnly": "EXCLUSION_BY_RESOURCE_TYPES"},
+        },
+        {
             "allSupported": False,
             "includeGlobalResourceTypes": True,
             "resourceTypes": ["item"],
+        },
+        {
+            "resourceTypes": ["item"],
+            "exclusionByResourceTypes": {"resourceTypes": ["item"]},
+        },
+        {
+            "resourceTypes": ["item"],
+            "recordingStrategy": {"useOnly": "EXCLUSION_BY_RESOURCE_TYPES"},
         },
         {
             "allSupported": True,
@@ -57,13 +81,27 @@ def test_put_configuration_recorder():
             "resourceTypes": ["item"],
         },
         {
+            "allSupported": True,
+            "includeGlobalResourceTypes": False,
+            "exclusionByResourceTypes": {"resourceTypes": ["item"]},
+        },
+        {
             "allSupported": False,
             "includeGlobalResourceTypes": False,
             "resourceTypes": [],
         },
+        {
+            "exclusionByResourceTypes": {"resourceTypes": []},
+            "recordingStrategy": {"useOnly": "EXCLUSION_BY_RESOURCE_TYPES"},
+        },
+        {
+            "resourceTypes": ["AWS::S3::Bucket"],
+            "exclusionByResourceTypes": {"resourceTypes": ["AWS::S3::Bucket"]},
+        },
         {"includeGlobalResourceTypes": False, "resourceTypes": []},
         {"includeGlobalResourceTypes": True},
         {"resourceTypes": []},
+        {"exclusionByResourceTypes": {"resourceTypes": ["AWS::EC2::Instance"]}},
         {},
     ]
 
@@ -107,6 +145,54 @@ def test_put_configuration_recorder():
     )
     assert "AWS::EC2::Instance" in ce.value.response["Error"]["Message"]
 
+    # ... and again with exclusions:
+    with pytest.raises(ClientError) as ce:
+        client.put_configuration_recorder(
+            ConfigurationRecorder={
+                "name": "default",
+                "roleARN": "somearn",
+                "recordingGroup": {
+                    "allSupported": False,
+                    "includeGlobalResourceTypes": False,
+                    # 2 good, and 2 bad:
+                    "exclusionByResourceTypes": {
+                        "resourceTypes": [
+                            "AWS::EC2::Volume",
+                            "LOLNO",
+                            "AWS::EC2::VPC",
+                            "LOLSTILLNO",
+                        ]
+                    },
+                    "recordingStrategy": {"useOnly": "EXCLUSION_BY_RESOURCE_TYPES"},
+                },
+            }
+        )
+    assert ce.value.response["Error"]["Code"] == "ValidationException"
+    assert "2 validation error detected: Value '['LOLNO', 'LOLSTILLNO']" in str(
+        ce.value.response["Error"]["Message"]
+    )
+    assert "AWS::EC2::Instance" in ce.value.response["Error"]["Message"]
+
+    # With an invalid recording strategy:
+    with pytest.raises(ClientError) as ce:
+        client.put_configuration_recorder(
+            ConfigurationRecorder={
+                "name": "default",
+                "roleARN": "somearn",
+                "recordingGroup": {
+                    "allSupported": True,
+                    "includeGlobalResourceTypes": False,
+                    "recordingStrategy": {"useOnly": "LOLWUT"},
+                },
+            }
+        )
+    assert ce.value.response["Error"]["Code"] == "ValidationException"
+    assert (
+        "1 validation error detected: Value 'LOLWUT' at 'configurationRecorder.recordingGroup.recordingStrategy.useOnly' failed to satisfy "
+        "constraint: Member must satisfy enum value set: [INCLUSION_BY_RESOURCE_TYPES, ALL_SUPPORTED_RESOURCE_TYPES, EXCLUSION_BY_RESOURCE_TYPES]"
+        in str(ce.value.response["Error"]["Message"])
+    )
+
     # Create a proper one:
     client.put_configuration_recorder(
         ConfigurationRecorder={
@@ -116,6 +202,7 @@ def test_put_configuration_recorder():
                 "allSupported": False,
                 "includeGlobalResourceTypes": False,
                 "resourceTypes": ["AWS::EC2::Volume", "AWS::EC2::VPC"],
+                "exclusionByResourceTypes": {"resourceTypes": []},
             },
         }
     )
@@ -131,6 +218,9 @@ def test_put_configuration_recorder():
         "AWS::EC2::Volume" in result[0]["recordingGroup"]["resourceTypes"]
         and "AWS::EC2::VPC" in result[0]["recordingGroup"]["resourceTypes"]
     )
+    assert result[0]["recordingGroup"]["recordingStrategy"] == {
+        "useOnly": "INCLUSION_BY_RESOURCE_TYPES"
+    }
 
     # Now update the configuration recorder:
     client.put_configuration_recorder(
@@ -150,6 +240,68 @@ def test_put_configuration_recorder():
     assert result[0]["recordingGroup"]["allSupported"]
     assert result[0]["recordingGroup"]["includeGlobalResourceTypes"]
     assert len(result[0]["recordingGroup"]["resourceTypes"]) == 0
+    assert result[0]["recordingGroup"]["recordingStrategy"] == {
+        "useOnly": "ALL_SUPPORTED_RESOURCE_TYPES"
+    }
+
+    # Verify that it works with the strategy passed in:
+    client.put_configuration_recorder(
+        ConfigurationRecorder={
+            "name": "testrecorder",
+            "roleARN": "somearn",
+            "recordingGroup": {
+                "allSupported": True,
+                "includeGlobalResourceTypes": True,
+                "recordingStrategy": {"useOnly": "ALL_SUPPORTED_RESOURCE_TYPES"},
+            },
+        }
+    )
+    assert client.describe_configuration_recorders()["ConfigurationRecorders"][0][
+        "recordingGroup"
+    ]["allSupported"]
+
+    # Try this again, but this time, supply all the excess fields as empty:
+    client.put_configuration_recorder(
+        ConfigurationRecorder={
+            "name": "testrecorder",
+            "roleARN": "somearn",
+            "recordingGroup": {
+                "allSupported": True,
+                "includeGlobalResourceTypes": True,
+                "resourceTypes": [],
+                "exclusionByResourceTypes": {"resourceTypes": []},
+                "recordingStrategy": {"useOnly": "ALL_SUPPORTED_RESOURCE_TYPES"},
+            },
+        }
+    )
+    assert client.describe_configuration_recorders()["ConfigurationRecorders"][0][
+        "recordingGroup"
+    ]["allSupported"]
+
+    # Update again for exclusions:
+    client.put_configuration_recorder(
+        ConfigurationRecorder={
+            "name": "testrecorder",
+            "roleARN": "somearn",
+            "recordingGroup": {
+                "exclusionByResourceTypes": {"resourceTypes": ["AWS::EC2::Instance"]},
+                "recordingStrategy": {"useOnly": "EXCLUSION_BY_RESOURCE_TYPES"},
+            },
+        }
+    )
+    result = client.describe_configuration_recorders()["ConfigurationRecorders"]
+    assert len(result) == 1
+    assert result[0]["name"] == "testrecorder"
+    assert result[0]["roleARN"] == "somearn"
+    assert not result[0]["recordingGroup"]["allSupported"]
+    assert not result[0]["recordingGroup"]["includeGlobalResourceTypes"]
+    assert not result[0]["recordingGroup"]["resourceTypes"]
+    assert result[0]["recordingGroup"]["exclusionByResourceTypes"]["resourceTypes"] == [
+        "AWS::EC2::Instance"
+    ]
+    assert result[0]["recordingGroup"]["recordingStrategy"] == {
+        "useOnly": "EXCLUSION_BY_RESOURCE_TYPES"
+    }
 
     # With a default recording group (i.e. lacking one)
     client.put_configuration_recorder(
@@ -161,7 +313,11 @@ def test_put_configuration_recorder():
     assert result[0]["roleARN"] == "somearn"
     assert result[0]["recordingGroup"]["allSupported"]
     assert not result[0]["recordingGroup"]["includeGlobalResourceTypes"]
-    assert not result[0]["recordingGroup"].get("resourceTypes")
+    assert not result[0]["recordingGroup"]["resourceTypes"]
+    assert not result[0]["recordingGroup"]["exclusionByResourceTypes"]["resourceTypes"]
+    assert result[0]["recordingGroup"]["recordingStrategy"] == {
+        "useOnly": "ALL_SUPPORTED_RESOURCE_TYPES"
+    }
 
     # Can currently only have exactly 1 Config Recorder in an account/region:
     with pytest.raises(ClientError) as ce:
@@ -879,6 +1035,21 @@ def test_delivery_channels():
     assert ce.value.response["Error"]["Code"] == "InvalidSNSTopicARNException"
     assert "The sns topic arn" in ce.value.response["Error"]["Message"]
 
+    # With an empty string for the S3 KMS Key ARN:
+    with pytest.raises(ClientError) as ce:
+        client.put_delivery_channel(
+            DeliveryChannel={
+                "name": "testchannel",
+                "s3BucketName": "somebucket",
+                "s3KmsKeyArn": "",
+            }
+        )
+    assert ce.value.response["Error"]["Code"] == "InvalidS3KmsKeyArnException"
+    assert (
+        ce.value.response["Error"]["Message"]
+        == "The arn '' is not a valid kms key or alias arn."
+    )
+
     # With an invalid delivery frequency:
     with pytest.raises(ClientError) as ce:
         client.put_delivery_channel(
@@ -973,6 +1144,7 @@ def test_describe_delivery_channels():
             "name": "testchannel",
             "s3BucketName": "somebucket",
             "snsTopicARN": "sometopicarn",
+            "s3KmsKeyArn": "somekmsarn",
             "configSnapshotDeliveryProperties": {
                 "deliveryFrequency": "TwentyFour_Hours"
             },
@@ -980,10 +1152,11 @@ def test_describe_delivery_channels():
     )
     result = client.describe_delivery_channels()["DeliveryChannels"]
     assert len(result) == 1
-    assert len(result[0].keys()) == 4
+    assert len(result[0].keys()) == 5
     assert result[0]["name"] == "testchannel"
     assert result[0]["s3BucketName"] == "somebucket"
     assert result[0]["snsTopicARN"] == "sometopicarn"
+    assert result[0]["s3KmsKeyArn"] == "somekmsarn"
     assert (
         result[0]["configSnapshotDeliveryProperties"]["deliveryFrequency"]
         == "TwentyFour_Hours"
@@ -1041,18 +1214,12 @@ def test_start_configuration_recorder():
     result = client.describe_configuration_recorder_status()[
         "ConfigurationRecordersStatus"
     ]
-    lower_bound = datetime.utcnow() - timedelta(minutes=5)
+    lower_bound = utcnow() - timedelta(minutes=5)
     assert result[0]["recording"]
     assert result[0]["lastStatus"] == "PENDING"
+    assert lower_bound < result[0]["lastStartTime"].replace(tzinfo=None) <= utcnow()
     assert (
-        lower_bound
-        < result[0]["lastStartTime"].replace(tzinfo=None)
-        <= datetime.utcnow()
-    )
-    assert (
-        lower_bound
-        < result[0]["lastStatusChangeTime"].replace(tzinfo=None)
-        <= datetime.utcnow()
+        lower_bound < result[0]["lastStatusChangeTime"].replace(tzinfo=None) <= utcnow()
     )
 
 
@@ -1091,23 +1258,13 @@ def test_stop_configuration_recorder():
     result = client.describe_configuration_recorder_status()[
         "ConfigurationRecordersStatus"
     ]
-    lower_bound = datetime.utcnow() - timedelta(minutes=5)
+    lower_bound = utcnow() - timedelta(minutes=5)
     assert not result[0]["recording"]
     assert result[0]["lastStatus"] == "PENDING"
+    assert lower_bound < result[0]["lastStartTime"].replace(tzinfo=None) <= utcnow()
+    assert lower_bound < result[0]["lastStopTime"].replace(tzinfo=None) <= utcnow()
     assert (
-        lower_bound
-        < result[0]["lastStartTime"].replace(tzinfo=None)
-        <= datetime.utcnow()
-    )
-    assert (
-        lower_bound
-        < result[0]["lastStopTime"].replace(tzinfo=None)
-        <= datetime.utcnow()
-    )
-    assert (
-        lower_bound
-        < result[0]["lastStatusChangeTime"].replace(tzinfo=None)
-        <= datetime.utcnow()
+        lower_bound < result[0]["lastStatusChangeTime"].replace(tzinfo=None) <= utcnow()
     )
 
 
@@ -1834,9 +1991,10 @@ def test_put_evaluations():
     # this is hard to match against, so remove it
     response["ResponseMetadata"].pop("HTTPHeaders", None)
     response["ResponseMetadata"].pop("RetryAttempts", None)
-    response.should.equal(
-        {"FailedEvaluations": [], "ResponseMetadata": {"HTTPStatusCode": 200}}
-    )
+    assert response == {
+        "FailedEvaluations": [],
+        "ResponseMetadata": {"HTTPStatusCode": 200},
+    }
 
 
 @mock_config
@@ -1853,8 +2011,8 @@ def test_put_organization_conformance_pack():
 
     # then
     arn = response["OrganizationConformancePackArn"]
-    arn.should.match(
-        r"arn:aws:config:us-east-1:\d{12}:organization-conformance-pack/test-pack-\w{8}"
+    assert arn.startswith(
+        f"arn:aws:config:us-east-1:{ACCOUNT_ID}:organization-conformance-pack/test-pack-"
     )
 
     # putting an organization conformance pack with the same name should result in an update
@@ -1866,7 +2024,7 @@ def test_put_organization_conformance_pack():
     )
 
     # then
-    response["OrganizationConformancePackArn"].should.equal(arn)
+    assert response["OrganizationConformancePackArn"] == arn
 
 
 @mock_config
@@ -1883,10 +2041,10 @@ def test_put_organization_conformance_pack_errors():
 
     # then
     ex = e.value
-    ex.operation_name.should.equal("PutOrganizationConformancePack")
-    ex.response["ResponseMetadata"]["HTTPStatusCode"].should.equal(400)
-    ex.response["Error"]["Code"].should.contain("ValidationException")
-    ex.response["Error"]["Message"].should.equal("Template body is invalid")
+    assert ex.operation_name == "PutOrganizationConformancePack"
+    assert ex.response["ResponseMetadata"]["HTTPStatusCode"] == 400
+    assert ex.response["Error"]["Code"] == "ValidationException"
+    assert ex.response["Error"]["Message"] == "Template body is invalid"
 
     # when
     with pytest.raises(ClientError) as e:
@@ -1898,14 +2056,12 @@ def test_put_organization_conformance_pack_errors():
 
     # then
     ex = e.value
-    ex.operation_name.should.equal("PutOrganizationConformancePack")
-    ex.response["ResponseMetadata"]["HTTPStatusCode"].should.equal(400)
-    ex.response["Error"]["Code"].should.contain("ValidationException")
-    ex.response["Error"]["Message"].should.equal(
-        "1 validation error detected: "
-        "Value 'invalid-s3-uri' at 'templateS3Uri' failed to satisfy constraint: "
-        "Member must satisfy regular expression pattern: "
-        "s3://.*"
+    assert ex.operation_name == "PutOrganizationConformancePack"
+    assert ex.response["ResponseMetadata"]["HTTPStatusCode"] == 400
+    assert ex.response["Error"]["Code"] == "ValidationException"
+    assert (
+        ex.response["Error"]["Message"]
+        == "1 validation error detected: Value 'invalid-s3-uri' at 'templateS3Uri' failed to satisfy constraint: Member must satisfy regular expression pattern: s3://.*"
     )
 
 
@@ -1925,14 +2081,14 @@ def test_describe_organization_conformance_packs():
     )
 
     # then
-    response["OrganizationConformancePacks"].should.have.length_of(1)
+    assert len(response["OrganizationConformancePacks"]) == 1
     pack = response["OrganizationConformancePacks"][0]
-    pack["OrganizationConformancePackName"].should.equal("test-pack")
-    pack["OrganizationConformancePackArn"].should.equal(arn)
-    pack["DeliveryS3Bucket"].should.equal("awsconfigconforms-test-bucket")
-    pack["ConformancePackInputParameters"].should.have.length_of(0)
-    pack["ExcludedAccounts"].should.have.length_of(0)
-    pack["LastUpdateTime"].should.be.a("datetime.datetime")
+    assert pack["OrganizationConformancePackName"] == "test-pack"
+    assert pack["OrganizationConformancePackArn"] == arn
+    assert pack["DeliveryS3Bucket"] == "awsconfigconforms-test-bucket"
+    assert len(pack["ConformancePackInputParameters"]) == 0
+    assert len(pack["ExcludedAccounts"]) == 0
+    assert isinstance(pack["LastUpdateTime"], datetime)
 
 
 @mock_config
@@ -1948,14 +2104,12 @@ def test_describe_organization_conformance_packs_errors():
 
     # then
     ex = e.value
-    ex.operation_name.should.equal("DescribeOrganizationConformancePacks")
-    ex.response["ResponseMetadata"]["HTTPStatusCode"].should.equal(400)
-    ex.response["Error"]["Code"].should.contain(
-        "NoSuchOrganizationConformancePackException"
-    )
-    ex.response["Error"]["Message"].should.equal(
-        "One or more organization conformance packs with specified names are not present. "
-        "Ensure your names are correct and try your request again later."
+    assert ex.operation_name == "DescribeOrganizationConformancePacks"
+    assert ex.response["ResponseMetadata"]["HTTPStatusCode"] == 400
+    assert ex.response["Error"]["Code"] == "NoSuchOrganizationConformancePackException"
+    assert (
+        ex.response["Error"]["Message"]
+        == "One or more organization conformance packs with specified names are not present. Ensure your names are correct and try your request again later."
     )
 
 
@@ -1975,22 +2129,22 @@ def test_describe_organization_conformance_pack_statuses():
     )
 
     # then
-    response["OrganizationConformancePackStatuses"].should.have.length_of(1)
+    assert len(response["OrganizationConformancePackStatuses"]) == 1
     status = response["OrganizationConformancePackStatuses"][0]
-    status["OrganizationConformancePackName"].should.equal("test-pack")
-    status["Status"].should.equal("CREATE_SUCCESSFUL")
+    assert status["OrganizationConformancePackName"] == "test-pack"
+    assert status["Status"] == "CREATE_SUCCESSFUL"
     update_time = status["LastUpdateTime"]
-    update_time.should.be.a("datetime.datetime")
+    assert isinstance(update_time, datetime)
 
     # when
     response = client.describe_organization_conformance_pack_statuses()
 
     # then
-    response["OrganizationConformancePackStatuses"].should.have.length_of(1)
+    assert len(response["OrganizationConformancePackStatuses"]) == 1
     status = response["OrganizationConformancePackStatuses"][0]
-    status["OrganizationConformancePackName"].should.equal("test-pack")
-    status["Status"].should.equal("CREATE_SUCCESSFUL")
-    status["LastUpdateTime"].should.equal(update_time)
+    assert status["OrganizationConformancePackName"] == "test-pack"
+    assert status["Status"] == "CREATE_SUCCESSFUL"
+    assert status["LastUpdateTime"] == update_time
 
     # when
     time.sleep(1)
@@ -2004,11 +2158,11 @@ def test_describe_organization_conformance_pack_statuses():
     response = client.describe_organization_conformance_pack_statuses(
         OrganizationConformancePackNames=["test-pack"]
     )
-    response["OrganizationConformancePackStatuses"].should.have.length_of(1)
+    assert len(response["OrganizationConformancePackStatuses"]) == 1
     status = response["OrganizationConformancePackStatuses"][0]
-    status["OrganizationConformancePackName"].should.equal("test-pack")
-    status["Status"].should.equal("UPDATE_SUCCESSFUL")
-    status["LastUpdateTime"].should.be.greater_than(update_time)
+    assert status["OrganizationConformancePackName"] == "test-pack"
+    assert status["Status"] == "UPDATE_SUCCESSFUL"
+    assert status["LastUpdateTime"] > update_time
 
 
 @mock_config
@@ -2024,14 +2178,12 @@ def test_describe_organization_conformance_pack_statuses_errors():
 
     # then
     ex = e.value
-    ex.operation_name.should.equal("DescribeOrganizationConformancePackStatuses")
-    ex.response["ResponseMetadata"]["HTTPStatusCode"].should.equal(400)
-    ex.response["Error"]["Code"].should.contain(
-        "NoSuchOrganizationConformancePackException"
-    )
-    ex.response["Error"]["Message"].should.equal(
-        "One or more organization conformance packs with specified names are not present. "
-        "Ensure your names are correct and try your request again later."
+    assert ex.operation_name == "DescribeOrganizationConformancePackStatuses"
+    assert ex.response["ResponseMetadata"]["HTTPStatusCode"] == 400
+    assert ex.response["Error"]["Code"] == "NoSuchOrganizationConformancePackException"
+    assert (
+        ex.response["Error"]["Message"]
+        == "One or more organization conformance packs with specified names are not present. Ensure your names are correct and try your request again later."
     )
 
 
@@ -2051,15 +2203,15 @@ def test_get_organization_conformance_pack_detailed_status():
     )
 
     # then
-    response["OrganizationConformancePackDetailedStatuses"].should.have.length_of(1)
+    assert len(response["OrganizationConformancePackDetailedStatuses"]) == 1
     status = response["OrganizationConformancePackDetailedStatuses"][0]
-    status["AccountId"].should.equal(ACCOUNT_ID)
-    status["ConformancePackName"].should.equal(
-        f"OrgConformsPack-{arn[arn.rfind('/') + 1 :]}"
+    assert status["AccountId"] == ACCOUNT_ID
+    assert (
+        status["ConformancePackName"] == f"OrgConformsPack-{arn[arn.rfind('/') + 1 :]}"
     )
-    status["Status"].should.equal("CREATE_SUCCESSFUL")
+    assert status["Status"] == "CREATE_SUCCESSFUL"
     update_time = status["LastUpdateTime"]
-    update_time.should.be.a("datetime.datetime")
+    assert isinstance(update_time, datetime)
 
     # when
     time.sleep(1)
@@ -2073,14 +2225,14 @@ def test_get_organization_conformance_pack_detailed_status():
     response = client.get_organization_conformance_pack_detailed_status(
         OrganizationConformancePackName="test-pack"
     )
-    response["OrganizationConformancePackDetailedStatuses"].should.have.length_of(1)
+    assert len(response["OrganizationConformancePackDetailedStatuses"]) == 1
     status = response["OrganizationConformancePackDetailedStatuses"][0]
-    status["AccountId"].should.equal(ACCOUNT_ID)
-    status["ConformancePackName"].should.equal(
-        f"OrgConformsPack-{arn[arn.rfind('/') + 1 :]}"
+    assert status["AccountId"] == ACCOUNT_ID
+    assert (
+        status["ConformancePackName"] == f"OrgConformsPack-{arn[arn.rfind('/') + 1 :]}"
     )
-    status["Status"].should.equal("UPDATE_SUCCESSFUL")
-    status["LastUpdateTime"].should.be.greater_than(update_time)
+    assert status["Status"] == "UPDATE_SUCCESSFUL"
+    assert status["LastUpdateTime"] > update_time
 
 
 @mock_config
@@ -2096,14 +2248,12 @@ def test_get_organization_conformance_pack_detailed_status_errors():
 
     # then
     ex = e.value
-    ex.operation_name.should.equal("GetOrganizationConformancePackDetailedStatus")
-    ex.response["ResponseMetadata"]["HTTPStatusCode"].should.equal(400)
-    ex.response["Error"]["Code"].should.contain(
-        "NoSuchOrganizationConformancePackException"
-    )
-    ex.response["Error"]["Message"].should.equal(
-        "One or more organization conformance packs with specified names are not present. "
-        "Ensure your names are correct and try your request again later."
+    assert ex.operation_name == "GetOrganizationConformancePackDetailedStatus"
+    assert ex.response["ResponseMetadata"]["HTTPStatusCode"] == 400
+    assert ex.response["Error"]["Code"] == "NoSuchOrganizationConformancePackException"
+    assert (
+        ex.response["Error"]["Message"]
+        == "One or more organization conformance packs with specified names are not present. Ensure your names are correct and try your request again later."
     )
 
 
@@ -2124,7 +2274,7 @@ def test_delete_organization_conformance_pack():
 
     # then
     response = client.describe_organization_conformance_pack_statuses()
-    response["OrganizationConformancePackStatuses"].should.have.length_of(0)
+    assert len(response["OrganizationConformancePackStatuses"]) == 0
 
 
 @mock_config
@@ -2140,11 +2290,116 @@ def test_delete_organization_conformance_pack_errors():
 
     # then
     ex = e.value
-    ex.operation_name.should.equal("DeleteOrganizationConformancePack")
-    ex.response["ResponseMetadata"]["HTTPStatusCode"].should.equal(400)
-    ex.response["Error"]["Code"].should.contain(
-        "NoSuchOrganizationConformancePackException"
+    assert ex.operation_name == "DeleteOrganizationConformancePack"
+    assert ex.response["ResponseMetadata"]["HTTPStatusCode"] == 400
+    assert ex.response["Error"]["Code"] == "NoSuchOrganizationConformancePackException"
+    assert (
+        ex.response["Error"]["Message"]
+        == "Could not find an OrganizationConformancePack for given request with resourceName not-existing"
     )
-    ex.response["Error"]["Message"].should.equal(
-        "Could not find an OrganizationConformancePack for given request with resourceName not-existing"
+
+
+@mock_config
+def test_put_retention_configuration():
+    # Test with parameter validation being False to test the retention days check:
+    client = boto3.client(
+        "config",
+        region_name="us-west-2",
+        config=Config(parameter_validation=False, user_agent_extra="moto"),
+    )
+
+    # Less than 30 days:
+    with pytest.raises(ClientError) as ce:
+        client.put_retention_configuration(RetentionPeriodInDays=29)
+    assert (
+        ce.value.response["Error"]["Message"]
+        == "Value '29' at 'retentionPeriodInDays' failed to satisfy constraint: Member must have value greater than or equal to 30"
+    )
+
+    # More than 2557 days:
+    with pytest.raises(ClientError) as ce:
+        client.put_retention_configuration(RetentionPeriodInDays=2558)
+    assert (
+        ce.value.response["Error"]["Message"]
+        == "Value '2558' at 'retentionPeriodInDays' failed to satisfy constraint: Member must have value less than or equal to 2557"
+    )
+
+    # No errors:
+    result = client.put_retention_configuration(RetentionPeriodInDays=2557)
+    assert result["RetentionConfiguration"] == {
+        "Name": "default",
+        "RetentionPeriodInDays": 2557,
+    }
+
+
+@mock_config
+def test_describe_retention_configurations():
+    client = boto3.client("config", region_name="us-west-2")
+
+    # Without any recorder configurations:
+    result = client.describe_retention_configurations()
+    assert not result["RetentionConfigurations"]
+
+    # Create one and then describe:
+    client.put_retention_configuration(RetentionPeriodInDays=2557)
+    result = client.describe_retention_configurations()
+    assert result["RetentionConfigurations"] == [
+        {"Name": "default", "RetentionPeriodInDays": 2557}
+    ]
+
+    # Describe with the correct name:
+    result = client.describe_retention_configurations(
+        RetentionConfigurationNames=["default"]
+    )
+    assert result["RetentionConfigurations"] == [
+        {"Name": "default", "RetentionPeriodInDays": 2557}
+    ]
+
+    # Describe with more than 1 configuration name provided:
+    with pytest.raises(ClientError) as ce:
+        client.describe_retention_configurations(
+            RetentionConfigurationNames=["bad", "entry"]
+        )
+    assert (
+        ce.value.response["Error"]["Message"]
+        == "Value '['bad', 'entry']' at 'retentionConfigurationNames' failed to satisfy constraint: "
+        "Member must have length less than or equal to 1"
+    )
+
+    # Describe with a name that's not default:
+    with pytest.raises(ClientError) as ce:
+        client.describe_retention_configurations(
+            RetentionConfigurationNames=["notfound"]
+        )
+    assert (
+        ce.value.response["Error"]["Message"]
+        == "Cannot find retention configuration with the specified name 'notfound'."
+    )
+
+
+@mock_config
+def test_delete_retention_configuration():
+    client = boto3.client("config", region_name="us-west-2")
+
+    # Create one first:
+    client.put_retention_configuration(RetentionPeriodInDays=2557)
+
+    # Delete with a name that's not default:
+    with pytest.raises(ClientError) as ce:
+        client.delete_retention_configuration(RetentionConfigurationName="notfound")
+    assert (
+        ce.value.response["Error"]["Message"]
+        == "Cannot find retention configuration with the specified name 'notfound'."
+    )
+
+    # Delete it properly:
+    client.delete_retention_configuration(RetentionConfigurationName="default")
+    assert not client.describe_retention_configurations()["RetentionConfigurations"]
+
+    # And again...
+    with pytest.raises(ClientError) as ce:
+        client.delete_retention_configuration(RetentionConfigurationName="default")
+    assert (
+        ce.value.response["Error"]["Message"]
+        == "Cannot find retention configuration with the specified name 'default'."
     )

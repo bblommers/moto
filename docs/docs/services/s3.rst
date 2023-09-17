@@ -73,7 +73,11 @@ s3
 - [ ] get_bucket_website
 - [X] get_object
 - [X] get_object_acl
-- [ ] get_object_attributes
+- [X] get_object_attributes
+  
+        The following attributes are not yet returned: DeleteMarker, RequestCharged, ObjectParts
+        
+
 - [X] get_object_legal_hold
 - [X] get_object_lock_configuration
 - [ ] get_object_retention
@@ -102,10 +106,6 @@ s3
 - [X] put_bucket_lifecycle
 - [ ] put_bucket_lifecycle_configuration
 - [X] put_bucket_logging
-  
-        The logging functionality itself is not yet implemented - we only store the configuration for now.
-        
-
 - [ ] put_bucket_metrics_configuration
 - [ ] put_bucket_notification
 - [X] put_bucket_notification_configuration
@@ -123,6 +123,14 @@ s3
 
 - [X] put_bucket_ownership_controls
 - [X] put_bucket_policy
+  
+        Basic policy enforcement is in place.
+
+        Restrictions:
+         - Only statements with principal=* are taken into account
+         - Conditions are not taken into account
+        
+
 - [X] put_bucket_replication
 - [ ] put_bucket_request_payment
 - [X] put_bucket_tagging
@@ -136,7 +144,17 @@ s3
 - [ ] put_object_tagging
 - [ ] put_public_access_block
 - [ ] restore_object
-- [ ] select_object_content
+- [X] select_object_content
+  
+        Highly experimental. Please raise an issue if you find any inconsistencies/bugs.
+
+        Known missing features:
+         - Function aliases (count(*) as cnt)
+         - Most functions (only count() is supported)
+         - Result is always in JSON
+         - FieldDelimiters are ignored
+        
+
 - [X] upload_part
 - [ ] upload_part_copy
 - [ ] write_get_object_response

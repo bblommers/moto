@@ -11,7 +11,7 @@ jobs:
         python-version: [ 3.7, 3.8, 3.9, "3.10", "3.11" ]
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
@@ -25,7 +25,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{ steps.pip-cache-dir.outputs.dir }}
-          key: pip-${{ matrix.python-version }}-${{ hashFiles('**/setup.cfg') }}-4
+          key: pip-${{ matrix.python-version }}-${{ hashFiles('**/setup.cfg') }}
       - name: Update pip
         if: ${{ steps.pip-cache.outputs.cache-hit != 'true' }}
         run: |
@@ -43,7 +43,7 @@ jobs:
       matrix:
         python-version: [3.9]
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
       with:
@@ -66,189 +66,40 @@ jobs:
     - name: Install project dependencies
       run: |
         pip install -r requirements-dev.txt
-    - name: Lint with flake8
+    - name: Lint
       run:
         make lint
 
-  test:
-    name: Unit test
-    runs-on: ubuntu-latest
+  javatest:
     needs: lint
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: [3.7, 3.8, 3.9, "3.10", "3.11"]
+    uses: ./.github/workflows/tests_sdk_java.yml
 
-    steps:
-    - uses: actions/checkout@v3
-      with:
-        fetch-depth: 0
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Get pip cache dir
-      id: pip-cache
-      run: |
-        echo "dir=$(pip cache dir)" >> $GITHUB_OUTPUT
-    - name: pip cache
-      uses: actions/cache@v3
-      with:
-        path: ${{ steps.pip-cache.outputs.dir }}
-        key: pip-${{ matrix.python-version }}-${{ hashFiles('**/setup.cfg') }}
-    - name: Update pip
-      run: |
-        python -m pip install --upgrade pip
-    - name: Install project dependencies
-      run: |
-        pip install -r requirements-dev.txt
-        pip install pytest-cov
-        pip install pytest-github-actions-annotate-failures
-    - name: Test with pytest
-      run: |
-        echo make test-only
-    - name: "Upload coverage to Codecov"
-      if: ${{ github.repository == 'getmoto/moto'}}
-      uses: codecov/codecov-action@v3
-      with:
-        fail_ci_if_error: false
-        flags: unittests
+  dotnettest:
+    needs: lint
+    uses: ./.github/workflows/tests_sdk_dotnet.yml
+
+  test:
+    needs: [lint]
+    if: "!contains(github.event.pull_request.labels.*.name, 'java')"
+    uses: ./.github/workflows/tests_decoratormode.yml
 
   testserver:
-    name: Unit tests in Server Mode
-    runs-on: ubuntu-latest
-    needs: lint
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: [3.7, 3.8, 3.9, "3.10", "3.11"]
-
-    steps:
-    - uses: actions/checkout@v3
-      with:
-        fetch-depth: 0
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Start MotoServer
-      run: |
-        pip install build
-        python -m build
-        docker run --rm -t --name motoserver -e TEST_SERVER_MODE=true -e AWS_SECRET_ACCESS_KEY=server_secret -e AWS_ACCESS_KEY_ID=server_key -v `pwd`:/moto -p 5000:5000 -v /var/run/docker.sock:/var/run/docker.sock python:3.7-buster /moto/scripts/ci_moto_server.sh &
-        python scripts/ci_wait_for_server.py
-    - name: Get pip cache dir
-      id: pip-cache
-      run: |
-        echo "dir=$(pip cache dir)" >> $GITHUB_OUTPUT
-    - name: pip cache
-      uses: actions/cache@v3
-      with:
-        path: ${{ steps.pip-cache.outputs.dir }}
-        key: pip-${{ matrix.python-version }}-${{ hashFiles('**/setup.cfg') }}
-    - name: Update pip
-      run: |
-        python -m pip install --upgrade pip
-    - name: Install project dependencies
-      run: |
-        pip install -r requirements-dev.txt
-    - name: Test ServerMode/Coverage
-      env:
-        TEST_SERVER_MODE: ${{ true }}
-      run: |
-        echo make test-only
-    - name: "Upload coverage to Codecov"
-      if: ${{ github.repository == 'getmoto/moto'}}
-      uses: codecov/codecov-action@v3
-      with:
-        fail_ci_if_error: false
-        flags: servertests
-    - name: "Stop MotoServer"
-      if: always()
-      run: |
-        mkdir serverlogs
-        pwd
-        ls -la
-        cp server_output.log serverlogs/server_output.log
-        docker stop motoserver
-    - name: Archive TF logs
-      if: always()
-      uses: actions/upload-artifact@v3
-      with:
-        name: motoserver-${{ matrix.python-version }}
-        path: |
-          serverlogs/*
+    needs: [lint]
+    if: "!contains(github.event.pull_request.labels.*.name, 'java')"
+    uses: ./.github/workflows/tests_servermode.yml
 
   testproxy:
-    name: Unit tests in Proxy Mode
-    runs-on: ubuntu-latest
-    needs: lint
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: [3.9, "3.10", "3.11"]
+    needs: [lint]
+    if: "!contains(github.event.pull_request.labels.*.name, 'java')"
+    uses: ./.github/workflows/tests_proxymode.yml
 
-    steps:
-    - uses: actions/checkout@v3
-      with:
-        fetch-depth: 0
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
-      with:
-        python-version: ${{ matrix.python-version }}
-    - name: Get pip cache dir
-      id: pip-cache
-      run: |
-        echo "dir=$(pip cache dir)" >> $GITHUB_OUTPUT
-    - name: pip cache
-      uses: actions/cache@v3
-      with:
-        path: ${{ steps.pip-cache.outputs.dir }}
-        key: pip-${{ matrix.python-version }}-${{ hashFiles('**/setup.py') }}-4
-    - name: Update pip
-      run: |
-        python -m pip install --upgrade pip
-    - name: Install project dependencies
-      run: |
-        pip install -r requirements-dev.txt
-    - name: Start MotoProxy
-      run: |
-        pip install build
-        python -m build
-        docker run --rm -t --name motoproxy -v `pwd`:/moto -p 5005:5005 -v /var/run/docker.sock:/var/run/docker.sock python:3.7-buster /moto/scripts/ci_moto_proxy.sh &
-        python scripts/ci_wait_for_proxy.py
-    - name: Test ProxyMode
-      env:
-        HTTPS_PROXY: "http://127.0.0.1:5005"
-        AWS_CA_BUNDLE: "moto/moto_proxy/ca.crt"
-      run: |
-        pytest tests/test_a*
-    - name: "Stop MotoProxy"
-      if: always()
-      run: |
-        mkdir proxylogs
-        pwd
-        ls -la
-        cp proxy_output.log proxylogs/proxy_output.log
-        docker stop motoproxy
-    - name: Archive Proxy logs
-      if: always()
-      uses: actions/upload-artifact@v3
-      with:
-        name: motoproxy-${{ matrix.python-version }}
-        path: |
-          proxylogs/*
-
-  deploy:
-    name: Deploy
+  release:
+    name: Release
     runs-on: ubuntu-latest
-    needs: [test, testserver, testproxy ]
+    needs: [dotnettest, javatest, test, testserver ]
     if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' && github.repository == 'getmoto/moto' }}
-    strategy:
-      matrix:
-        python-version: [3.8]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
       - name: Set up Python ${{ matrix.python-version }}
@@ -269,6 +120,8 @@ jobs:
           docker build -t motoserver/moto . --tag moto:latest
       # Required to get the correct Digest
       # See https://github.com/docker/build-push-action/issues/461
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
       - name: Login to DockerHub
@@ -276,11 +129,20 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - name: Build and push
-        uses: docker/build-push-action@v2
+      - name: Login to GHCR
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Push to DockerHub and GHCR
+        uses: docker/build-push-action@v4
         with:
           push: true
-          tags: motoserver/moto:latest
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            motoserver/moto:latest
+            ghcr.io/getmoto/motoserver:latest
       - name: Get version number
         run: |
           version=$(grep -oP '(?<=__version__ = ")[0-9.a-z]+(?=")' moto/__init__.py)
@@ -329,7 +191,7 @@ jobs:
             echo "pr_found=true" >> $GITHUB_ENV
           fi
       - name: Leave PR comment with Moto version
-        uses: peter-evans/create-or-update-comment@v1
+        uses: peter-evans/create-or-update-comment@v3
         if: env.pr_found == 'true' && env.pr_repo == 'getmoto/moto'
         with:
           issue-number: ${{ env.pr_nr }}

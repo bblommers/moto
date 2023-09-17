@@ -12,7 +12,12 @@ from collections import defaultdict, OrderedDict
 from moto import settings
 from moto.core.common_types import TYPE_RESPONSE, TYPE_IF_NONE
 from moto.core.exceptions import DryRunClientError
-from moto.core.utils import camelcase_to_underscores, method_names_from_class
+from moto.core.utils import (
+    camelcase_to_underscores,
+    gzip_decompress,
+    method_names_from_class,
+    params_sort_function,
+)
 from moto.utilities.utils import load_resource
 from jinja2 import Environment, DictLoader, Template
 from typing import (
@@ -25,6 +30,7 @@ from typing import (
     Set,
     ClassVar,
     Callable,
+    TypeVar,
 )
 from urllib.parse import parse_qs, parse_qsl, urlparse
 from werkzeug.exceptions import HTTPException
@@ -34,6 +40,9 @@ from xml.dom.minidom import parseString as parseXML
 log = logging.getLogger(__name__)
 
 JINJA_ENVS: Dict[type, Environment] = {}
+
+
+ResponseShape = TypeVar("ResponseShape", bound="BaseResponse")
 
 
 def _decode_dict(d: Dict[Any, Any]) -> Dict[str, Any]:
@@ -122,35 +131,46 @@ class _TemplateEnvironmentMixin(object):
 
 
 class ActionAuthenticatorMixin(object):
-
     request_count: ClassVar[int] = 0
 
-    def _authenticate_and_authorize_action(self, iam_request_cls: type) -> None:
+    def _authenticate_and_authorize_action(
+        self, iam_request_cls: type, resource: str = "*"
+    ) -> None:
         if (
             ActionAuthenticatorMixin.request_count
             >= settings.INITIAL_NO_AUTH_ACTION_COUNT
         ):
+            parsed_url = urlparse(self.uri)  # type: ignore[attr-defined]
+            path = parsed_url.path
+            if parsed_url.query:
+                path += "?" + parsed_url.query
             iam_request = iam_request_cls(
                 account_id=self.current_account,  # type: ignore[attr-defined]
                 method=self.method,  # type: ignore[attr-defined]
-                path=self.path,  # type: ignore[attr-defined]
+                path=path,
                 data=self.data,  # type: ignore[attr-defined]
+                body=self.body,  # type: ignore[attr-defined]
                 headers=self.headers,  # type: ignore[attr-defined]
             )
             iam_request.check_signature()
-            iam_request.check_action_permitted()
+            iam_request.check_action_permitted(resource)
         else:
             ActionAuthenticatorMixin.request_count += 1
 
-    def _authenticate_and_authorize_normal_action(self) -> None:
+    def _authenticate_and_authorize_normal_action(self, resource: str = "*") -> None:
         from moto.iam.access_control import IAMRequest
 
-        self._authenticate_and_authorize_action(IAMRequest)
+        self._authenticate_and_authorize_action(IAMRequest, resource)
 
-    def _authenticate_and_authorize_s3_action(self) -> None:
+    def _authenticate_and_authorize_s3_action(
+        self, bucket_name: Optional[str] = None, key_name: Optional[str] = None
+    ) -> None:
+        arn = f"{bucket_name or '*'}/{key_name}" if key_name else (bucket_name or "*")
+        resource = f"arn:aws:s3:::{arn}"
+
         from moto.iam.access_control import S3IAMRequest
 
-        self._authenticate_and_authorize_action(S3IAMRequest)
+        self._authenticate_and_authorize_action(S3IAMRequest, resource)
 
     @staticmethod
     def set_initial_no_auth_action_count(initial_no_auth_action_count: int) -> Callable[..., Callable[..., TYPE_RESPONSE]]:  # type: ignore[misc]
@@ -200,7 +220,6 @@ class ActionAuthenticatorMixin(object):
 
 
 class BaseResponse(_TemplateEnvironmentMixin, ActionAuthenticatorMixin):
-
     default_region = "us-east-1"
     # to extract region, use [^.]
     # Note that the URL region can be anything, thanks to our MOTO_ALLOW_NONEXISTENT_REGION-config - so we can't have a very specific regex
@@ -214,15 +233,34 @@ class BaseResponse(_TemplateEnvironmentMixin, ActionAuthenticatorMixin):
     access_key_regex = re.compile(
         r"AWS.*(?P<access_key>(?<![A-Z0-9])[A-Z0-9]{20}(?![A-Z0-9]))[:/]"
     )
-    aws_service_spec = None
+    aws_service_spec: Optional["AWSServiceSpec"] = None
 
     def __init__(self, service_name: Optional[str] = None):
         super().__init__()
         self.service_name = service_name
+        self.allow_request_decompression = True
 
     @classmethod
     def dispatch(cls, *args: Any, **kwargs: Any) -> Any:  # type: ignore[misc]
         return cls()._dispatch(*args, **kwargs)
+
+    @classmethod
+    def method_dispatch(  # type: ignore[misc]
+        cls, to_call: Callable[[ResponseShape, Any, str, Any], TYPE_RESPONSE]
+    ) -> Callable[[Any, str, Any], TYPE_RESPONSE]:
+        """
+        Takes a given unbound function (part of a Response class) and executes it for a new instance of this
+        response class.
+        Can be used wherever we want to specify different methods for dispatching in urls.py
+        :param to_call: Unbound method residing in this Response class
+        :return: A wrapper executing the given method on a new instance of this class
+        """
+
+        @functools.wraps(to_call)  # type: ignore
+        def _inner(request: Any, full_url: str, headers: Any) -> TYPE_RESPONSE:
+            return getattr(cls(), to_call.__name__)(request, full_url, headers)
+
+        return _inner
 
     def setup_class(
         self, request: Any, full_url: str, headers: Any, use_raw_body: bool = False
@@ -230,6 +268,8 @@ class BaseResponse(_TemplateEnvironmentMixin, ActionAuthenticatorMixin):
         """
         use_raw_body: Use incoming bytes if True, encode to string otherwise
         """
+        self.is_werkzeug_request = "werkzeug" in str(type(request))
+        self.parsed_url = urlparse(full_url)
         querystring: Dict[str, Any] = OrderedDict()
         if hasattr(request, "body"):
             # Boto
@@ -247,13 +287,20 @@ class BaseResponse(_TemplateEnvironmentMixin, ActionAuthenticatorMixin):
                 querystring[key] = [value]
 
         raw_body = self.body
+
+        # https://github.com/getmoto/moto/issues/6692
+        # Content coming from SDK's can be GZipped for performance reasons
+        if (
+            headers.get("Content-Encoding", "") == "gzip"
+            and self.allow_request_decompression
+        ):
+            self.body = gzip_decompress(self.body)
+
         if isinstance(self.body, bytes) and not use_raw_body:
             self.body = self.body.decode("utf-8")
 
         if not querystring:
-            querystring.update(
-                parse_qs(urlparse(full_url).query, keep_blank_values=True)
-            )
+            querystring.update(parse_qs(self.parsed_url.query, keep_blank_values=True))
         if not querystring:
             if (
                 "json" in request.headers.get("content-type", [])
@@ -290,7 +337,8 @@ class BaseResponse(_TemplateEnvironmentMixin, ActionAuthenticatorMixin):
             pass  # ignore decoding errors, as the body may not contain a legitimate querystring
 
         self.uri = full_url
-        self.path = urlparse(full_url).path
+
+        self.path = self.parsed_url.path
         self.querystring = querystring
         self.data = querystring
         self.method = request.method
@@ -299,8 +347,11 @@ class BaseResponse(_TemplateEnvironmentMixin, ActionAuthenticatorMixin):
 
         self.headers = request.headers
         if "host" not in self.headers:
-            self.headers["host"] = urlparse(full_url).netloc
-        self.response_headers = {"server": "amazon.com"}
+            self.headers["host"] = self.parsed_url.netloc
+        self.response_headers = {
+            "server": "amazon.com",
+            "date": datetime.datetime.now().strftime("%a, %d %b %Y %H:%M:%S GMT"),
+        }
 
         # Register visit with IAM
         from moto.iam.models import mark_account_as_visited
@@ -440,9 +491,13 @@ class BaseResponse(_TemplateEnvironmentMixin, ActionAuthenticatorMixin):
 
     def call_action(self) -> TYPE_RESPONSE:
         headers = self.response_headers
+        if hasattr(self, "_determine_resource"):
+            resource = self._determine_resource()
+        else:
+            resource = "*"
 
         try:
-            self._authenticate_and_authorize_normal_action()
+            self._authenticate_and_authorize_normal_action(resource)
         except HTTPException as http_error:
             response = http_error.description, dict(status=http_error.code)
             return self._send_response(headers, response)
@@ -595,7 +650,7 @@ class BaseResponse(_TemplateEnvironmentMixin, ActionAuthenticatorMixin):
                 if len(parts) != 2 or parts[1] != "member":
                     value_dict[parts[0]] = value_dict.pop(k)
         else:
-            value_dict = list(value_dict.values())[0]  # type: ignore[assignment]
+            value_dict = list(value_dict.values())[0]
 
         return value_dict
 
@@ -683,7 +738,7 @@ class BaseResponse(_TemplateEnvironmentMixin, ActionAuthenticatorMixin):
         }
         """
         params: Dict[str, Any] = {}
-        for k, v in sorted(self.querystring.items()):
+        for k, v in sorted(self.querystring.items(), key=params_sort_function):
             self._parse_param(k, v[0], params)
         return params
 
@@ -838,14 +893,10 @@ class BaseResponse(_TemplateEnvironmentMixin, ActionAuthenticatorMixin):
         return "JSON" in self.querystring.get("ContentType", [])
 
     def error_on_dryrun(self) -> None:
-        self.is_not_dryrun()
-
-    def is_not_dryrun(self, action: Optional[str] = None) -> bool:
         if "true" in self.querystring.get("DryRun", ["false"]):
-            a = action or self._get_param("Action")
+            a = self._get_param("Action")
             message = f"An error occurred (DryRunOperation) when calling the {a} operation: Request would have succeeded, but DryRun flag is set"
             raise DryRunClientError(error_type="DryRunOperation", message=message)
-        return True
 
 
 class _RecursiveDictRef(object):

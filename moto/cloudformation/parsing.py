@@ -1,3 +1,4 @@
+import string
 import functools
 import json
 import logging
@@ -6,6 +7,7 @@ import warnings
 import re
 
 import collections.abc as collections_abc
+from functools import lru_cache
 from typing import (
     Any,
     Dict,
@@ -70,13 +72,6 @@ from .exceptions import (
     UnsupportedAttribute,
 )
 
-# List of supported CloudFormation models
-MODEL_LIST = CloudFormationModel.__subclasses__()
-MODEL_MAP = {model.cloudformation_type(): model for model in MODEL_LIST}
-NAME_TYPE_MAP = {
-    model.cloudformation_type(): model.cloudformation_name_type()
-    for model in MODEL_LIST
-}
 CF_MODEL = TypeVar("CF_MODEL", bound=CloudFormationModel)
 
 # Just ignore these models types for now
@@ -88,6 +83,25 @@ NULL_MODELS = [
 DEFAULT_REGION = "us-east-1"
 
 logger = logging.getLogger("moto")
+
+
+# List of supported CloudFormation models
+@lru_cache()
+def get_model_list() -> List[Type[CloudFormationModel]]:
+    return CloudFormationModel.__subclasses__()
+
+
+@lru_cache()
+def get_model_map() -> Dict[str, Type[CloudFormationModel]]:
+    return {model.cloudformation_type(): model for model in get_model_list()}
+
+
+@lru_cache()
+def get_name_type_map() -> Dict[str, str]:
+    return {
+        model.cloudformation_type(): model.cloudformation_name_type()
+        for model in get_model_list()
+    }
 
 
 class Output(object):
@@ -137,13 +151,16 @@ def clean_json(resource_json: Any, resources_map: "ResourceMap") -> Any:
             return result
 
         if "Fn::GetAtt" in resource_json:
-            resource = resources_map.get(resource_json["Fn::GetAtt"][0])
+            resource_name = resource_json["Fn::GetAtt"][0]
+            resource = resources_map.get(resource_name)
             if resource is None:
-                return resource_json
+                raise ValidationError(
+                    message=f"Template error: instance of Fn::GetAtt references undefined resource {resource_name}"
+                )
             try:
                 return resource.get_cfn_attribute(resource_json["Fn::GetAtt"][1])
             except NotImplementedError as n:
-                logger.warning(str(n).format(resource_json["Fn::GetAtt"][0]))
+                logger.warning(str(n).format(resource_name))
             except UnformattedGetAttTemplateException:
                 raise ValidationError(
                     "Bad Request",
@@ -173,40 +190,41 @@ def clean_json(resource_json: Any, resources_map: "ResourceMap") -> Any:
             return select_list[select_index]
 
         if "Fn::Sub" in resource_json:
-            if isinstance(resource_json["Fn::Sub"], list):
-                warnings.warn(
-                    "Tried to parse Fn::Sub with variable mapping but it's not supported by moto's CloudFormation implementation"
-                )
-            else:
-                fn_sub_value = clean_json(resource_json["Fn::Sub"], resources_map)
-                to_sub = re.findall(r'(?=\${)[^!^"]*?}', fn_sub_value)
-                literals = re.findall(r'(?=\${!)[^"]*?}', fn_sub_value)
-                for sub in to_sub:
-                    if "." in sub:
-                        cleaned_ref = clean_json(
-                            {
-                                "Fn::GetAtt": re.findall(r'(?<=\${)[^"]*?(?=})', sub)[
-                                    0
-                                ].split(".")
-                            },
-                            resources_map,
-                        )
-                    else:
-                        cleaned_ref = clean_json(
-                            {"Ref": re.findall(r'(?<=\${)[^"]*?(?=})', sub)[0]},
-                            resources_map,
-                        )
-                    if cleaned_ref is not None:
-                        fn_sub_value = fn_sub_value.replace(sub, str(cleaned_ref))
-                    else:
-                        # The ref was not found in the template - either it didn't exist, or we couldn't parse it
-                        pass
-                for literal in literals:
-                    fn_sub_value = fn_sub_value.replace(
-                        literal, literal.replace("!", "")
+            template = resource_json["Fn::Sub"]
+
+            if isinstance(template, list):
+                template, mappings = resource_json["Fn::Sub"]
+                for key, value in mappings.items():
+                    template = string.Template(template).safe_substitute(
+                        **{key: str(clean_json(value, resources_map))}
                     )
-                return fn_sub_value
-            pass
+
+            fn_sub_value = clean_json(template, resources_map)
+            to_sub = re.findall(r'(?=\${)[^!^"]*?}', fn_sub_value)
+            literals = re.findall(r'(?=\${!)[^"]*?}', fn_sub_value)
+            for sub in to_sub:
+                if "." in sub:
+                    cleaned_ref = clean_json(
+                        {
+                            "Fn::GetAtt": re.findall(r'(?<=\${)[^"]*?(?=})', sub)[
+                                0
+                            ].split(".")
+                        },
+                        resources_map,
+                    )
+                else:
+                    cleaned_ref = clean_json(
+                        {"Ref": re.findall(r'(?<=\${)[^"]*?(?=})', sub)[0]},
+                        resources_map,
+                    )
+                if cleaned_ref is not None:
+                    fn_sub_value = fn_sub_value.replace(sub, str(cleaned_ref))
+                else:
+                    # The ref was not found in the template - either it didn't exist, or we couldn't parse it
+                    pass
+            for literal in literals:
+                fn_sub_value = fn_sub_value.replace(literal, literal.replace("!", ""))
+            return fn_sub_value
 
         if "Fn::ImportValue" in resource_json:
             cleaned_val = clean_json(resource_json["Fn::ImportValue"], resources_map)
@@ -228,6 +246,14 @@ def clean_json(resource_json: Any, resources_map: "ResourceMap") -> Any:
                 result.append(f"{region}{az}")
             return result
 
+        if "Fn::ToJsonString" in resource_json:
+            return json.dumps(
+                clean_json(
+                    resource_json["Fn::ToJsonString"],
+                    resources_map,
+                )
+            )
+
         cleaned_json = {}
         for key, value in resource_json.items():
             cleaned_val = clean_json(value, resources_map)
@@ -247,18 +273,19 @@ def resource_class_from_type(resource_type: str) -> Type[CloudFormationModel]:
         return None  # type: ignore[return-value]
     if resource_type.startswith("Custom::"):
         return CustomModel
-    if resource_type not in MODEL_MAP:
+    if resource_type not in get_model_map():
         logger.warning("No Moto CloudFormation support for %s", resource_type)
         return None  # type: ignore[return-value]
 
-    return MODEL_MAP.get(resource_type)  # type: ignore[return-value]
+    return get_model_map()[resource_type]
 
 
 def resource_name_property_from_type(resource_type: str) -> Optional[str]:
-    for model in MODEL_LIST:
+    for model in get_model_list():
         if model.cloudformation_type() == resource_type:
             return model.cloudformation_name_type()
-    return NAME_TYPE_MAP.get(resource_type)
+
+    return get_name_type_map().get(resource_type)
 
 
 def generate_resource_name(resource_type: str, stack_name: str, logical_id: str) -> str:
@@ -693,11 +720,8 @@ class ResourceMap(collections_abc.Mapping):  # type: ignore[type-arg]
             instance = self[resource]
             if isinstance(instance, TaggedEC2Resource):
                 self.tags["aws:cloudformation:logical-id"] = resource
-                ec2_models.ec2_backends[self._account_id][
-                    self._region_name
-                ].create_tags(
-                    [instance.physical_resource_id], self.tags
-                )  # type: ignore[attr-defined]
+                backend = ec2_models.ec2_backends[self._account_id][self._region_name]
+                backend.create_tags([instance.physical_resource_id], self.tags)
             if instance and not instance.is_created():
                 all_resources_ready = False
         return all_resources_ready
@@ -766,17 +790,7 @@ class ResourceMap(collections_abc.Mapping):  # type: ignore[type-arg]
         for logical_name in resource_names_by_action["Remove"]:
             resource_json = self._resource_json_map[logical_name]
             resource = self._parsed_resources[logical_name]
-            # ToDo: Standardize this.
-            if hasattr(resource, "physical_resource_id"):
-                resource_name = self._parsed_resources[
-                    logical_name
-                ].physical_resource_id
-            else:
-                resource_name = None
-            parse_and_delete_resource(
-                resource_name, resource_json, self._account_id, self._region_name
-            )
-            self._parsed_resources.pop(logical_name)
+            self._delete_resource(resource, resource_json)
 
         self._template = template
         if parameters:
@@ -817,7 +831,12 @@ class ResourceMap(collections_abc.Mapping):  # type: ignore[type-arg]
             raise last_exception
 
     def delete(self) -> None:
-        remaining_resources = set(self.resources)
+        # Only try to delete resources without a Retain DeletionPolicy
+        remaining_resources = set(
+            key
+            for key, value in self._resource_json_map.items()
+            if not value.get("DeletionPolicy") == "Retain"
+        )
         tries = 1
         while remaining_resources and tries < 5:
             for resource in remaining_resources.copy():
@@ -827,24 +846,12 @@ class ResourceMap(collections_abc.Mapping):  # type: ignore[type-arg]
                         not isinstance(parsed_resource, str)
                         and parsed_resource is not None
                     ):
-                        if parsed_resource and hasattr(parsed_resource, "delete"):
-                            parsed_resource.delete(self._account_id, self._region_name)
-                        else:
-                            if hasattr(parsed_resource, "physical_resource_id"):
-                                resource_name = parsed_resource.physical_resource_id
-                            else:
-                                resource_name = None
 
-                            resource_json = self._resource_json_map[
-                                parsed_resource.logical_resource_id
-                            ]
+                        resource_json = self._resource_json_map[
+                            parsed_resource.logical_resource_id
+                        ]
 
-                            parse_and_delete_resource(
-                                resource_name,
-                                resource_json,
-                                self._account_id,
-                                self._region_name,
-                            )
+                        self._delete_resource(parsed_resource, resource_json)
 
                         self._parsed_resources.pop(parsed_resource.logical_resource_id)
                 except Exception as e:
@@ -856,6 +863,24 @@ class ResourceMap(collections_abc.Mapping):  # type: ignore[type-arg]
             tries += 1
         if tries == 5:
             raise last_exception
+
+    def _delete_resource(
+        self, parsed_resource: Any, resource_json: Dict[str, Any]
+    ) -> None:
+        try:
+            parsed_resource.delete(self._account_id, self._region_name)
+        except (TypeError, AttributeError):
+            if hasattr(parsed_resource, "physical_resource_id"):
+                resource_name = parsed_resource.physical_resource_id
+            else:
+                resource_name = None
+
+            parse_and_delete_resource(
+                resource_name,
+                resource_json,
+                self._account_id,
+                self._region_name,
+            )
 
 
 class OutputMap(collections_abc.Mapping):  # type: ignore[type-arg]
@@ -893,7 +918,7 @@ class OutputMap(collections_abc.Mapping):  # type: ignore[type-arg]
         return iter(self.outputs)
 
     def __len__(self) -> int:
-        return len(self._output_json_map)  # type: ignore[arg-type]
+        return len(self._output_json_map)
 
     @property
     def outputs(self) -> Iterable[str]:
@@ -903,7 +928,7 @@ class OutputMap(collections_abc.Mapping):  # type: ignore[type-arg]
     def exports(self) -> List["Export"]:
         exports = []
         if self.outputs:
-            for value in self._output_json_map.values():  # type: ignore[union-attr]
+            for value in self._output_json_map.values():
                 if value.get("Export"):
                     cleaned_name = clean_json(
                         value["Export"].get("Name"), self._resource_map

@@ -6,6 +6,7 @@ from urllib.parse import unquote
 from moto.core.utils import path_url
 from moto.utilities.aws_headers import amz_crc32, amzn_request_id
 from moto.core.responses import BaseResponse, TYPE_RESPONSE
+from .exceptions import FunctionAlreadyExists, UnknownFunctionException
 from .models import lambda_backends, LambdaBackend
 
 
@@ -46,8 +47,13 @@ class LambdaResponse(BaseResponse):
 
     def aliases(self, request: Any, full_url: str, headers: Any) -> TYPE_RESPONSE:  # type: ignore[return]
         self.setup_class(request, full_url, headers)
+
         if request.method == "POST":
             return self._create_alias()
+        elif request.method == "GET":
+            path = request.path if hasattr(request, "path") else path_url(request.url)
+            function_name = path.split("/")[-2]
+            return self._list_aliases(function_name)
 
     def alias(self, request: Any, full_url: str, headers: Any) -> TYPE_RESPONSE:  # type: ignore[return]
         self.setup_class(request, full_url, headers)
@@ -80,10 +86,12 @@ class LambdaResponse(BaseResponse):
 
     def layers_version(self, request: Any, full_url: str, headers: Any) -> TYPE_RESPONSE:  # type: ignore[return]
         self.setup_class(request, full_url, headers)
+        layer_name = unquote(self.path.split("/")[-3])
+        layer_version = self.path.split("/")[-1]
         if request.method == "DELETE":
-            return self._delete_layer_version()
+            return self._delete_layer_version(layer_name, layer_version)
         elif request.method == "GET":
-            return self._get_layer_version()
+            return self._get_layer_version(layer_name, layer_version)
 
     def layers_versions(self, request: Any, full_url: str, headers: Any) -> TYPE_RESPONSE:  # type: ignore[return]
         self.setup_class(request, full_url, headers)
@@ -117,7 +125,9 @@ class LambdaResponse(BaseResponse):
 
     @amz_crc32
     @amzn_request_id
-    def invoke(self, request: Any, full_url: str, headers: Any) -> Tuple[int, Dict[str, str], Union[str, bytes]]:  # type: ignore[misc]
+    def invoke(
+        self, request: Any, full_url: str, headers: Any
+    ) -> Tuple[int, Dict[str, str], Union[str, bytes]]:
         self.setup_class(request, full_url, headers)
         if request.method == "POST":
             return self._invoke(request)
@@ -126,7 +136,9 @@ class LambdaResponse(BaseResponse):
 
     @amz_crc32
     @amzn_request_id
-    def invoke_async(self, request: Any, full_url: str, headers: Any) -> Tuple[int, Dict[str, str], Union[str, bytes]]:  # type: ignore[misc]
+    def invoke_async(
+        self, request: Any, full_url: str, headers: Any
+    ) -> Tuple[int, Dict[str, str], Union[str, bytes]]:
         self.setup_class(request, full_url, headers)
         if request.method == "POST":
             return self._invoke_async()
@@ -294,10 +306,25 @@ class LambdaResponse(BaseResponse):
 
         return 200, {}, json.dumps(result)
 
+    def _list_aliases(self, function_name: str) -> TYPE_RESPONSE:
+        result: Dict[str, Any] = {"Aliases": []}
+
+        aliases = self.backend.list_aliases(function_name)
+        for alias in aliases:
+            json_data = alias.to_json()
+            result["Aliases"].append(json_data)
+
+        return 200, {}, json.dumps(result)
+
     def _create_function(self) -> TYPE_RESPONSE:
-        fn = self.backend.create_function(self.json_body)
-        config = fn.get_configuration(on_create=True)
-        return 201, {}, json.dumps(config)
+        function_name = self.json_body["FunctionName"].rsplit(":", 1)[-1]
+        try:
+            self.backend.get_function(function_name, None)
+        except UnknownFunctionException:
+            fn = self.backend.create_function(self.json_body)
+            config = fn.get_configuration(on_create=True)
+            return 201, {}, json.dumps(config)
+        raise FunctionAlreadyExists(function_name)
 
     def _create_function_url_config(self) -> TYPE_RESPONSE:
         function_name = unquote(self.path.split("/")[-2])
@@ -492,17 +519,13 @@ class LambdaResponse(BaseResponse):
         layers = self.backend.list_layers()
         return 200, {}, json.dumps({"Layers": layers})
 
-    def _delete_layer_version(self) -> TYPE_RESPONSE:
-        layer_name = self.path.split("/")[-3]
-        layer_version = self.path.split("/")[-1]
-
+    def _delete_layer_version(
+        self, layer_name: str, layer_version: str
+    ) -> TYPE_RESPONSE:
         self.backend.delete_layer_version(layer_name, layer_version)
         return 200, {}, "{}"
 
-    def _get_layer_version(self) -> TYPE_RESPONSE:
-        layer_name = self.path.split("/")[-3]
-        layer_version = self.path.split("/")[-1]
-
+    def _get_layer_version(self, layer_name: str, layer_version: str) -> TYPE_RESPONSE:
         layer = self.backend.get_layer_version(layer_name, layer_version)
         return 200, {}, json.dumps(layer.get_layer_version())
 

@@ -2,7 +2,7 @@
 import base64
 from .exceptions import ResourceNotFoundException
 from moto.core import BaseBackend, BackendDict, BaseModel
-from moto.core.utils import unix_time
+from moto.core.utils import unix_time, utcnow
 from moto.moto_api._internal import mock_random
 from moto.utilities.tagging_service import TaggingService
 
@@ -23,6 +23,7 @@ class CertificateAuthority(BaseModel):
         certificate_authority_configuration: Dict[str, Any],
         certificate_authority_type: str,
         revocation_configuration: Dict[str, Any],
+        security_standard: Optional[str],
     ):
         self.id = mock_random.uuid4()
         self.arn = (
@@ -39,6 +40,8 @@ class CertificateAuthority(BaseModel):
         self.created_at = unix_time()
         self.updated_at: Optional[float] = None
         self.status = "PENDING_CERTIFICATE"
+        self.usage_mode = "SHORT_LIVED_CERTIFICATE"
+        self.security_standard = security_standard or "FIPS_140_2_LEVEL_3_OR_HIGHER"
 
         common_name = self.certificate_authority_configuration.get("Subject", {}).get(
             "CommonName", "Moto.org"
@@ -75,8 +78,8 @@ class CertificateAuthority(BaseModel):
             .issuer_name(issuer)
             .public_key(self.key.public_key())
             .serial_number(cryptography.x509.random_serial_number())
-            .not_valid_before(datetime.datetime.utcnow())
-            .not_valid_after(datetime.datetime.utcnow() + datetime.timedelta(days=365))
+            .not_valid_before(utcnow())
+            .not_valid_after(utcnow() + datetime.timedelta(days=365))
             .sign(self.key, hashes.SHA512(), default_backend())
         )
 
@@ -168,6 +171,8 @@ class CertificateAuthority(BaseModel):
             "RevocationConfiguration": self.revocation_configuration,
             "CreatedAt": self.created_at,
             "Status": self.status,
+            "UsageMode": self.usage_mode,
+            "KeyStorageSecurityStandard": self.security_standard,
         }
         if self.updated_at:
             dct["LastStateChangeAt"] = self.updated_at
@@ -194,6 +199,7 @@ class ACMPCABackend(BaseBackend):
         certificate_authority_configuration: Dict[str, Any],
         revocation_configuration: Dict[str, Any],
         certificate_authority_type: str,
+        security_standard: Optional[str],
         tags: List[Dict[str, str]],
     ) -> str:
         """
@@ -205,6 +211,7 @@ class ACMPCABackend(BaseBackend):
             certificate_authority_configuration=certificate_authority_configuration,
             certificate_authority_type=certificate_authority_type,
             revocation_configuration=revocation_configuration,
+            security_standard=security_standard,
         )
         self.certificate_authorities[authority.arn] = authority
         if tags:

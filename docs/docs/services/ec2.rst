@@ -36,17 +36,20 @@ ec2
 - [X] accept_vpc_peering_connection
 - [ ] advertise_byoip_cidr
 - [X] allocate_address
-- [ ] allocate_hosts
+- [X] allocate_hosts
 - [ ] allocate_ipam_pool_cidr
 - [ ] apply_security_groups_to_client_vpn_target_network
 - [X] assign_ipv6_addresses
 - [X] assign_private_ip_addresses
+- [ ] assign_private_nat_gateway_address
 - [X] associate_address
 - [ ] associate_client_vpn_target_network
 - [X] associate_dhcp_options
 - [ ] associate_enclave_certificate_iam_role
 - [X] associate_iam_instance_profile
 - [ ] associate_instance_event_window
+- [ ] associate_ipam_resource_discovery
+- [ ] associate_nat_gateway_address
 - [X] associate_route_table
 - [X] associate_subnet_cidr_block
 - [ ] associate_transit_gateway_multicast_domain
@@ -94,11 +97,13 @@ ec2
 - [X] create_flow_logs
 - [ ] create_fpga_image
 - [X] create_image
+- [ ] create_instance_connect_endpoint
 - [ ] create_instance_event_window
 - [ ] create_instance_export_task
 - [X] create_internet_gateway
 - [ ] create_ipam
 - [ ] create_ipam_pool
+- [ ] create_ipam_resource_discovery
 - [ ] create_ipam_scope
 - [X] create_key_pair
 - [X] create_launch_template
@@ -173,10 +178,12 @@ ec2
 - [X] delete_fleets
 - [X] delete_flow_logs
 - [ ] delete_fpga_image
+- [ ] delete_instance_connect_endpoint
 - [ ] delete_instance_event_window
 - [X] delete_internet_gateway
 - [ ] delete_ipam
 - [ ] delete_ipam_pool
+- [ ] delete_ipam_resource_discovery
 - [ ] delete_ipam_scope
 - [X] delete_key_pair
 - [X] delete_launch_template
@@ -261,7 +268,7 @@ ec2
 - [ ] describe_client_vpn_target_networks
 - [ ] describe_coip_pools
 - [ ] describe_conversion_tasks
-- [ ] describe_customer_gateways
+- [X] describe_customer_gateways
 - [X] describe_dhcp_options
 - [X] describe_egress_only_internet_gateways
   
@@ -281,15 +288,20 @@ ec2
 - [ ] describe_fpga_images
 - [ ] describe_host_reservation_offerings
 - [ ] describe_host_reservations
-- [ ] describe_hosts
+- [X] describe_hosts
+  
+        Pagination is not yet implemented
+        
+
 - [X] describe_iam_instance_profile_associations
 - [ ] describe_id_format
 - [ ] describe_identity_id_format
-- [ ] describe_image_attribute
+- [X] describe_image_attribute
 - [X] describe_images
 - [ ] describe_import_image_tasks
 - [ ] describe_import_snapshot_tasks
 - [X] describe_instance_attribute
+- [ ] describe_instance_connect_endpoints
 - [X] describe_instance_credit_specifications
 - [ ] describe_instance_event_notification_attributes
 - [ ] describe_instance_event_windows
@@ -299,6 +311,8 @@ ec2
 - [X] describe_instances
 - [X] describe_internet_gateways
 - [ ] describe_ipam_pools
+- [ ] describe_ipam_resource_discoveries
+- [ ] describe_ipam_resource_discovery_associations
 - [ ] describe_ipam_scopes
 - [ ] describe_ipams
 - [ ] describe_ipv6_pools
@@ -336,7 +350,7 @@ ec2
 - [ ] describe_scheduled_instance_availability
 - [ ] describe_scheduled_instances
 - [ ] describe_security_group_references
-- [ ] describe_security_group_rules
+- [X] describe_security_group_rules
 - [X] describe_security_groups
 - [ ] describe_snapshot_attribute
 - [ ] describe_snapshot_tier_status
@@ -349,7 +363,7 @@ ec2
 - [X] describe_spot_price_history
 - [ ] describe_stale_security_groups
 - [ ] describe_store_image_tasks
-- [ ] describe_subnets
+- [X] describe_subnets
 - [X] describe_tags
 - [ ] describe_traffic_mirror_filters
 - [ ] describe_traffic_mirror_sessions
@@ -392,7 +406,7 @@ ec2
 - [X] describe_vpc_endpoint_services
   Return info on services to which you can create a VPC endpoint.
 
-        Currently only the default endpoing services are returned.  When
+        Currently only the default endpoint services are returned.  When
         create_vpc_endpoint_service_configuration() is implemented, a
         list of those private endpoints would be kept and when this API
         is invoked, those private endpoints would be added to the list of
@@ -429,6 +443,8 @@ ec2
 - [ ] disassociate_enclave_certificate_iam_role
 - [X] disassociate_iam_instance_profile
 - [ ] disassociate_instance_event_window
+- [ ] disassociate_ipam_resource_discovery
+- [ ] disassociate_nat_gateway_address
 - [X] disassociate_route_table
 - [X] disassociate_subnet_cidr_block
 - [ ] disassociate_transit_gateway_multicast_domain
@@ -470,10 +486,12 @@ ec2
 - [ ] get_instance_types_from_instance_requirements
 - [ ] get_instance_uefi_data
 - [ ] get_ipam_address_history
+- [ ] get_ipam_discovered_accounts
+- [ ] get_ipam_discovered_resource_cidrs
 - [ ] get_ipam_pool_allocations
 - [ ] get_ipam_pool_cidrs
 - [ ] get_ipam_resource_cidrs
-- [ ] get_launch_template_data
+- [X] get_launch_template_data
 - [ ] get_managed_prefix_list_associations
 - [X] get_managed_prefix_list_entries
 - [ ] get_network_insights_access_scope_analysis_findings
@@ -488,12 +506,13 @@ ec2
 - [ ] get_transit_gateway_policy_table_associations
 - [ ] get_transit_gateway_policy_table_entries
 - [ ] get_transit_gateway_prefix_list_references
-- [ ] get_transit_gateway_route_table_associations
-- [ ] get_transit_gateway_route_table_propagations
+- [X] get_transit_gateway_route_table_associations
+- [X] get_transit_gateway_route_table_propagations
 - [ ] get_verified_access_endpoint_policy
 - [ ] get_verified_access_group_policy
 - [ ] get_vpn_connection_device_sample_configuration
 - [ ] get_vpn_connection_device_types
+- [ ] get_vpn_tunnel_replacement_status
 - [ ] import_client_vpn_client_certificate_revocation_list
 - [ ] import_image
 - [ ] import_instance
@@ -511,7 +530,7 @@ ec2
 - [ ] modify_ebs_default_kms_key_id
 - [ ] modify_fleet
 - [ ] modify_fpga_image_attribute
-- [ ] modify_hosts
+- [X] modify_hosts
 - [ ] modify_id_format
 - [ ] modify_identity_id_format
 - [ ] modify_image_attribute
@@ -526,6 +545,7 @@ ec2
 - [ ] modify_ipam
 - [ ] modify_ipam_pool
 - [ ] modify_ipam_resource_cidr
+- [ ] modify_ipam_resource_discovery
 - [ ] modify_ipam_scope
 - [ ] modify_launch_template
 - [ ] modify_local_gateway_route
@@ -589,7 +609,7 @@ ec2
 - [ ] reject_vpc_endpoint_connections
 - [X] reject_vpc_peering_connection
 - [X] release_address
-- [ ] release_hosts
+- [X] release_hosts
 - [ ] release_ipam_pool_allocation
 - [X] replace_iam_instance_profile_association
 - [X] replace_network_acl_association
@@ -597,6 +617,7 @@ ec2
 - [X] replace_route
 - [X] replace_route_table_association
 - [ ] replace_transit_gateway_route
+- [ ] replace_vpn_tunnel
 - [ ] report_instance_status
 - [X] request_spot_fleet
 - [X] request_spot_instances
@@ -647,6 +668,7 @@ ec2
 - [X] terminate_instances
 - [X] unassign_ipv6_addresses
 - [X] unassign_private_ip_addresses
+- [ ] unassign_private_nat_gateway_address
 - [ ] unmonitor_instances
 - [X] update_security_group_rule_descriptions_egress
 - [X] update_security_group_rule_descriptions_ingress

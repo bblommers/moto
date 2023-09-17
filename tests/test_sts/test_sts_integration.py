@@ -1,7 +1,7 @@
-import boto3
+from base64 import b64encode
 import unittest
 
-from base64 import b64encode
+import boto3
 from moto import mock_dynamodb, mock_sts, mock_iam
 from moto.core import DEFAULT_ACCOUNT_ID as ACCOUNT_ID
 
@@ -24,6 +24,17 @@ class TestStsAssumeRole(unittest.TestCase):
         )
 
         # Assume the new role
+        sts_account_b = boto3.client(
+            "sts",
+            aws_access_key_id=response["Credentials"]["AccessKeyId"],
+            aws_secret_access_key=response["Credentials"]["SecretAccessKey"],
+            aws_session_token=response["Credentials"]["SessionToken"],
+            region_name="us-east-1",
+        )
+        assumed_arn = sts_account_b.get_caller_identity()["Arn"]
+        assert assumed_arn == (
+            f"arn:aws:sts::{self.account_b}:assumed-role/my-role/test-session-name"
+        )
         iam_account_b = boto3.client(
             "iam",
             aws_access_key_id=response["Credentials"]["AccessKeyId"],
@@ -34,7 +45,7 @@ class TestStsAssumeRole(unittest.TestCase):
 
         # Verify new users belong to the different account
         user = iam_account_b.create_user(UserName="user-in-new-account")["User"]
-        user["Arn"].should.equal(
+        assert user["Arn"] == (
             f"arn:aws:iam::{self.account_b}:user/user-in-new-account"
         )
 
@@ -124,7 +135,7 @@ class TestStsAssumeRole(unittest.TestCase):
 
         # Verify new users belong to the different account
         user = iam_account_b.create_user(UserName="user-in-new-account")["User"]
-        user["Arn"].should.equal(
+        assert user["Arn"] == (
             f"arn:aws:iam::{self.account_b}:user/user-in-new-account"
         )
 
@@ -163,11 +174,11 @@ class TestStsAssumeRole(unittest.TestCase):
         )
 
         table = ddb_client.describe_table(TableName="table-in-default-account")["Table"]
-        table["TableArn"].should.equal(
+        assert table["TableArn"] == (
             "arn:aws:dynamodb:us-east-1:123456789012:table/table-in-default-account"
         )
 
         table = ddb_account_b.describe_table(TableName="table-in-new-account")["Table"]
-        table["TableArn"].should.equal(
+        assert table["TableArn"] == (
             f"arn:aws:dynamodb:us-east-1:{self.account_b}:table/table-in-new-account"
         )

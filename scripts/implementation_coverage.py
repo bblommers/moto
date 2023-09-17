@@ -32,6 +32,10 @@ def get_moto_implementation(service_name):
     backends = list(mock().backends.values())
     if backends:
         backend = backends[0]["us-east-1"] if "us-east-1" in backends[0] else backends[0]["global"]
+        # Special use-case - neptune is only reachable via the RDS backend
+        # RDS has an attribute called 'neptune' pointing to the actual NeptuneBackend
+        if service_name == "neptune":
+            backend = backend.neptune
         return backend, mock_name
 
 
@@ -57,6 +61,7 @@ def calculate_extended_implementation_coverage():
         operation_names = [
             xform_name(op) for op in real_client.meta.service_model.operation_names
         ]
+
         for op in operation_names:
             if moto_client and op in dir(moto_client):
                 implemented[op] = getattr(moto_client, op)

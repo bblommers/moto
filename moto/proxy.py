@@ -7,12 +7,13 @@ import ssl
 import sys
 from http.server import HTTPServer
 from socketserver import ThreadingMixIn
+from typing import Any
 
 from moto.moto_proxy import logger
 from moto.moto_proxy.proxy3 import ProxyRequestHandler, with_color, CertificateCreator
 
 
-def signal_handler(signum, frame):  # pylint: disable=unused-argument
+def signal_handler(signum: Any, frame: Any) -> None:  # pylint: disable=unused-argument
     sys.exit(0)
 
 
@@ -37,7 +38,10 @@ def get_help_msg() -> str:
     msg += "\n"
     msg += with_color(37, text=f"\texport AWS_CA_BUNDLE={CertificateCreator.cacert}")
     msg += "\n"
-    msg += with_color(37, text="\tHTTPS_PROXY=http://localhost:5005 MOTO_PROXY_PORT=5005 pytest tests_dir\n")
+    msg += with_color(
+        37,
+        text="\tHTTPS_PROXY=http://localhost:5005 MOTO_PROXY_PORT=5005 pytest tests_dir\n",
+    )
     return msg
 
 
@@ -45,7 +49,7 @@ class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
     address_family = socket.AF_INET
     daemon_threads = True
 
-    def handle_error(self, request, client_address):
+    def handle_error(self, request: Any, client_address: Any) -> Any:
         # surpress socket/ssl related errors
         cls, _ = sys.exc_info()[:2]
         if cls is socket.error or cls is ssl.SSLError:
@@ -54,7 +58,7 @@ class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
             return HTTPServer.handle_error(self, request, client_address)
 
 
-def main(argv=None):
+def main(argv: Any = None) -> None:
     argv = argv or sys.argv[1:]
     parser = argparse.ArgumentParser(
         formatter_class=argparse.RawDescriptionHelpFormatter, description=get_help_msg()

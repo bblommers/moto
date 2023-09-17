@@ -30,7 +30,16 @@ apigatewayv2:
   - TestAccAPIGatewayV2IntegrationResponse
   - TestAccAPIGatewayV2Model
   - TestAccAPIGatewayV2Route
+  - TestAccAPIGatewayV2Stage_basicHTTP
+  - TestAccAPIGatewayV2Stage_basicWebSocket
+  - TestAccAPIGatewayV2Stage_disappears
   - TestAccAPIGatewayV2VPCLink
+appconfig:
+  - TestAccAppConfigConfigurationProfileDataSource_basic
+  - TestAccAppConfigConfigurationProfile_
+  - TestAccAppConfigConfigurationProfilesDataSource_basic
+  - TestAccAppConfigApplication_
+  - TestAccAppConfigHostedConfigurationVersion_
 autoscaling:
   - TestAccAutoScalingAttachment
   - TestAccAutoScalingGroupDataSource
@@ -53,12 +62,9 @@ autoscaling:
   - TestAccAutoScalingLaunchConfiguration_encryptedRootBlockDevice
 batch:
   - TestAccBatchJobDefinition
-  - TestAccBatchJobQueue_basic
-  - TestAccBatchJobQueue_tags
-  - TestAccBatchJobQueue_disappears
-  - TestAccBatchJobQueue_priority
-  - TestAccBatchJobQueue_state
-  - TestAccBatchJobQueue_ComputeEnvironments_externalOrderUpdate
+  - TestAccBatchJobQueue_
+  - TestAccBatchJobQueueDataSource_
+  - TestAccBatchSchedulingPolicy
 ce:
   - TestAccCECostCategory
 cloudformation:
@@ -82,6 +88,7 @@ cloudformation:
 cloudfront:
   - TestAccCloudFrontDistributionDataSource_basic
   - TestAccCloudFrontDistribution_isIPV6Enabled
+  - TestAccCloudFrontOriginAccessControl_
 cloudtrail:
   - TestAccCloudTrailServiceAccount
 cloudwatch:
@@ -115,12 +122,17 @@ comprehend:
   - TestAccComprehendEntityRecognizer_KMSKeys
 dax:
   - TestAccDAXCluster_basic
-  - TestAccDAXCluster_Encryption
+  - TestAccDAXCluster_Encryption_enabled
 dynamodb:
   - TestAccDynamoDBTableItem
 ec2:
   - TestAccEC2AvailabilityZonesDataSource_
   - TestAccEC2CarrierGateway_
+  - TestAccEC2HostDataSource_
+  - TestAccEC2Host_basic
+  - TestAccEC2Host_disappears
+  - TestAccEC2Host_instanceFamily
+  - TestAccEC2Host_tags
   - TestAccEC2InstanceTypeOfferingDataSource_
   - TestAccEC2InstanceTypeOfferingsDataSource_
   - TestAccEC2RouteTableAssociation_
@@ -133,9 +145,27 @@ ec2:
   - TestAccEC2VPNGatewayAttachment_
   - TestAccVPCEgressOnlyInternetGateway_
   - TestAccVPCInternetGateway
-  - TestAccVPCNATGateway_
+  - TestAccVPCNATGateway_basic
+  - TestAccVPCNATGateway_disappears
+  - TestAccVPCNATGateway_ConnectivityType_private
+  - TestAccVPCNATGateway_tags
   - TestAccVPCSecurityGroupDataSource_basic
-  - TestAccVPCSecurityGroupRule_
+  - TestAccVPCSecurityGroupRule_Ingress
+  - TestAccVPCSecurityGroupRule_egress
+  - TestAccVPCSecurityGroupRule_selfReference
+  - TestAccVPCSecurityGroupRule_expectInvalid
+  - TestAccVPCSecurityGroupRule_PartialMatching
+  - TestAccVPCSecurityGroupRule_issue5310
+  - TestAccVPCSecurityGroupRule_race
+  - TestAccVPCSecurityGroupRule_selfSource
+  - TestAccVPCSecurityGroupRule_prefixList
+  - TestAccVPCSecurityGroupRule_ingressDescription
+  - TestAccVPCSecurityGroupRule_egressDescription
+  - TestAccVPCSecurityGroupRule_IngressDescription_updates
+  - TestAccVPCSecurityGroupRule_EgressDescription_updates
+  - TestAccVPCSecurityGroupRule_Description
+  - TestAccVPCSecurityGroupRule_MultipleRuleSearching_allProtocolCrash
+  - TestAccVPCSecurityGroupRule_protocolChange
   - TestAccVPCSecurityGroup_allowAll
   - TestAccVPCSecurityGroup_basic
   - TestAccVPCSecurityGroup_change
@@ -174,10 +204,56 @@ ecr:
   - TestAccECRRepository
   - TestAccECRRepositoryDataSource
   - TestAccECRRepositoryPolicy
+ecs:
+ - TestAccECSCapacityProvider_basic
+ - TestAccECSCapacityProvider_disappears
+ - TestAccECSCapacityProvider_tags
+ - TestAccECSCluster_
+ - TestAccECSClusterCapacityProviders_basic
+ - TestAccECSClusterCapacityProviders_defaults
+ - TestAccECSClusterCapacityProviders_disappears
+ - TestAccECSClusterCapacityProviders_Update
+ - TestAccECSService_clusterName
+ - TestAccECSService_deploymentCircuitBreaker
+ - TestAccECSService_alb
+ - TestAccECSService_multipleTargetGroups
+ - TestAccECSService_DeploymentValues
+ - TestAccECSService_iamRole
+ - TestAccECSService_ServiceRegistries_container
+ - TestAccECSService_renamedCluster
+ - TestAccECSService_familyAndRevision
+ - TestAccECSService_replicaSchedulingStrategy
+ - TestAccECSService_DaemonSchedulingStrategy
+ - TestAccECSService_PlacementStrategy_missing
+ - TestAccECSService_disappears
+ - TestAccECSTaskSet_
+ - TestAccECSTaskDefinition_Docker
+ - TestAccECSTaskDefinition_EFSVolume
+ - TestAccECSTaskDefinition_Fargate
+ - TestAccECSTaskDefinition_ipcMode
+ - TestAccECSTaskDefinition_constraint
+ - TestAccECSTaskDefinition_tags
+ - TestAccECSTaskDefinition_pidMode
+ - TestAccECSTaskDefinition_executionRole
+ - TestAccECSTaskDefinition_service
+ - TestAccECSTaskDefinition_disappears
+ - TestAccECSTaskDefinition_taskRoleARN
+ - TestAccECSTaskDefinition_inferenceAccelerator
+ - TestAccECSTaskDefinition_proxy
+ - TestAccECSTaskDefinition_changeVolumesForcesNewResource
+ - TestAccECSTaskDefinition_invalidContainerDefinition
+ - TestAccECSTaskDefinition_arrays
+ - TestAccECSTaskDefinition_scratchVolume
+ - TestAccECSTaskDefinition_runtimePlatform
+ - TestAccECSTaskDefinition_basic
+ - TestAccECSTaskDefinition_networkMode
 efs:
   - TestAccEFSAccessPoint_
   - TestAccEFSAccessPointDataSource
-  - TestAccEFSFileSystemDataSource
+  - TestAccEFSFileSystemDataSource_availabilityZone
+  - TestAccEFSFileSystemDataSource_id
+  - TestAccEFSFileSystemDataSource_name
+  - TestAccEFSFileSystemDataSource_tags
 elasticbeanstalk:
   - TestAccElasticBeanstalkHostedZoneDataSource
   - TestAccElasticBeanstalkSolutionStackDataSource
@@ -185,7 +261,8 @@ elb:
   - TestAccELBAttachment
   - TestAccELBBackendServerPolicy
   - TestAccELBHostedZoneIDDataSource
-  - TestAccELBListenerPolicy
+  - TestAccELBListenerPolicy_basic
+  - TestAccELBListenerPolicy_disappears
   - TestAccELBServiceAccountDataSource
   - TestAccELBSSLNegotiationPolicy
 elbv2:
@@ -200,13 +277,45 @@ events:
   - TestAccEventsConnection
   - TestAccEventsConnectionDataSource
   - TestAccEventsPermission
+  - TestAccEventsRule
+  - TestAccEventsTarget_basic
+  - TestAccEventsTarget_batch
+  - TestAccEventsTarget_disappears
+  - TestAccEventsTarget_eventBusName
+  - TestAccEventsTarget_ecs
+  - TestAccEventsTarget_eventBusARN
+  - TestAccEventsTarget_full
+  - TestAccEventsTarget_generatedTargetID
+  - TestAccEventsTarget_inputTransformer
+  - TestAccEventsTarget_kinesis
+  - TestAccEventsTarget_ssmDocument
+firehose:
+  - TestAccFirehoseDeliveryStreamDataSource_basic
+  - TestAccFirehoseDeliveryStream_basic
+  - TestAccFirehoseDeliveryStream_missingProcessing
+  - TestAccFirehoseDeliveryStream_HTTPEndpoint_retryDuration
+  - TestAccFirehoseDeliveryStream_ExtendedS3_
+  - TestAccFirehoseDeliveryStream_extendedS3DynamicPartitioningUpdate
+  - TestAccFirehoseDeliveryStream_extendedS3DynamicPartitioning
+  - TestAccFirehoseDeliveryStream_extendedS3KMSKeyARN
+  - TestAccFirehoseDeliveryStream_ExtendedS3Processing_empty
+  - TestAccFirehoseDeliveryStream_extendedS3Updates
+  - TestAccFirehoseDeliveryStream_s3
+  - TestAccFirehoseDeliveryStream_HTTP
+  - TestAccFirehoseDeliveryStream_http
+  - TestAccFirehoseDeliveryStream_splunk
+  - TestAccFirehoseDeliveryStream_Splunk
+glue:
+  - TestAccGlueSchema_
 guardduty:
   - TestAccGuardDuty_serial/Detector/basic
   - TestAccGuardDuty_serial/Filter/basic
 iam:
   - TestAccIAMAccessKey_
   - TestAccIAMAccountAlias_
-  - TestAccIAMGroup_
+  - TestAccIAMGroup_basic
+  - TestAccIAMGroup_disappears
+  - TestAccIAMGroup_nameChange
   - TestAccIAMInstanceProfileDataSource_
   - TestAccIAMGroupPolicy_
   - TestAccIAMOpenIDConnectProvider_
@@ -245,6 +354,8 @@ kms:
   - TestAccKMSKey_Policy_iamServiceLinkedRole
   - TestAccKMSSecretDataSource
   - TestAccKMSSecretsDataSource
+lakeformation:
+  - TestAccLakeFormationResource
 lambda:
   - TestAccLambdaAlias_
   - TestAccLambdaLayerVersion_basic
@@ -253,15 +364,62 @@ lambda:
   - TestAccLambdaLayerVersion_licenseInfo
   - TestAccLambdaLayerVersion_s3
   - TestAccLambdaLayerVersion_update
-  - TestAccLambdaFunctionURL
+  - TestAccLambdaFunctionURL_Alias
+  - TestAccLambdaFunctionURL_basic
+  - TestAccLambdaFunctionURL_TwoURLs
+logs:
+  - TestAccLogsDestination_
+  - TestAccLogsGroupDataSource_basic
+  - TestAccLogsGroupsDataSource_basic
+  - TestAccLogsGroup_basic
+  - TestAccLogsGroup_tags
+  - TestAccLogsStream
 meta:
   - TestAccMetaBillingServiceAccountDataSource
 mq:
   - TestAccMQBrokerDataSource
   - TestAccMQBroker_
+neptune:
+  - TestAccNeptuneCluster_basic
+  - TestAccNeptuneCluster_namePrefix
+  - TestAccNeptuneCluster_serverlessConfiguration
+  - TestAccNeptuneCluster_encrypted
+  - TestAccNeptuneCluster_backupsUpdate
+  - TestAccNeptuneCluster_kmsKey
+  - TestAccNeptuneCluster_tags
+  - TestAccNeptuneCluster_disappears
+  - TestAccNeptuneGlobalCluster_basic
+opensearch:
+  - TestAccOpenSearchDomain_basic
+  - TestAccOpenSearchDomain_LogPublishingOptions_searchSlowLogs
+  - TestAccOpenSearchDomain_AdvancedSecurityOptions
+  - TestAccOpenSearchDomain_autoTuneOptions
+  - TestAccOpenSearchDomain_v23
+  - TestAccOpenSearchDomain_Cluster_
+  - TestAccOpenSearchDomain_disappears
+  - TestAccOpenSearchDomain_VolumeType
+  - TestAccOpenSearchDomain_VPC_
+  - TestAccOpenSearchDomain_Encryption_
+  - TestAccOpenSearchDomain_LogPublishingOptions_
+  - TestAccOpenSearchDomain_Policy_
+  - TestAccOpenSearchDomain_requireHTTPS
+  - TestAccOpenSearchDomain_tags
+  - TestAccOpenSearchDomain_customEndpoint
 quicksight:
   - TestAccQuickSightUser
   - TestAccQuickSightGroup_
+rds:
+  - TestAccRDSCluster_basic
+  - TestAccRDSCluster_disappears
+  - TestAccRDSCluster_EnabledCloudWatchLogsExports_
+  - TestAccRDSCluster_enableHTTPEndpoint
+  - TestAccRDSCluster_engineMode
+  - TestAccRDSCluster_EngineMode
+  - TestAccRDSCluster_GlobalClusterIdentifierEngineMode_
+  - TestAccRDSCluster_identifier
+  - TestAccRDSCluster_tags
+  - TestAccRDSGlobalCluster_basic
+  - TestAccRDSGlobalCluster_storageEncrypted
 redshift:
   - TestAccRedshiftServiceAccountDataSource
 route53|1:
@@ -355,12 +513,27 @@ s3:
   - TestAccS3ObjectsDataSource_fetchOwner
 sagemaker:
   - TestAccSageMakerPrebuiltECRImageDataSource
+scheduler:
+  - TestAccSchedulerSchedule_
+  - TestAccSchedulerScheduleGroup_
+secretsmanager:
+  - TestAccSecretsManagerSecretDataSource_basic
+  - TestAccSecretsManagerSecretPolicy_
+  - TestAccSecretsManagerSecret_RecoveryWindowInDays_recreate
+  - TestAccSecretsManagerSecret_tags
+  - TestAccSecretsManagerSecret_kmsKeyID
+  - TestAccSecretsManagerSecret_withNamePrefix
+  - TestAccSecretsManagerSecret_rotationRules
 servicediscovery:
   - TestAccServiceDiscoveryDNSNamespaceDataSource
   - TestAccServiceDiscoveryHTTPNamespace
   - TestAccServiceDiscoveryPrivateDNSNamespace
   - TestAccServiceDiscoveryPublicDNSNamespace
-  - TestAccServiceDiscoveryService
+  - TestAccServiceDiscoveryService_disappears
+  - TestAccServiceDiscoveryService_http
+  - TestAccServiceDiscoveryService_tags
+  - TestAccServiceDiscoveryService_private_http
+  - TestAccServiceDiscoveryService_public
 signer:
  - TestAccSignerSigningProfileDataSource_basic
  - TestAccSignerSigningProfile_basic

@@ -35,6 +35,7 @@ sagemaker
 - [ ] create_app_image_config
 - [ ] create_artifact
 - [ ] create_auto_ml_job
+- [ ] create_auto_ml_job_v2
 - [ ] create_code_repository
 - [ ] create_compilation_job
 - [ ] create_context
@@ -62,8 +63,8 @@ sagemaker
 - [ ] create_model_card
 - [ ] create_model_card_export_job
 - [ ] create_model_explainability_job_definition
-- [ ] create_model_package
-- [ ] create_model_package_group
+- [X] create_model_package
+- [X] create_model_package_group
 - [ ] create_model_quality_job_definition
 - [ ] create_monitoring_schedule
 - [X] create_notebook_instance
@@ -76,7 +77,7 @@ sagemaker
 - [ ] create_space
 - [ ] create_studio_lifecycle_config
 - [X] create_training_job
-- [ ] create_transform_job
+- [X] create_transform_job
 - [X] create_trial
 - [X] create_trial_component
 - [ ] create_user_profile
@@ -134,6 +135,7 @@ sagemaker
 - [ ] describe_app_image_config
 - [ ] describe_artifact
 - [ ] describe_auto_ml_job
+- [ ] describe_auto_ml_job_v2
 - [ ] describe_code_repository
 - [ ] describe_compilation_job
 - [ ] describe_context
@@ -164,22 +166,22 @@ sagemaker
 - [ ] describe_model_card
 - [ ] describe_model_card_export_job
 - [ ] describe_model_explainability_job_definition
-- [ ] describe_model_package
+- [X] describe_model_package
 - [ ] describe_model_package_group
 - [ ] describe_model_quality_job_definition
 - [ ] describe_monitoring_schedule
 - [ ] describe_notebook_instance
 - [X] describe_notebook_instance_lifecycle_config
-- [ ] describe_pipeline
-- [ ] describe_pipeline_definition_for_execution
-- [ ] describe_pipeline_execution
+- [X] describe_pipeline
+- [X] describe_pipeline_definition_for_execution
+- [X] describe_pipeline_execution
 - [X] describe_processing_job
 - [ ] describe_project
 - [ ] describe_space
 - [ ] describe_studio_lifecycle_config
 - [ ] describe_subscribed_workteam
 - [X] describe_training_job
-- [ ] describe_transform_job
+- [X] describe_transform_job
 - [X] describe_trial
 - [X] describe_trial_component
 - [ ] describe_user_profile
@@ -192,6 +194,7 @@ sagemaker
 - [ ] get_lineage_group_policy
 - [ ] get_model_package_group_policy
 - [ ] get_sagemaker_servicecatalog_portfolio_status
+- [ ] get_scaling_configuration_recommendation
 - [ ] get_search_suggestions
 - [ ] import_hub_content
 - [ ] list_actions
@@ -237,7 +240,7 @@ sagemaker
 - [ ] list_model_explainability_job_definitions
 - [ ] list_model_metadata
 - [ ] list_model_package_groups
-- [ ] list_model_packages
+- [X] list_model_packages
 - [ ] list_model_quality_job_definitions
 - [X] list_models
 - [ ] list_monitoring_alert_history
@@ -245,13 +248,19 @@ sagemaker
 - [ ] list_monitoring_executions
 - [ ] list_monitoring_schedules
 - [ ] list_notebook_instance_lifecycle_configs
-- [ ] list_notebook_instances
+- [X] list_notebook_instances
+  
+        The following parameters are not yet implemented:
+        CreationTimeBefore, CreationTimeAfter, LastModifiedTimeBefore, LastModifiedTimeAfter, NotebookInstanceLifecycleConfigNameContains, DefaultCodeRepositoryContains, AdditionalCodeRepositoryEquals
+        
+
 - [ ] list_pipeline_execution_steps
-- [ ] list_pipeline_executions
-- [ ] list_pipeline_parameters_for_execution
+- [X] list_pipeline_executions
+- [X] list_pipeline_parameters_for_execution
 - [X] list_pipelines
 - [X] list_processing_jobs
 - [ ] list_projects
+- [ ] list_resource_catalogs
 - [ ] list_spaces
 - [ ] list_stage_devices
 - [ ] list_studio_lifecycle_configs
@@ -259,7 +268,7 @@ sagemaker
 - [X] list_tags
 - [X] list_training_jobs
 - [ ] list_training_jobs_for_hyper_parameter_tuning_job
-- [ ] list_transform_jobs
+- [X] list_transform_jobs
 - [X] list_trial_components
 - [X] list_trials
 - [ ] list_user_profiles
@@ -277,7 +286,7 @@ sagemaker
 - [ ] start_inference_experiment
 - [ ] start_monitoring_schedule
 - [X] start_notebook_instance
-- [ ] start_pipeline_execution
+- [X] start_pipeline_execution
 - [ ] stop_auto_ml_job
 - [ ] stop_compilation_job
 - [ ] stop_edge_deployment_stage

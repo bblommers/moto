@@ -1,14 +1,14 @@
-from __future__ import absolute_import
-
-import string
-import re
-import responses
-import requests
-import time
 from collections import defaultdict
-from openapi_spec_validator import validate_spec
+from datetime import datetime
+import re
+import string
+import time
 from typing import Any, Dict, List, Optional, Tuple, Union
 from urllib.parse import urlparse
+
+from openapi_spec_validator import validate_spec
+import requests
+import responses
 
 try:
     from openapi_spec_validator.validation.exceptions import OpenAPIValidationError
@@ -19,6 +19,7 @@ from moto.core import BaseBackend, BackendDict, BaseModel, CloudFormationModel
 from .utils import create_id, to_path
 from moto.core.utils import path_url
 from .exceptions import (
+    BadRequestException,
     ConflictException,
     DeploymentNotFoundException,
     ApiKeyNotFoundException,
@@ -159,6 +160,7 @@ class Integration(BaseModel):
         request_parameters: Optional[Dict[str, Any]] = None,
         content_handling: Optional[str] = None,
         credentials: Optional[str] = None,
+        connection_type: Optional[str] = None,
     ):
         self.integration_type = integration_type
         self.uri = uri
@@ -172,6 +174,7 @@ class Integration(BaseModel):
         self.request_parameters = request_parameters
         self.content_handling = content_handling
         self.credentials = credentials
+        self.connection_type = connection_type
         self.integration_responses: Optional[Dict[str, IntegrationResponse]] = None
 
     def to_json(self) -> Dict[str, Any]:
@@ -194,6 +197,7 @@ class Integration(BaseModel):
             "requestParameters": self.request_parameters,
             "contentHandling": self.content_handling,
             "credentials": self.credentials,
+            "connectionType": self.connection_type,
         }
 
     def create_integration_response(
@@ -500,6 +504,7 @@ class Resource(CloudFormationModel):
         request_parameters: Optional[Dict[str, Any]] = None,
         content_handling: Optional[str] = None,
         credentials: Optional[str] = None,
+        connection_type: Optional[str] = None,
     ) -> Integration:
         integration_method = integration_method or method_type
         integration = Integration(
@@ -514,6 +519,7 @@ class Resource(CloudFormationModel):
             request_parameters=request_parameters,
             content_handling=content_handling,
             credentials=credentials,
+            connection_type=connection_type,
         )
         self.resource_methods[method_type].method_integration = integration
         return integration
@@ -621,7 +627,7 @@ class Stage(BaseModel):
         self.tags = tags
         self.tracing_enabled = tracing_enabled
         self.access_log_settings: Optional[Dict[str, Any]] = None
-        self.web_acl_arn = None
+        self.web_acl_arn: Optional[str] = None
 
     def to_json(self) -> Dict[str, Any]:
         dct: Dict[str, Any] = {
@@ -669,7 +675,7 @@ class Stage(BaseModel):
                     self.tracing_enabled = self._str2bool(op["value"])
                 elif op["path"].startswith("/accessLogSettings/"):
                     self.access_log_settings = self.access_log_settings or {}
-                    self.access_log_settings[op["path"].split("/")[-1]] = op["value"]  # type: ignore[index]
+                    self.access_log_settings[op["path"].split("/")[-1]] = op["value"]
                 else:
                     # (e.g., path could be '/*/*/logging/loglevel')
                     split_path = op["path"].split("/", 3)
@@ -1063,6 +1069,8 @@ class RestAPI(CloudFormationModel):
                     self.binaryMediaTypes = [value]
                 if to_path(self.PROP_DISABLE_EXECUTE_API_ENDPOINT) in path:
                     self.disableExecuteApiEndpoint = bool(value)
+                if to_path(self.PROP_POLICY) in path:
+                    self.policy = value
             elif operaton == self.OPERATION_ADD:
                 if to_path(self.PROP_BINARY_MEDIA_TYPES) in path:
                     self.binaryMediaTypes.append(value)
@@ -1504,7 +1512,7 @@ class APIGatewayBackend(BaseBackend):
             integrationHttpMethod="GET"
         )
         deploy_url = f"https://{api_id}.execute-api.us-east-1.amazonaws.com/dev"
-        requests.get(deploy_url).content.should.equal(b"a fake response")
+        assert requests.get(deploy_url).content == b"a fake response"
 
     Limitations:
      - Integrations of type HTTP are supported
@@ -1566,11 +1574,51 @@ class APIGatewayBackend(BaseBackend):
                 validate_spec(api_doc)  # type: ignore[arg-type]
             except OpenAPIValidationError as e:
                 raise InvalidOpenAPIDocumentException(e)
+            except AttributeError:
+                # Call can fail in Python3.7 due to `typing_extensions 4.6.0` throwing an error
+                # Easiest to just ignore this for now - Py3.7 is EOL soon anyway
+                pass
         name = api_doc["info"]["title"]
         description = api_doc["info"]["description"]
         api = self.create_rest_api(name=name, description=description)
         self.put_rest_api(api.id, api_doc, fail_on_warnings=fail_on_warnings)
         return api
+
+    def export_api(self, rest_api_id: str, export_type: str) -> Dict[str, Any]:
+        """
+        Not all fields are implemented yet.
+        The export-type is currently ignored - we will only return the 'swagger'-format
+        """
+        try:
+            api = self.get_rest_api(rest_api_id)
+        except RestAPINotFound:
+            raise StageNotFoundException
+        if export_type not in ["swagger", "oas30"]:
+            raise BadRequestException(f"No API exporter for type '{export_type}'")
+        now = datetime.now().strftime("%Y-%m-%dT%H:%m:%S")
+        resp: Dict[str, Any] = {
+            "swagger": "2.0",
+            "info": {"version": now, "title": api.name},
+            "host": f"{api.id}.execute-api.{self.region_name}.amazonaws.com",
+            "basePath": "/",
+            "schemes": ["https"],
+            "paths": {},
+            "definitions": {"Empty": {"type": "object", "title": "Empty Schema"}},
+        }
+        for res in api.resources.values():
+            path = res.get_path()
+            resp["paths"][path] = {}
+            for method_type, method in res.resource_methods.items():
+                resp["paths"][path][method_type] = {
+                    "produces": ["application/json"],
+                    "responses": {},
+                }
+                for code, _ in method.method_responses.items():
+                    resp["paths"][path][method_type]["responses"][code] = {
+                        "description": f"{code} response",
+                        "schema": {"$ref": "#/definitions/Empty"},
+                    }
+        return resp
 
     def get_rest_api(self, function_id: str) -> RestAPI:
         rest_api = self.apis.get(function_id)
@@ -1601,6 +1649,10 @@ class APIGatewayBackend(BaseBackend):
                 validate_spec(api_doc)  # type: ignore[arg-type]
             except OpenAPIValidationError as e:
                 raise InvalidOpenAPIDocumentException(e)
+            except AttributeError:
+                # Call can fail in Python3.7 due to `typing_extensions 4.6.0` throwing an error
+                # Easiest to just ignore this for now - Py3.7 is EOL soon anyway
+                pass
 
         if mode == "overwrite":
             api = self.get_rest_api(function_id)
@@ -1610,6 +1662,27 @@ class APIGatewayBackend(BaseBackend):
         for (path, resource_doc) in sorted(
             api_doc["paths"].items(), key=lambda x: x[0]
         ):
+            # We may want to create a path like /store/inventory
+            # Ensure that /store exists first, so we can use it as a parent
+            ancestors = path.split("/")[
+                1:-1
+            ]  # skip first (empty), skip last (child) - only process ancestors
+            direct_parent = ""
+            parent_id = self.apis[function_id].get_resource_for_path("/").id
+            for a in ancestors:
+                res = self.apis[function_id].get_resource_for_path(
+                    direct_parent + "/" + a
+                )
+                if res is None:
+                    res = self.create_resource(
+                        function_id=function_id,
+                        parent_resource_id=parent_id,
+                        path_part=a,
+                    )
+                parent_id = res.id
+                direct_parent = direct_parent + "/" + a
+
+            # Now that we know all ancestors are created, create the resource itself
             parent_path_part = path[0 : path.rfind("/")] or "/"
             parent_resource_id = (
                 self.apis[function_id].get_resource_for_path(parent_path_part).id
@@ -1670,7 +1743,7 @@ class APIGatewayBackend(BaseBackend):
         if not path_part:
             # We're attempting to create the default resource, which already exists.
             return api.default
-        if not re.match("^\\{?[a-zA-Z0-9._-]+\\+?\\}?$", path_part):
+        if not re.match("^\\{?[a-zA-Z0-9._\\-\\:]+\\+?\\}?$", path_part):
             raise InvalidResourcePathException()
         return api.add_child(path=path_part, parent_id=parent_resource_id)
 
@@ -1852,6 +1925,7 @@ class APIGatewayBackend(BaseBackend):
         timeout_in_millis: Optional[str] = None,
         request_parameters: Optional[Dict[str, Any]] = None,
         content_handling: Optional[str] = None,
+        connection_type: Optional[str] = None,
     ) -> Integration:
         resource = self.get_resource(function_id, resource_id)
         if credentials and not re.match(
@@ -1896,6 +1970,7 @@ class APIGatewayBackend(BaseBackend):
             request_parameters=request_parameters,
             content_handling=content_handling,
             credentials=credentials,
+            connection_type=connection_type,
         )
         return integration
 
@@ -2235,11 +2310,11 @@ class APIGatewayBackend(BaseBackend):
             self.base_path_mappings[domain_name] = {}
         else:
             if (
-                self.base_path_mappings[domain_name].get(new_base_path)  # type: ignore[arg-type]
+                self.base_path_mappings[domain_name].get(new_base_path)
                 and new_base_path != "(none)"
             ):
                 raise BasePathConflictException()
-        self.base_path_mappings[domain_name][new_base_path] = new_base_path_mapping  # type: ignore[index]
+        self.base_path_mappings[domain_name][new_base_path] = new_base_path_mapping
         return new_base_path_mapping
 
     def get_base_path_mappings(self, domain_name: str) -> List[BasePathMapping]:

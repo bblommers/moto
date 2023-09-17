@@ -18,6 +18,7 @@ from moto.config.exceptions import (
     InvalidDeliveryChannelNameException,
     NoSuchBucketException,
     InvalidS3KeyPrefixException,
+    InvalidS3KmsKeyArnException,
     InvalidSNSTopicARNException,
     MaxNumberOfDeliveryChannelsExceededException,
     NoAvailableDeliveryChannelException,
@@ -44,6 +45,7 @@ from moto.config.exceptions import (
     MaxNumberOfConfigRulesExceededException,
     InsufficientPermissionsException,
     NoSuchConfigRuleException,
+    NoSuchRetentionConfigurationException,
     ResourceInUseException,
     MissingRequiredConfigRuleParameterException,
 )
@@ -51,6 +53,7 @@ from moto.config.exceptions import (
 from moto.core import BaseBackend, BackendDict, BaseModel
 from moto.core.common_models import ConfigQueryModel
 from moto.core.responses import AWSServiceSpec
+from moto.core.utils import utcnow
 from moto.iam.config import role_config_query, policy_config_query
 from moto.moto_api._internal import mock_random as random
 from moto.s3.config import s3_config_query
@@ -82,7 +85,7 @@ CAMEL_TO_SNAKE_REGEX = re.compile(r"(?<!^)(?=[A-Z])")
 MAX_TAGS_IN_ARG = 50
 
 MANAGED_RULES = load_resource(__name__, "resources/aws_managed_rules.json")
-MANAGED_RULES_CONSTRAINTS = MANAGED_RULES["ManagedRules"]  # type: ignore[index]
+MANAGED_RULES_CONSTRAINTS = MANAGED_RULES["ManagedRules"]
 
 
 def datetime2int(date: datetime) -> int:
@@ -236,13 +239,13 @@ class ConfigRecorderStatus(ConfigEmptyDictable):
     def start(self) -> None:
         self.recording = True
         self.last_status = "PENDING"
-        self.last_start_time = datetime2int(datetime.utcnow())
-        self.last_status_change_time = datetime2int(datetime.utcnow())
+        self.last_start_time = datetime2int(utcnow())
+        self.last_status_change_time = datetime2int(utcnow())
 
     def stop(self) -> None:
         self.recording = False
-        self.last_stop_time = datetime2int(datetime.utcnow())
-        self.last_status_change_time = datetime2int(datetime.utcnow())
+        self.last_stop_time = datetime2int(utcnow())
+        self.last_status_change_time = datetime2int(utcnow())
 
 
 class ConfigDeliverySnapshotProperties(ConfigEmptyDictable):
@@ -259,6 +262,7 @@ class ConfigDeliveryChannel(ConfigEmptyDictable):
         s3_bucket_name: str,
         prefix: Optional[str] = None,
         sns_arn: Optional[str] = None,
+        s3_kms_key_arn: Optional[str] = None,
         snapshot_properties: Optional[ConfigDeliverySnapshotProperties] = None,
     ):
         super().__init__()
@@ -266,8 +270,20 @@ class ConfigDeliveryChannel(ConfigEmptyDictable):
         self.name = name
         self.s3_bucket_name = s3_bucket_name
         self.s3_key_prefix = prefix
+        self.s3_kms_key_arn = s3_kms_key_arn
         self.sns_topic_arn = sns_arn
         self.config_snapshot_delivery_properties = snapshot_properties
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Need to override this function because the KMS Key ARN is written as `Arn` vs. SNS which is `ARN`."""
+        data = super().to_dict()
+
+        # Fix the KMS ARN if it's here:
+        kms_arn = data.pop("s3KmsKeyARN", None)
+        if kms_arn:
+            data["s3KmsKeyArn"] = kms_arn
+
+        return data
 
 
 class RecordingGroup(ConfigEmptyDictable):
@@ -276,12 +292,16 @@ class RecordingGroup(ConfigEmptyDictable):
         all_supported: bool = True,
         include_global_resource_types: bool = False,
         resource_types: Optional[List[str]] = None,
+        exclusion_by_resource_types: Optional[Dict[str, List[str]]] = None,
+        recording_strategy: Optional[Dict[str, str]] = None,
     ):
         super().__init__()
 
         self.all_supported = all_supported
         self.include_global_resource_types = include_global_resource_types
         self.resource_types = resource_types
+        self.exclusion_by_resource_types = exclusion_by_resource_types
+        self.recording_strategy = recording_strategy
 
 
 class ConfigRecorder(ConfigEmptyDictable):
@@ -385,8 +405,8 @@ class ConfigAggregator(ConfigEmptyDictable):
         self.configuration_aggregator_arn = f"arn:aws:config:{region}:{account_id}:config-aggregator/config-aggregator-{random_string()}"
         self.account_aggregation_sources = account_sources
         self.organization_aggregation_source = org_source
-        self.creation_time = datetime2int(datetime.utcnow())
-        self.last_updated_time = datetime2int(datetime.utcnow())
+        self.creation_time = datetime2int(utcnow())
+        self.last_updated_time = datetime2int(utcnow())
 
         # Tags are listed in the list_tags_for_resource API call.
         self.tags = tags or {}
@@ -423,7 +443,7 @@ class ConfigAggregationAuthorization(ConfigEmptyDictable):
         self.aggregation_authorization_arn = f"arn:aws:config:{current_region}:{account_id}:aggregation-authorization/{authorized_account_id}/{authorized_aws_region}"
         self.authorized_account_id = authorized_account_id
         self.authorized_aws_region = authorized_aws_region
-        self.creation_time = datetime2int(datetime.utcnow())
+        self.creation_time = datetime2int(utcnow())
 
         # Tags are listed in the list_tags_for_resource API call.
         self.tags = tags or {}
@@ -449,7 +469,7 @@ class OrganizationConformancePack(ConfigEmptyDictable):
         self.delivery_s3_bucket = delivery_s3_bucket
         self.delivery_s3_key_prefix = delivery_s3_key_prefix
         self.excluded_accounts = excluded_accounts or []
-        self.last_update_time = datetime2int(datetime.utcnow())
+        self.last_update_time = datetime2int(utcnow())
         self.organization_conformance_pack_arn = f"arn:aws:config:{region}:{account_id}:organization-conformance-pack/{self._unique_pack_name}"
         self.organization_conformance_pack_name = name
 
@@ -466,7 +486,7 @@ class OrganizationConformancePack(ConfigEmptyDictable):
         self.delivery_s3_bucket = delivery_s3_bucket
         self.delivery_s3_key_prefix = delivery_s3_key_prefix
         self.excluded_accounts = excluded_accounts
-        self.last_update_time = datetime2int(datetime.utcnow())
+        self.last_update_time = datetime2int(utcnow())
 
 
 class Scope(ConfigEmptyDictable):
@@ -820,17 +840,17 @@ class ConfigRule(ConfigEmptyDictable):
                 "CreatedBy field"
             )
 
-        self.last_updated_time = datetime2int(datetime.utcnow())
+        self.last_updated_time = datetime2int(utcnow())
         self.tags = tags
 
     def validate_managed_rule(self) -> None:
         """Validate parameters specific to managed rules."""
-        rule_info = MANAGED_RULES_CONSTRAINTS[self.source.source_identifier]  # type: ignore[index]
+        rule_info = MANAGED_RULES_CONSTRAINTS[self.source.source_identifier]
         param_names = self.input_parameters_dict.keys()
 
         # Verify input parameter names are actual parameters for the rule ID.
         if param_names:
-            allowed_names = {x["Name"] for x in rule_info["Parameters"]}  # type: ignore[index]
+            allowed_names = {x["Name"] for x in rule_info["Parameters"]}
             if not set(param_names).issubset(allowed_names):
                 raise InvalidParameterValueException(
                     f"Unknown parameters provided in the inputParameters: {self.input_parameters}"
@@ -838,7 +858,7 @@ class ConfigRule(ConfigEmptyDictable):
 
         # Verify all the required parameters are specified.
         required_names = {
-            x["Name"] for x in rule_info["Parameters"] if not x["Optional"]  # type: ignore[index]
+            x["Name"] for x in rule_info["Parameters"] if not x["Optional"]
         }
         diffs = required_names.difference(set(param_names))
         if diffs:
@@ -883,6 +903,14 @@ class ConfigRule(ConfigEmptyDictable):
         # Verify the rule is allowed for this region -- not yet implemented.
 
 
+class RetentionConfiguration(ConfigEmptyDictable):
+    def __init__(self, retention_period_in_days: int, name: Optional[str] = None):
+        super().__init__(capitalize_start=True, capitalize_arn=False)
+
+        self.name = name or "default"
+        self.retention_period_in_days = retention_period_in_days
+
+
 class ConfigBackend(BaseBackend):
     def __init__(self, region_name: str, account_id: str):
         super().__init__(region_name, account_id)
@@ -893,6 +921,7 @@ class ConfigBackend(BaseBackend):
         self.organization_conformance_packs: Dict[str, OrganizationConformancePack] = {}
         self.config_rules: Dict[str, ConfigRule] = {}
         self.config_schema: Optional[AWSServiceSpec] = None
+        self.retention_configuration: Optional[RetentionConfiguration] = None
 
     @staticmethod
     def default_vpc_endpoint_service(service_region: str, zones: List[str]) -> List[Dict[str, Any]]:  # type: ignore[misc]
@@ -910,12 +939,12 @@ class ConfigBackend(BaseBackend):
         # Verify that each entry exists in the supported list:
         bad_list = []
         for resource in resource_list:
-            if resource not in self.config_schema.shapes["ResourceType"]["enum"]:  # type: ignore[index]
+            if resource not in self.config_schema.shapes["ResourceType"]["enum"]:
                 bad_list.append(resource)
 
         if bad_list:
             raise InvalidResourceTypeException(
-                bad_list, self.config_schema.shapes["ResourceType"]["enum"]  # type: ignore[index]
+                bad_list, self.config_schema.shapes["ResourceType"]["enum"]
             )
 
     def _validate_delivery_snapshot_properties(
@@ -929,11 +958,11 @@ class ConfigBackend(BaseBackend):
         # Verify that the deliveryFrequency is set to an acceptable value:
         if (
             properties.get("deliveryFrequency", None)
-            not in self.config_schema.shapes["MaximumExecutionFrequency"]["enum"]  # type: ignore[index]
+            not in self.config_schema.shapes["MaximumExecutionFrequency"]["enum"]
         ):
             raise InvalidDeliveryFrequency(
                 properties.get("deliveryFrequency", None),
-                self.config_schema.shapes["MaximumExecutionFrequency"]["enum"],  # type: ignore[index]
+                self.config_schema.shapes["MaximumExecutionFrequency"]["enum"],
             )
 
     def put_configuration_aggregator(
@@ -1018,7 +1047,7 @@ class ConfigBackend(BaseBackend):
             aggregator.tags = tags
             aggregator.account_aggregation_sources = account_sources
             aggregator.organization_aggregation_source = org_source
-            aggregator.last_updated_time = datetime2int(datetime.utcnow())
+            aggregator.last_updated_time = datetime2int(utcnow())
 
         return aggregator.to_dict()
 
@@ -1165,7 +1194,13 @@ class ConfigBackend(BaseBackend):
 
         # Validate the Recording Group:
         if config_recorder.get("recordingGroup") is None:
-            recording_group = RecordingGroup()
+            recording_group = RecordingGroup(
+                all_supported=True,
+                include_global_resource_types=False,
+                resource_types=[],
+                exclusion_by_resource_types={"resourceTypes": []},
+                recording_strategy={"useOnly": "ALL_SUPPORTED_RESOURCE_TYPES"},
+            )
         else:
             rgroup = config_recorder["recordingGroup"]
 
@@ -1173,27 +1208,94 @@ class ConfigBackend(BaseBackend):
             if not rgroup:
                 raise InvalidRecordingGroupException()
 
-            # Can't have both the resource types specified and the other flags as True.
-            if rgroup.get("resourceTypes") and (
-                rgroup.get("allSupported", False)
-                or rgroup.get("includeGlobalResourceTypes", False)
-            ):
-                raise InvalidRecordingGroupException()
-
-            # Must supply resourceTypes if 'allSupported' is not supplied:
-            if not rgroup.get("allSupported") and not rgroup.get("resourceTypes"):
-                raise InvalidRecordingGroupException()
-
-            # Validate that the list provided is correct:
-            self._validate_resource_types(rgroup.get("resourceTypes", []))
-
-            recording_group = RecordingGroup(
-                all_supported=rgroup.get("allSupported", True),
-                include_global_resource_types=rgroup.get(
-                    "includeGlobalResourceTypes", False
-                ),
-                resource_types=rgroup.get("resourceTypes", []),
+            # Recording strategy must be one of the allowed enums:
+            recording_strategy = rgroup.get("recordingStrategy", {}).get(
+                "useOnly", None
             )
+            if recording_strategy not in {
+                None,
+                "ALL_SUPPORTED_RESOURCE_TYPES",
+                "INCLUSION_BY_RESOURCE_TYPES",
+                "EXCLUSION_BY_RESOURCE_TYPES",
+            }:
+                raise ValidationException(
+                    f"1 validation error detected: Value '{recording_strategy}' at 'configurationRecorder.recordingGroup.recordingStrategy.useOnly' failed to satisfy constraint:"
+                    f" Member must satisfy enum value set: [INCLUSION_BY_RESOURCE_TYPES, ALL_SUPPORTED_RESOURCE_TYPES, EXCLUSION_BY_RESOURCE_TYPES]"
+                )
+
+            # Validate the allSupported:
+            if rgroup.get("allSupported", False):
+                if (
+                    rgroup.get("resourceTypes", [])
+                    or (
+                        rgroup.get("exclusionByResourceTypes", {"resourceTypes": []})
+                        != {"resourceTypes": []}
+                    )
+                    or recording_strategy not in {None, "ALL_SUPPORTED_RESOURCE_TYPES"}
+                ):
+                    raise InvalidRecordingGroupException()
+
+                recording_group = RecordingGroup(
+                    all_supported=True,
+                    include_global_resource_types=rgroup.get(
+                        "includeGlobalResourceTypes", False
+                    ),
+                    resource_types=[],
+                    exclusion_by_resource_types={"resourceTypes": []},
+                    recording_strategy={"useOnly": "ALL_SUPPORTED_RESOURCE_TYPES"},
+                )
+
+            # Validate the specifically passed in resource types:
+            elif rgroup.get("resourceTypes", []):
+                if (
+                    rgroup.get("includeGlobalResourceTypes", False)
+                    or (
+                        rgroup.get("exclusionByResourceTypes", {"resourceTypes": []})
+                        != {"resourceTypes": []}
+                    )
+                    or recording_strategy not in {None, "INCLUSION_BY_RESOURCE_TYPES"}
+                ):
+                    raise InvalidRecordingGroupException()
+
+                # Validate that the resource list provided is correct:
+                self._validate_resource_types(rgroup["resourceTypes"])
+
+                recording_group = RecordingGroup(
+                    all_supported=False,
+                    include_global_resource_types=False,
+                    resource_types=rgroup["resourceTypes"],
+                    exclusion_by_resource_types={"resourceTypes": []},
+                    recording_strategy={"useOnly": "INCLUSION_BY_RESOURCE_TYPES"},
+                )
+
+            # Validate the excluded resource types:
+            elif rgroup.get("exclusionByResourceTypes", {}):
+                if not rgroup["exclusionByResourceTypes"].get("resourceTypes", []):
+                    raise InvalidRecordingGroupException()
+
+                # The recording strategy must be provided for exclusions.
+                if (
+                    rgroup.get("includeGlobalResourceTypes", False)
+                    or recording_strategy != "EXCLUSION_BY_RESOURCE_TYPES"
+                ):
+                    raise InvalidRecordingGroupException()
+
+                # Validate that the resource list provided is correct:
+                self._validate_resource_types(
+                    rgroup["exclusionByResourceTypes"]["resourceTypes"]
+                )
+
+                recording_group = RecordingGroup(
+                    all_supported=False,
+                    include_global_resource_types=False,
+                    resource_types=[],
+                    exclusion_by_resource_types=rgroup["exclusionByResourceTypes"],
+                    recording_strategy={"useOnly": "EXCLUSION_BY_RESOURCE_TYPES"},
+                )
+
+            # If the resourceTypes is an empty list, this will be reached:
+            else:
+                raise InvalidRecordingGroupException()
 
         self.recorders[config_recorder["name"]] = ConfigRecorder(
             config_recorder["roleARN"],
@@ -1264,8 +1366,14 @@ class ConfigBackend(BaseBackend):
 
         # Ditto for SNS -- Only going to assume that the ARN provided is not
         # an empty string:
+        # NOTE: SNS "ARN" is all caps, but KMS "Arn" is UpperCamelCase!
         if delivery_channel.get("snsTopicARN", None) == "":
             raise InvalidSNSTopicARNException()
+
+        # Ditto for S3 KMS Key ARN -- Only going to assume that the ARN provided is not
+        # an empty string:
+        if delivery_channel.get("s3KmsKeyArn", None) == "":
+            raise InvalidS3KmsKeyArnException()
 
         # Config currently only allows 1 delivery channel for an account:
         if len(self.delivery_channels) == 1 and not self.delivery_channels.get(
@@ -1292,6 +1400,7 @@ class ConfigBackend(BaseBackend):
             delivery_channel["name"],
             delivery_channel["s3BucketName"],
             prefix=delivery_channel.get("s3KeyPrefix", None),
+            s3_kms_key_arn=delivery_channel.get("s3KmsKeyArn", None),
             sns_arn=delivery_channel.get("snsTopicARN", None),
             snapshot_properties=dprop,
         )
@@ -1814,7 +1923,7 @@ class ConfigBackend(BaseBackend):
                 "AccountId": self.account_id,
                 "ConformancePackName": f"OrgConformsPack-{pack._unique_pack_name}",
                 "Status": pack._status,
-                "LastUpdateTime": datetime2int(datetime.utcnow()),
+                "LastUpdateTime": datetime2int(utcnow()),
             }
         ]
 
@@ -2011,6 +2120,67 @@ class ConfigBackend(BaseBackend):
         #     )
         rule.config_rule_state = "DELETING"
         self.config_rules.pop(rule_name)
+
+    def put_retention_configuration(
+        self, retention_period_in_days: int
+    ) -> Dict[str, Any]:
+        """Creates a Retention Configuration."""
+        if retention_period_in_days < 30:
+            raise ValidationException(
+                f"Value '{retention_period_in_days}' at 'retentionPeriodInDays' failed to satisfy constraint: Member must have value greater than or equal to 30"
+            )
+
+        if retention_period_in_days > 2557:
+            raise ValidationException(
+                f"Value '{retention_period_in_days}' at 'retentionPeriodInDays' failed to satisfy constraint: Member must have value less than or equal to 2557"
+            )
+
+        self.retention_configuration = RetentionConfiguration(retention_period_in_days)
+        return {"RetentionConfiguration": self.retention_configuration.to_dict()}
+
+    def describe_retention_configurations(
+        self, retention_configuration_names: Optional[List[str]]
+    ) -> List[Dict[str, Any]]:
+        """
+        This will return the retention configuration if one is present.
+
+        This should only receive at most 1 name in. It will raise a ValidationException if more than 1 is supplied.
+        """
+        # Handle the cases where we get a retention name to search for:
+        if retention_configuration_names:
+            if len(retention_configuration_names) > 1:
+                raise ValidationException(
+                    f"Value '{retention_configuration_names}' at 'retentionConfigurationNames' failed to satisfy constraint: Member must have length less than or equal to 1"
+                )
+
+            # If we get a retention name to search for, and we don't have it, then we need to raise an exception:
+            if (
+                not self.retention_configuration
+                or not self.retention_configuration.name
+                == retention_configuration_names[0]
+            ):
+                raise NoSuchRetentionConfigurationException(
+                    retention_configuration_names[0]
+                )
+
+            # If we found it, then return it:
+            return [self.retention_configuration.to_dict()]
+
+        # If no name was supplied:
+        if self.retention_configuration:
+            return [self.retention_configuration.to_dict()]
+
+        return []
+
+    def delete_retention_configuration(self, retention_configuration_name: str) -> None:
+        """This will delete the retention configuration if one is present with the provided name."""
+        if (
+            not self.retention_configuration
+            or not self.retention_configuration.name == retention_configuration_name
+        ):
+            raise NoSuchRetentionConfigurationException(retention_configuration_name)
+
+        self.retention_configuration = None
 
 
 config_backends = BackendDict(ConfigBackend, "config")

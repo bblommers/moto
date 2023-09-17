@@ -1,16 +1,13 @@
 from boto3 import Session
 import re
 import string
-from collections import defaultdict
 from functools import lru_cache
 from threading import RLock
 from typing import Any, List, Dict, Optional, ClassVar, TypeVar, Iterator
 from uuid import uuid4
-from moto.settings import allow_unknown_region
+from moto.settings import allow_unknown_region, enable_iso_regions
+from .model_instances import model_data
 from .utils import convert_regex_to_flask_path
-
-
-model_data: Dict[str, Dict[str, object]] = defaultdict(dict)
 
 
 class InstanceTrackerMeta(type):
@@ -31,16 +28,9 @@ class BaseBackend:
         self.region_name = region_name
         self.account_id = account_id
 
-    def _reset_model_refs(self) -> None:
-        # Remove all references to the models stored
-        for models in model_data.values():
-            for model in models.values():
-                model.instances = []  # type: ignore[attr-defined]
-
     def reset(self) -> None:
         region_name = self.region_name
         account_id = self.account_id
-        self._reset_model_refs()
         self.__dict__ = {}
         self.__init__(region_name, account_id)  # type: ignore[misc]
 
@@ -65,13 +55,25 @@ class BaseBackend:
         urls = {}
         for url_base in url_bases:
             # The default URL_base will look like: http://service.[..].amazonaws.com/...
-            # This extension ensures support for the China regions
-            cn_url_base = re.sub(r"amazonaws\\?.com$", "amazonaws.com.cn", url_base)
+            # This extension ensures support for the China & ISO regions
+            alt_dns_suffixes = {"cn": "amazonaws.com.cn"}
+            if enable_iso_regions():
+                alt_dns_suffixes.update(
+                    {
+                        "iso": "c2s.ic.gov",
+                        "isob": "sc2s.sgov.gov",
+                        "isoe": "cloud.adc-e.uk",
+                        "isof": "csp.hci.ic.gov",
+                    }
+                )
+
             for url_path, handler in unformatted_paths.items():
                 url = url_path.format(url_base)
                 urls[url] = handler
-                cn_url = url_path.format(cn_url_base)
-                urls[cn_url] = handler
+                for dns_suffix in alt_dns_suffixes.values():
+                    alt_url_base = re.sub(r"amazonaws\\?.com$", dns_suffix, url_base)
+                    alt_url = url_path.format(alt_url_base)
+                    urls[alt_url] = handler
 
         return urls
 
@@ -198,13 +200,10 @@ class AccountSpecificBackend(Dict[str, SERVICE_BACKEND]):
         self.regions = []
         if use_boto3_regions:
             sess = Session()
-            self.regions.extend(sess.get_available_regions(service_name))
-            self.regions.extend(
-                sess.get_available_regions(service_name, partition_name="aws-us-gov")
-            )
-            self.regions.extend(
-                sess.get_available_regions(service_name, partition_name="aws-cn")
-            )
+            for partition in sess.get_available_partitions():
+                self.regions.extend(
+                    sess.get_available_regions(service_name, partition_name=partition)
+                )
         self.regions.extend(additional_regions or [])
         self._id = str(uuid4())
 
@@ -241,7 +240,7 @@ class AccountSpecificBackend(Dict[str, SERVICE_BACKEND]):
         super().__setitem__(key, value)
 
     @lru_cache()
-    def __getitem__(self, region_name: str) -> SERVICE_BACKEND:  # type: ignore[override]
+    def __getitem__(self, region_name: str) -> SERVICE_BACKEND:
         if region_name in self.keys():
             return super().__getitem__(region_name)
         # Create the backend for a specific region

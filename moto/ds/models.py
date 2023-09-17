@@ -219,7 +219,7 @@ class DirectoryServiceBackend(BaseBackend):
         # Subnet IDs are checked before the VPC ID.  The Subnet IDs must
         # be valid and in different availability zones.
         try:
-            subnets = ec2_backends[self.account_id][region].get_all_subnets(
+            subnets = ec2_backends[self.account_id][region].describe_subnets(
                 subnet_ids=vpc_settings["SubnetIds"]
             )
         except InvalidSubnetIdError as exc:
@@ -476,8 +476,10 @@ class DirectoryServiceBackend(BaseBackend):
         directory = self.directories[directory_id]
         directory.enable_sso(True)
 
-    @paginate(pagination_model=PAGINATION_MODEL)
-    def describe_directories(self, directory_ids: Optional[List[str]] = None) -> List[Directory]:  # type: ignore[misc]
+    @paginate(pagination_model=PAGINATION_MODEL)  # type: ignore[misc]
+    def describe_directories(
+        self, directory_ids: Optional[List[str]] = None
+    ) -> List[Directory]:
         """Return info on all directories or directories with matching IDs."""
         for directory_id in directory_ids or self.directories:
             self._validate_directory_id(directory_id)
@@ -530,8 +532,8 @@ class DirectoryServiceBackend(BaseBackend):
         self._validate_directory_id(resource_id)
         self.tagger.untag_resource_using_names(resource_id, tag_keys)
 
-    @paginate(pagination_model=PAGINATION_MODEL)
-    def list_tags_for_resource(self, resource_id: str) -> List[Dict[str, str]]:  # type: ignore[misc]
+    @paginate(pagination_model=PAGINATION_MODEL)  # type: ignore[misc]
+    def list_tags_for_resource(self, resource_id: str) -> List[Dict[str, str]]:
         """List all tags on a directory."""
         self._validate_directory_id(resource_id)
         return self.tagger.list_tags_for_resource(resource_id).get("Tags")  # type: ignore[return-value]

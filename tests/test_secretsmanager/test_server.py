@@ -3,10 +3,10 @@ import json
 
 import boto3
 import pytest
-import sure  # noqa # pylint: disable=unused-import
 
 import moto.server as server
 from moto import mock_secretsmanager, mock_lambda, mock_iam, mock_logs, settings
+from tests.markers import requires_docker
 from tests.test_awslambda.test_lambda import get_test_zip_file1
 
 DEFAULT_SECRET_NAME = "test-secret"
@@ -408,7 +408,7 @@ def test_rotate_secret_client_request_token_too_long():
     )
 
     client_request_token = (
-        "ED9F8B6C-85B7-446A-B7E4-38F2A3BEB13C-" "ED9F8B6C-85B7-446A-B7E4-38F2A3BEB13C"
+        "ED9F8B6C-85B7-446A-B7E4-38F2A3BEB13C-ED9F8B6C-85B7-446A-B7E4-38F2A3BEB13C"
     )
     rotate_secret = test_client.post(
         "/",
@@ -456,6 +456,7 @@ if not settings.TEST_SERVER_MODE:
     @mock_lambda
     @mock_logs
     @mock_secretsmanager
+    @requires_docker
     def test_rotate_secret_lambda_invocations():
         conn = boto3.client("iam", region_name="us-east-1")
         logs_conn = boto3.client("logs", region_name="us-east-1")
@@ -466,9 +467,9 @@ if not settings.TEST_SERVER_MODE:
         conn = boto3.client("lambda", region_name="us-east-1")
         func = conn.create_function(
             FunctionName="testFunction",
-            Code=dict(ZipFile=get_test_zip_file1()),
+            Code={"ZipFile": get_test_zip_file1()},
             Handler="lambda_function.lambda_handler",
-            Runtime="python2.7",
+            Runtime="python3.11",
             Role=role["Role"]["Arn"],
         )
 
@@ -789,7 +790,7 @@ def test_update_secret_version_stage(pass_arn):
     assert stages[initial_version] == ["AWSCURRENT"]
     assert stages[new_version] == [custom_stage]
 
-    test_client.post(
+    resp = test_client.post(
         "/",
         data={
             "SecretId": secret_id,
@@ -799,6 +800,9 @@ def test_update_secret_version_stage(pass_arn):
         },
         headers={"X-Amz-Target": "secretsmanager.UpdateSecretVersionStage"},
     )
+    resp = json.loads(resp.data.decode("utf-8"))
+    assert resp.get("ARN") == create_secret["ARN"]
+    assert resp.get("Name") == DEFAULT_SECRET_NAME
 
     describe_secret = test_client.post(
         "/",

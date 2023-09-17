@@ -1,16 +1,23 @@
 from boto3 import Session
+from typing import Any, Dict, List, Optional
 from moto.utilities.utils import filter_resources
 
 
-class Region(object):
-    def __init__(self, name, endpoint, opt_in_status):
+class Region:
+    def __init__(self, name: str, endpoint: str, opt_in_status: str):
         self.name = name
         self.endpoint = endpoint
         self.opt_in_status = opt_in_status
 
 
-class Zone(object):
-    def __init__(self, name, region_name, zone_id, zone_type="availability-zone"):
+class Zone:
+    def __init__(
+        self,
+        name: str,
+        region_name: str,
+        zone_id: str,
+        zone_type: str = "availability-zone",
+    ):
         self.name = name
         self.region_name = region_name
         self.zone_id = zone_id
@@ -69,6 +76,7 @@ class RegionsAndZonesBackend:
         "ap-south-1": [
             Zone(region_name="ap-south-1", name="ap-south-1a", zone_id="aps1-az1"),
             Zone(region_name="ap-south-1", name="ap-south-1b", zone_id="aps1-az3"),
+            Zone(region_name="ap-south-1", name="ap-south-1c", zone_id="aps1-az2"),
         ],
         "eu-west-3": [
             Zone(region_name="eu-west-3", name="eu-west-3a", zone_id="euw3-az1"),
@@ -153,11 +161,13 @@ class RegionsAndZonesBackend:
         ],
         "sa-east-1": [
             Zone(region_name="sa-east-1", name="sa-east-1a", zone_id="sae1-az1"),
+            Zone(region_name="sa-east-1", name="sa-east-1b", zone_id="sae1-az2"),
             Zone(region_name="sa-east-1", name="sa-east-1c", zone_id="sae1-az3"),
         ],
         "ca-central-1": [
             Zone(region_name="ca-central-1", name="ca-central-1a", zone_id="cac1-az1"),
             Zone(region_name="ca-central-1", name="ca-central-1b", zone_id="cac1-az2"),
+            Zone(region_name="ca-central-1", name="ca-central-1d", zone_id="cac1-az4"),
         ],
         "ap-southeast-1": [
             Zone(
@@ -241,6 +251,7 @@ class RegionsAndZonesBackend:
             Zone(region_name="us-west-2", name="us-west-2a", zone_id="usw2-az2"),
             Zone(region_name="us-west-2", name="us-west-2b", zone_id="usw2-az1"),
             Zone(region_name="us-west-2", name="us-west-2c", zone_id="usw2-az3"),
+            Zone(region_name="us-west-2", name="us-west-2d", zone_id="usw2-az4"),
         ],
         "me-south-1": [
             Zone(region_name="me-south-1", name="me-south-1a", zone_id="mes1-az1"),
@@ -292,7 +303,9 @@ class RegionsAndZonesBackend:
         ],
     }
 
-    def describe_regions(self, region_names=None):
+    def describe_regions(
+        self, region_names: Optional[List[str]] = None
+    ) -> List[Region]:
         if not region_names:
             return self.regions
         ret = []
@@ -302,9 +315,11 @@ class RegionsAndZonesBackend:
                     ret.append(region)
         return ret
 
-    def describe_availability_zones(self, filters=None):
+    def describe_availability_zones(
+        self, filters: Optional[List[Dict[str, Any]]] = None
+    ) -> List[Zone]:
         # We might not have any zones for the current region, if it was introduced recently
-        zones = self.zones.get(self.region_name, [])
+        zones = self.zones.get(self.region_name, [])  # type: ignore[attr-defined]
         attr_pairs = (
             ("zone-id", "zone_id"),
             ("zone-type", "zone_type"),
@@ -316,7 +331,8 @@ class RegionsAndZonesBackend:
             result = filter_resources(zones, filters, attr_pairs)
         return result
 
-    def get_zone_by_name(self, name):
+    def get_zone_by_name(self, name: str) -> Optional[Zone]:
         for zone in self.describe_availability_zones():
             if zone.name == name:
                 return zone
+        return None

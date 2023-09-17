@@ -1,4 +1,5 @@
 from moto.core.exceptions import JsonRESTError
+from typing import Any
 
 
 class LambdaClientError(JsonRESTError):
@@ -11,6 +12,14 @@ class CrossAccountNotAllowed(LambdaClientError):
         super().__init__(
             "AccessDeniedException", "Cross-account pass role is not allowed."
         )
+
+
+class FunctionAlreadyExists(LambdaClientError):
+    code = 409
+
+    def __init__(self, function_name: str) -> None:
+        message = f"Function already exist: {function_name}"
+        super().__init__("ResourceConflictException", message)
 
 
 class InvalidParameterValueException(LambdaClientError):
@@ -31,6 +40,13 @@ class PreconditionFailedException(JsonRESTError):
 
     def __init__(self, message: str):
         super().__init__("PreconditionFailedException", message)
+
+
+class ConflictException(LambdaClientError):
+    code = 409
+
+    def __init__(self, message: str):
+        super().__init__("ConflictException", message)
 
 
 class UnknownAliasException(LambdaClientError):
@@ -63,6 +79,16 @@ class UnknownLayerException(LambdaClientError):
         super().__init__("ResourceNotFoundException", "Cannot find layer")
 
 
+class UnknownLayerVersionException(LambdaClientError):
+    code = 404
+
+    def __init__(self, arns: Any) -> None:
+        super().__init__(
+            "ResourceNotFoundException",
+            f"One or more LayerVersion does not exist {arns}",
+        )
+
+
 class UnknownPolicyException(LambdaClientError):
     code = 404
 
@@ -71,3 +97,9 @@ class UnknownPolicyException(LambdaClientError):
             "ResourceNotFoundException",
             "No policy is associated with the given resource.",
         )
+
+
+class ValidationException(LambdaClientError):
+    def __init__(self, value: str, property_name: str, specific_message: str):
+        message = f"1 validation error detected: Value '{value}' at '{property_name}' failed to satisfy constraint: {specific_message}"
+        super().__init__("ValidationException", message)

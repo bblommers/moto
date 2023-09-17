@@ -429,6 +429,24 @@ class APIGatewayResponse(BaseResponse):
             self.backend.delete_stage(function_id, stage_name)
             return 202, {}, "{}"
 
+    def export(
+        self, request: Any, full_url: str, headers: Dict[str, str]
+    ) -> TYPE_RESPONSE:
+        self.setup_class(request, full_url, headers)
+        url_path_parts = self.path.split("/")
+        rest_api_id = url_path_parts[-5]
+        export_type = url_path_parts[-1]
+
+        body = self.backend.export_api(rest_api_id, export_type)
+
+        now = body["info"]["version"]
+        filename = f"swagger_{now}Z.json"
+        headers = {
+            "Content-Type": "application/octet-stream",
+            "Content-Disposition": f'attachment; filename="{filename}"',
+        }
+        return 200, headers, json.dumps(body).encode("utf-8")
+
     def integrations(self, request: Any, full_url: str, headers: Dict[str, str]) -> TYPE_RESPONSE:  # type: ignore[return]
         self.setup_class(request, full_url, headers)
         url_path_parts = self.path.split("/")
@@ -454,6 +472,7 @@ class APIGatewayResponse(BaseResponse):
             timeout_in_millis = self._get_param("timeoutInMillis")
             request_parameters = self._get_param("requestParameters")
             content_handling = self._get_param("contentHandling")
+            connection_type = self._get_param("connectionType")
             self.backend.get_method(function_id, resource_id, method_type)
 
             integration_http_method = self._get_param(
@@ -475,6 +494,7 @@ class APIGatewayResponse(BaseResponse):
                 timeout_in_millis=timeout_in_millis,
                 request_parameters=request_parameters,
                 content_handling=content_handling,
+                connection_type=connection_type,
             )
             return 201, {}, json.dumps(integration_response.to_json())
         elif self.method == "DELETE":

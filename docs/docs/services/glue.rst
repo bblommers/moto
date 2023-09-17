@@ -31,13 +31,13 @@ glue
 - [X] batch_delete_table
 - [ ] batch_delete_table_version
 - [ ] batch_get_blueprints
-- [ ] batch_get_crawlers
+- [X] batch_get_crawlers
 - [ ] batch_get_custom_entity_types
 - [ ] batch_get_data_quality_result
 - [ ] batch_get_dev_endpoints
-- [ ] batch_get_jobs
+- [X] batch_get_jobs
 - [X] batch_get_partition
-- [ ] batch_get_triggers
+- [X] batch_get_triggers
 - [ ] batch_get_workflows
 - [ ] batch_stop_job_run
 - [X] batch_update_partition
@@ -56,7 +56,7 @@ glue
 - [ ] create_dev_endpoint
 - [X] create_job
 - [ ] create_ml_transform
-- [ ] create_partition
+- [X] create_partition
 - [ ] create_partition_index
 - [X] create_registry
 - [X] create_schema
@@ -66,9 +66,9 @@ glue
 
 - [ ] create_script
 - [ ] create_security_configuration
-- [ ] create_session
+- [X] create_session
 - [X] create_table
-- [ ] create_trigger
+- [X] create_trigger
 - [ ] create_user_defined_function
 - [ ] create_workflow
 - [ ] delete_blueprint
@@ -81,19 +81,19 @@ glue
 - [ ] delete_data_quality_ruleset
 - [X] delete_database
 - [ ] delete_dev_endpoint
-- [ ] delete_job
+- [X] delete_job
 - [ ] delete_ml_transform
-- [ ] delete_partition
+- [X] delete_partition
 - [ ] delete_partition_index
-- [ ] delete_registry
+- [X] delete_registry
 - [ ] delete_resource_policy
 - [X] delete_schema
 - [ ] delete_schema_versions
 - [ ] delete_security_configuration
-- [ ] delete_session
+- [X] delete_session
 - [X] delete_table
-- [ ] delete_table_version
-- [ ] delete_trigger
+- [X] delete_table_version
+- [X] delete_trigger
 - [ ] delete_user_defined_function
 - [ ] delete_workflow
 - [ ] get_blueprint
@@ -124,13 +124,13 @@ glue
 - [ ] get_job_bookmark
 - [X] get_job_run
 - [ ] get_job_runs
-- [ ] get_jobs
+- [X] get_jobs
 - [ ] get_mapping
 - [ ] get_ml_task_run
 - [ ] get_ml_task_runs
 - [ ] get_ml_transform
 - [ ] get_ml_transforms
-- [ ] get_partition
+- [X] get_partition
 - [ ] get_partition_indexes
 - [X] get_partitions
   
@@ -140,31 +140,30 @@ glue
         Expression caveats:
 
         - Column names must consist of UPPERCASE, lowercase, dots and underscores only.
-        - Nanosecond expressions on timestamp columns are rounded to microseconds.
         - Literal dates and timestamps must be valid, i.e. no support for February 31st.
         - LIKE expressions are converted to Python regexes, escaping special characters.
           Only % and _ wildcards are supported, and SQL escaping using [] does not work.
         
 
 - [ ] get_plan
-- [ ] get_registry
+- [X] get_registry
 - [ ] get_resource_policies
 - [ ] get_resource_policy
-- [ ] get_schema
+- [X] get_schema
 - [X] get_schema_by_definition
 - [X] get_schema_version
 - [ ] get_schema_versions_diff
 - [ ] get_security_configuration
 - [ ] get_security_configurations
-- [ ] get_session
+- [X] get_session
 - [ ] get_statement
 - [X] get_table
-- [ ] get_table_version
-- [ ] get_table_versions
+- [X] get_table_version
+- [X] get_table_versions
 - [X] get_tables
 - [X] get_tags
-- [ ] get_trigger
-- [ ] get_triggers
+- [X] get_trigger
+- [X] get_triggers
 - [ ] get_unfiltered_partition_metadata
 - [ ] get_unfiltered_partitions_metadata
 - [ ] get_unfiltered_table_metadata
@@ -186,12 +185,12 @@ glue
 - [ ] list_dev_endpoints
 - [X] list_jobs
 - [ ] list_ml_transforms
-- [ ] list_registries
+- [X] list_registries
 - [ ] list_schema_versions
 - [ ] list_schemas
-- [ ] list_sessions
+- [X] list_sessions
 - [ ] list_statements
-- [ ] list_triggers
+- [X] list_triggers
 - [ ] list_workflows
 - [ ] put_data_catalog_encryption_settings
 - [ ] put_resource_policy
@@ -214,12 +213,12 @@ glue
 - [X] start_job_run
 - [ ] start_ml_evaluation_task_run
 - [ ] start_ml_labeling_set_generation_task_run
-- [ ] start_trigger
+- [X] start_trigger
 - [ ] start_workflow_run
 - [X] stop_crawler
 - [ ] stop_crawler_schedule
-- [ ] stop_session
-- [ ] stop_trigger
+- [X] stop_session
+- [X] stop_trigger
 - [ ] stop_workflow_run
 - [X] tag_resource
 - [X] untag_resource
@@ -236,11 +235,15 @@ glue
 - [ ] update_job
 - [ ] update_job_from_source_control
 - [ ] update_ml_transform
-- [ ] update_partition
+- [X] update_partition
 - [ ] update_registry
-- [ ] update_schema
+- [X] update_schema
+  
+        The SchemaVersionNumber-argument is not yet implemented
+        
+
 - [ ] update_source_control_from_job
-- [ ] update_table
+- [X] update_table
 - [ ] update_trigger
 - [ ] update_user_defined_function
 - [ ] update_workflow

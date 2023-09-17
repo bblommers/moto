@@ -1,8 +1,7 @@
 import boto3
-import pytest
-import sure  # noqa # pylint: disable=unused-import
-
 from botocore.exceptions import ClientError
+import pytest
+
 from moto import mock_rds
 from moto.core import DEFAULT_ACCOUNT_ID as ACCOUNT_ID
 
@@ -25,6 +24,30 @@ def _prepare_db_snapshot(client, snapshot_name="snapshot-1"):
     return resp["DBSnapshot"]["DBSnapshotArn"]
 
 
+def _prepare_db_cluster_snapshot(client, snapshot_name="cluster-snapshot-1"):
+    db_cluster_identifier = "db-cluster-primary-1"
+    client.create_db_cluster(
+        AvailabilityZones=[
+            "us-west-2",
+        ],
+        BackupRetentionPeriod=1,
+        DBClusterIdentifier=db_cluster_identifier,
+        DBClusterParameterGroupName="db-cluster-primary-1-group",
+        DatabaseName="staging-postgres",
+        Engine="postgres",
+        EngineVersion="5.6.10a",
+        MasterUserPassword="hunterxhunder",
+        MasterUsername="root",
+        Port=3306,
+        StorageEncrypted=True,
+    )
+    resp = client.create_db_cluster_snapshot(
+        DBClusterSnapshotIdentifier=snapshot_name,
+        DBClusterIdentifier=db_cluster_identifier,
+    )
+    return resp["DBClusterSnapshot"]["DBClusterSnapshotArn"]
+
+
 @mock_rds
 def test_start_export_task_fails_unknown_snapshot():
     client = boto3.client("rds", region_name="us-west-2")
@@ -39,12 +62,12 @@ def test_start_export_task_fails_unknown_snapshot():
         )
 
     err = ex.value.response["Error"]
-    err["Code"].should.equal("DBSnapshotNotFound")
-    err["Message"].should.equal("DBSnapshot snapshot-1 not found.")
+    assert err["Code"] == "DBSnapshotNotFound"
+    assert err["Message"] == "DBSnapshot snapshot-1 not found."
 
 
 @mock_rds
-def test_start_export_task():
+def test_start_export_task_db():
     client = boto3.client("rds", region_name="us-west-2")
     source_arn = _prepare_db_snapshot(client)
 
@@ -58,15 +81,43 @@ def test_start_export_task():
         ExportOnly=["schema.table"],
     )
 
-    export["ExportTaskIdentifier"].should.equal("export-snapshot-1")
-    export["SourceArn"].should.equal(source_arn)
-    export["S3Bucket"].should.equal("export-bucket")
-    export["S3Prefix"].should.equal("snaps/")
-    export["IamRoleArn"].should.equal("arn:aws:iam:::role/export-role")
-    export["KmsKeyId"].should.equal(
+    assert export["ExportTaskIdentifier"] == "export-snapshot-1"
+    assert export["SourceArn"] == source_arn
+    assert export["S3Bucket"] == "export-bucket"
+    assert export["S3Prefix"] == "snaps/"
+    assert export["IamRoleArn"] == "arn:aws:iam:::role/export-role"
+    assert export["KmsKeyId"] == (
         "arn:aws:kms:::key/0ea3fef3-80a7-4778-9d8c-1c0c6EXAMPLE"
     )
-    export["ExportOnly"].should.equal(["schema.table"])
+    assert export["ExportOnly"] == ["schema.table"]
+    assert export["SourceType"] == "SNAPSHOT"
+
+
+@mock_rds
+def test_start_export_task_db_cluster():
+    client = boto3.client("rds", region_name="us-west-2")
+    source_arn = _prepare_db_cluster_snapshot(client)
+
+    export = client.start_export_task(
+        ExportTaskIdentifier="export-snapshot-1",
+        SourceArn=source_arn,
+        S3BucketName="export-bucket",
+        S3Prefix="snaps/",
+        IamRoleArn="arn:aws:iam:::role/export-role",
+        KmsKeyId="arn:aws:kms:::key/0ea3fef3-80a7-4778-9d8c-1c0c6EXAMPLE",
+        ExportOnly=["schema.table"],
+    )
+
+    assert export["ExportTaskIdentifier"] == "export-snapshot-1"
+    assert export["SourceArn"] == source_arn
+    assert export["S3Bucket"] == "export-bucket"
+    assert export["S3Prefix"] == "snaps/"
+    assert export["IamRoleArn"] == "arn:aws:iam:::role/export-role"
+    assert export["KmsKeyId"] == (
+        "arn:aws:kms:::key/0ea3fef3-80a7-4778-9d8c-1c0c6EXAMPLE"
+    )
+    assert export["ExportOnly"] == ["schema.table"]
+    assert export["SourceType"] == "CLUSTER"
 
 
 @mock_rds
@@ -91,9 +142,10 @@ def test_start_export_task_fail_already_exists():
         )
 
     err = ex.value.response["Error"]
-    err["Code"].should.equal("ExportTaskAlreadyExistsFault")
-    err["Message"].should.equal(
-        "Cannot start export task because a task with the identifier export-snapshot-1 already exists."
+    assert err["Code"] == "ExportTaskAlreadyExistsFault"
+    assert err["Message"] == (
+        "Cannot start export task because a task with the identifier "
+        "export-snapshot-1 already exists."
     )
 
 
@@ -104,9 +156,10 @@ def test_cancel_export_task_fails_unknown_task():
         client.cancel_export_task(ExportTaskIdentifier="export-snapshot-1")
 
     err = ex.value.response["Error"]
-    err["Code"].should.equal("ExportTaskNotFoundFault")
-    err["Message"].should.equal(
-        "Cannot cancel export task because a task with the identifier export-snapshot-1 is not exist."
+    assert err["Code"] == "ExportTaskNotFoundFault"
+    assert err["Message"] == (
+        "Cannot cancel export task because a task with the identifier "
+        "export-snapshot-1 is not exist."
     )
 
 
@@ -125,8 +178,8 @@ def test_cancel_export_task():
 
     export = client.cancel_export_task(ExportTaskIdentifier="export-snapshot-1")
 
-    export["ExportTaskIdentifier"].should.equal("export-snapshot-1")
-    export["Status"].should.equal("canceled")
+    assert export["ExportTaskIdentifier"] == "export-snapshot-1"
+    assert export["Status"] == "canceled"
 
 
 @mock_rds
@@ -143,8 +196,8 @@ def test_describe_export_tasks():
 
     exports = client.describe_export_tasks().get("ExportTasks")
 
-    exports.should.have.length_of(1)
-    exports[0]["ExportTaskIdentifier"].should.equal("export-snapshot-1")
+    assert len(exports) == 1
+    assert exports[0]["ExportTaskIdentifier"] == "export-snapshot-1"
 
 
 @mock_rds
@@ -154,7 +207,8 @@ def test_describe_export_tasks_fails_unknown_task():
         client.describe_export_tasks(ExportTaskIdentifier="export-snapshot-1")
 
     err = ex.value.response["Error"]
-    err["Code"].should.equal("ExportTaskNotFoundFault")
-    err["Message"].should.equal(
-        "Cannot cancel export task because a task with the identifier export-snapshot-1 is not exist."
+    assert err["Code"] == "ExportTaskNotFoundFault"
+    assert err["Message"] == (
+        "Cannot cancel export task because a task with the identifier "
+        "export-snapshot-1 is not exist."
     )

@@ -6,6 +6,7 @@ import re
 from http.server import BaseHTTPRequestHandler
 from subprocess import check_output, CalledProcessError
 from threading import Lock
+from typing import Any, Dict
 
 from botocore.awsrequest import AWSPreparedRequest
 from moto.backends import get_backend
@@ -19,11 +20,11 @@ from .certificate_creator import CertificateCreator
 
 
 class MotoRequestHandler:
-    def __init__(self, port):
+    def __init__(self, port: int):
         self.lock = Lock()
         self.port = port
 
-    def get_backend_for_host(self, host):
+    def get_backend_for_host(self, host: str) -> Any:
         if host == f"http://localhost:{self.port}":
             return "moto_api"
 
@@ -31,7 +32,7 @@ class MotoRequestHandler:
             if pattern.match(host):
                 return backend
 
-    def get_handler_for_host(self, host: str, path: str):
+    def get_handler_for_host(self, host: str, path: str) -> Any:
         # We do not match against URL parameters
         path = path.split("?")[0]
         backend_name = self.get_backend_for_host(host)
@@ -53,7 +54,9 @@ class MotoRequestHandler:
 
         return None
 
-    def parse_request(self, method, host, path, headers, body: bytes):
+    def parse_request(
+        self, method: str, host: str, path: str, headers: Any, body: bytes
+    ) -> Any:
         handler = self.get_handler_for_host(host=host, path=path)
         full_url = host + path
         request = AWSPreparedRequest(
@@ -65,7 +68,7 @@ class MotoRequestHandler:
 class ProxyRequestHandler(BaseHTTPRequestHandler):
     timeout = 1
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any):
         sock = [a for a in args if isinstance(a, socket.socket)][0]
         _, port = sock.getsockname()
         self.protocol_version = "HTTP/1.1"
@@ -74,7 +77,7 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
         BaseHTTPRequestHandler.__init__(self, *args, **kwargs)
 
     @staticmethod
-    def validate():
+    def validate() -> None:
         debug("Starting initial validation...")
         CertificateCreator().validate()
         # Validate the openssl command is available
@@ -86,7 +89,7 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
             info(e.output)
             raise
 
-    def do_CONNECT(self):
+    def do_CONNECT(self) -> None:
         certpath = self.cert_creator.create(self.path)
 
         self.wfile.write(
@@ -101,20 +104,16 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
             certfile=certpath,
             server_side=True,
         )
-        self.rfile = self.connection.makefile("rb", self.rbufsize)
-        self.wfile = self.connection.makefile("wb", self.wbufsize)
+        self.rfile = self.connection.makefile("rb", self.rbufsize)  # type: ignore
+        self.wfile = self.connection.makefile("wb", self.wbufsize)  # type: ignore
 
         conntype = self.headers.get("Proxy-Connection", "")
         if self.protocol_version == "HTTP/1.1" and conntype.lower() != "close":
-            self.close_connection = 0
+            self.close_connection = 0  # type: ignore
         else:
-            self.close_connection = 0
+            self.close_connection = 0  # type: ignore
 
-    def do_GET(self):
-        if self.path == "http://proxy2.test/":
-            self.send_cacert()
-            return
-
+    def do_GET(self) -> None:
         req = self
         req_body = b""
         if "Content-Length" in req.headers:
@@ -136,7 +135,7 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
                 if chunk_length == 0:
                     break
 
-        req_body = self.decode_request_body(req.headers, req_body)
+        req_body = self.decode_request_body(req.headers, req_body)  # type: ignore
         if isinstance(self.connection, ssl.SSLSocket):
             host = "https://" + req.headers["Host"]
         else:
@@ -165,7 +164,7 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
                 res_status, res_headers, res_body = (200, {}, response)
 
         except RESTError as e:
-            if type(e.get_headers()) == list:
+            if isinstance(e.get_headers(), list):
                 res_headers = dict(e.get_headers())
             else:
                 res_headers = e.get_headers()
@@ -194,7 +193,7 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
         if res_body:
             self.wfile.write(res_body)
 
-    def handle(self):
+    def handle(self) -> None:
         """Handle multiple requests if necessary."""
         self.close_connection = True
 
@@ -207,7 +206,7 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
                 # We can safely ignore that
                 pass
 
-    def decode_request_body(self, headers, body):
+    def decode_request_body(self, headers: Dict[str, str], body: Any) -> Any:
         if body is None:
             return body
         if headers.get("Content-Type", "") in [
@@ -223,14 +222,3 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
     do_PATCH = do_GET
     do_DELETE = do_GET
     do_OPTIONS = do_GET
-
-    def send_cacert(self):
-        with open(self.cacert, "rb") as f:
-            data = f.read()
-
-        self.wfile.write(f"{self.protocol_version} {200} OK\r\n")
-        self.send_header("Content-Type", "application/x-x509-ca-cert")
-        self.send_header("Content-Length", len(data))
-        self.send_header("Connection", "close")
-        self.end_headers()
-        self.wfile.write(data)

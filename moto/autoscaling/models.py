@@ -30,7 +30,7 @@ DEFAULT_COOLDOWN = 300
 ASG_NAME_TAG = "aws:autoscaling:groupName"
 
 
-class InstanceState(object):
+class InstanceState:
     def __init__(
         self,
         instance: "Instance",
@@ -174,13 +174,14 @@ class FakeLaunchConfiguration(CloudFormationModel):
     def create_from_instance(
         cls, name: str, instance: Instance, backend: "AutoScalingBackend"
     ) -> "FakeLaunchConfiguration":
+        security_group_names = [sg.name for sg in instance.security_groups]
         config = backend.create_launch_configuration(
             name=name,
             image_id=instance.image_id,
             kernel_id="",
             ramdisk_id="",
             key_name=instance.key_name,
-            security_groups=instance.security_groups,
+            security_groups=security_group_names,
             user_data=instance.user_data,
             instance_type=instance.instance_type,
             instance_monitoring=False,
@@ -381,6 +382,20 @@ def set_string_propagate_at_launch_booleans_on_tags(
     return tags
 
 
+class FakeWarmPool(CloudFormationModel):
+    def __init__(
+        self,
+        max_capacity: Optional[int],
+        min_size: Optional[int],
+        pool_state: Optional[str],
+        instance_reuse_policy: Optional[Dict[str, bool]],
+    ):
+        self.max_capacity = max_capacity
+        self.min_size = min_size or 0
+        self.pool_state = pool_state or "Stopped"
+        self.instance_reuse_policy = instance_reuse_policy
+
+
 class FakeAutoScalingGroup(CloudFormationModel):
     def __init__(
         self,
@@ -448,6 +463,7 @@ class FakeAutoScalingGroup(CloudFormationModel):
         self.set_desired_capacity(desired_capacity)
 
         self.metrics: List[str] = []
+        self.warm_pool: Optional[FakeWarmPool] = None
 
     @property
     def tags(self) -> List[Dict[str, str]]:
@@ -483,7 +499,7 @@ class FakeAutoScalingGroup(CloudFormationModel):
         if vpc_zone_identifier:
             # extract azs for vpcs
             subnet_ids = vpc_zone_identifier.split(",")
-            subnets = self.autoscaling_backend.ec2_backend.get_all_subnets(
+            subnets = self.autoscaling_backend.ec2_backend.describe_subnets(
                 subnet_ids=subnet_ids
             )
             vpc_zones = [subnet.availability_zone for subnet in subnets]
@@ -521,9 +537,13 @@ class FakeAutoScalingGroup(CloudFormationModel):
             if launch_template:
                 launch_template_id = launch_template.get("launch_template_id")
                 launch_template_name = launch_template.get("launch_template_name")
+                # If no version is specified, AWS will use '$Default'
+                # However, AWS will never show the version if it is not specified
+                # (If the user explicitly specifies '$Default', it will be returned)
                 self.launch_template_version = (
                     launch_template.get("version") or "$Default"
                 )
+                self.provided_launch_template_version = launch_template.get("version")
             elif mixed_instance_policy:
                 spec = mixed_instance_policy["LaunchTemplate"][
                     "LaunchTemplateSpecification"
@@ -809,6 +829,23 @@ class FakeAutoScalingGroup(CloudFormationModel):
 
     def enable_metrics_collection(self, metrics: List[str]) -> None:
         self.metrics = metrics or []
+
+    def put_warm_pool(
+        self,
+        max_capacity: Optional[int],
+        min_size: Optional[int],
+        pool_state: Optional[str],
+        instance_reuse_policy: Optional[Dict[str, bool]],
+    ) -> None:
+        self.warm_pool = FakeWarmPool(
+            max_capacity=max_capacity,
+            min_size=min_size,
+            pool_state=pool_state,
+            instance_reuse_policy=instance_reuse_policy,
+        )
+
+    def get_warm_pool(self) -> Optional[FakeWarmPool]:
+        return self.warm_pool
 
 
 class AutoScalingBackend(BaseBackend):
@@ -1540,6 +1577,33 @@ class AutoScalingBackend(BaseBackend):
     def enable_metrics_collection(self, group_name: str, metrics: List[str]) -> None:
         group = self.describe_auto_scaling_groups([group_name])[0]
         group.enable_metrics_collection(metrics)
+
+    def put_warm_pool(
+        self,
+        group_name: str,
+        max_capacity: Optional[int],
+        min_size: Optional[int],
+        pool_state: Optional[str],
+        instance_reuse_policy: Optional[Dict[str, bool]],
+    ) -> None:
+        group = self.describe_auto_scaling_groups([group_name])[0]
+        group.put_warm_pool(
+            max_capacity=max_capacity,
+            min_size=min_size,
+            pool_state=pool_state,
+            instance_reuse_policy=instance_reuse_policy,
+        )
+
+    def describe_warm_pool(self, group_name: str) -> Optional[FakeWarmPool]:
+        """
+        Pagination is not yet implemented. Does not create/return any Instances currently.
+        """
+        group = self.describe_auto_scaling_groups([group_name])[0]
+        return group.get_warm_pool()
+
+    def delete_warm_pool(self, group_name: str) -> None:
+        group = self.describe_auto_scaling_groups([group_name])[0]
+        group.warm_pool = None
 
 
 autoscaling_backends = BackendDict(AutoScalingBackend, "autoscaling")

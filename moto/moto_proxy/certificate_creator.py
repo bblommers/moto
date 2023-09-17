@@ -7,7 +7,7 @@ from uuid import uuid4
 from . import debug, info
 
 
-def join_with_script_dir(path):
+def join_with_script_dir(path: str) -> str:
     return os.path.join(os.path.dirname(os.path.abspath(__file__)), path)
 
 
@@ -19,7 +19,7 @@ class CertificateCreator:
 
     lock = threading.Lock()
 
-    def validate(self):
+    def validate(self) -> None:
         # Verify the CertificateAuthority files exist
         if not os.path.isfile(CertificateCreator.cakey):
             raise Exception(f"Cannot find {CertificateCreator.cakey}")

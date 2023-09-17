@@ -215,8 +215,8 @@ class DAXBackend(BaseBackend):
         self.clusters[cluster_name].delete()
         return self.clusters[cluster_name]
 
-    @paginate(PAGINATION_MODEL)
-    def describe_clusters(self, cluster_names: Iterable[str]) -> List[DaxCluster]:  # type: ignore[misc]
+    @paginate(PAGINATION_MODEL)  # type: ignore[misc]
+    def describe_clusters(self, cluster_names: Iterable[str]) -> List[DaxCluster]:
         clusters = self.clusters
         if not cluster_names:
             cluster_names = clusters.keys()

@@ -1,14 +1,16 @@
 import boto3
 import json
 import requests
-import sure  # noqa # pylint: disable=unused-import
 import time
+import pytest
 
+from botocore.exceptions import ClientError
 from moto import mock_lambda, mock_cloudformation, mock_logs, mock_s3, settings
 from unittest import SkipTest
 from uuid import uuid4
 from tests.test_awslambda.utilities import wait_for_log_msg
-from .fixtures.custom_lambda import get_template
+from .fixtures.custom_lambda import get_template, get_template_for_unknown_lambda
+from ..markers import requires_docker
 
 
 def get_lambda_code():
@@ -66,15 +68,16 @@ def test_create_custom_lambda_resource():
 
     # Verify the correct Output was returned
     outputs = get_outputs(cf, stack_name)
-    outputs.should.have.length_of(1)
-    outputs[0].should.have.key("OutputKey").equals("infokey")
-    outputs[0].should.have.key("OutputValue").equals("special value")
+    assert len(outputs) == 1
+    assert outputs[0]["OutputKey"] == "infokey"
+    assert outputs[0]["OutputValue"] == "special value"
 
 
 @mock_cloudformation
 @mock_lambda
 @mock_logs
 @mock_s3
+@requires_docker
 def test_create_custom_lambda_resource__verify_cfnresponse_failed():
     #########
     # Integration test using a Custom Resource
@@ -100,25 +103,25 @@ def test_create_custom_lambda_resource__verify_cfnresponse_failed():
     execution_failed, logs = wait_for_log_msg(
         expected_msg="failed executing http.request", log_group=log_group_name
     )
-    execution_failed.should.equal(True)
+    assert execution_failed is True
 
     printed_events = [
         line for line in logs if line.startswith("{'RequestType': 'Create'")
     ]
-    printed_events.should.have.length_of(1)
+    assert len(printed_events) == 1
     original_event = json.loads(printed_events[0].replace("'", '"'))
-    original_event.should.have.key("RequestType").equals("Create")
-    original_event.should.have.key("ServiceToken")  # Should equal Lambda ARN
-    original_event.should.have.key("ResponseURL")
-    original_event.should.have.key("StackId")
-    original_event.should.have.key("RequestId")  # type UUID
-    original_event.should.have.key("LogicalResourceId").equals("CustomInfo")
-    original_event.should.have.key("ResourceType").equals("Custom::Info")
-    original_event.should.have.key("ResourceProperties")
-    original_event["ResourceProperties"].should.have.key(
-        "ServiceToken"
+    assert original_event["RequestType"] == "Create"
+    assert "ServiceToken" in original_event  # Should equal Lambda ARN
+    assert "ResponseURL" in original_event
+    assert "StackId" in original_event
+    assert "RequestId" in original_event  # type UUID
+    assert original_event["LogicalResourceId"] == "CustomInfo"
+    assert original_event["ResourceType"] == "Custom::Info"
+    assert "ResourceProperties" in original_event
+    assert (
+        "ServiceToken" in original_event["ResourceProperties"]
     )  # Should equal Lambda ARN
-    original_event["ResourceProperties"].should.have.key("MyProperty").equals("stuff")
+    assert original_event["ResourceProperties"]["MyProperty"] == "stuff"
 
 
 @mock_cloudformation
@@ -151,8 +154,8 @@ def test_create_custom_lambda_resource__verify_manual_request():
     )
     stack_id = stack["StackId"]
     stack = cf.describe_stacks(StackName=stack_id)["Stacks"][0]
-    stack["Outputs"].should.equal([])
-    stack["StackStatus"].should.equal("CREATE_IN_PROGRESS")
+    assert stack["Outputs"] == []
+    assert stack["StackStatus"] == "CREATE_IN_PROGRESS"
 
     callback_url = f"http://cloudformation.{region_name}.amazonaws.com/cloudformation_{region_name}/cfnresponse?stack={stack_id}"
     data = {
@@ -164,9 +167,28 @@ def test_create_custom_lambda_resource__verify_manual_request():
     requests.post(callback_url, json=data)
 
     stack = cf.describe_stacks(StackName=stack_id)["Stacks"][0]
-    stack["StackStatus"].should.equal("CREATE_COMPLETE")
-    stack["Outputs"].should.equal(
-        [{"OutputKey": "infokey", "OutputValue": "resultfromthirdpartysystem"}]
+    assert stack["StackStatus"] == "CREATE_COMPLETE"
+    assert stack["Outputs"] == [
+        {"OutputKey": "infokey", "OutputValue": "resultfromthirdpartysystem"}
+    ]
+
+
+@mock_cloudformation
+def test_create_custom_lambda_resource__unknown_arn():
+    # Try to create a Lambda with an unknown ARN
+    # Verify that this fails in a predictable manner
+    cf = boto3.client("cloudformation", region_name="eu-north-1")
+    with pytest.raises(ClientError) as exc:
+        cf.create_stack(
+            StackName=f"stack{str(uuid4())[0:6]}",
+            TemplateBody=json.dumps(get_template_for_unknown_lambda()),
+            Capabilities=["CAPABILITY_IAM"],
+        )
+    err = exc.value.response["Error"]
+    assert err["Code"] == "ValidationError"
+    assert (
+        err["Message"]
+        == "Template error: instance of Fn::GetAtt references undefined resource InfoFunction"
     )
 
 

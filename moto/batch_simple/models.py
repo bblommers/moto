@@ -8,12 +8,17 @@ from ..batch.models import (
 from ..core import BackendDict
 
 import datetime
+from os import getenv
+from time import sleep
 from typing import Any, Dict, List, Tuple, Optional
 
 
 class BatchSimpleBackend(BaseBackend):
     """
-    Implements a Batch-Backend that does not use Docker containers. Submitted Jobs are simply marked as Success
+    Implements a Batch-Backend that does not use Docker containers. Submitted Jobs are marked as Success by default.
+
+    Set the environment variable MOTO_SIMPLE_BATCH_FAIL_AFTER=0 to fail jobs immediately, or set this variable to a positive integer to control after how many seconds the job fails.
+
     Annotate your tests with `@mock_batch_simple`-decorator to use this Batch-implementation.
     """
 
@@ -77,10 +82,27 @@ class BatchSimpleBackend(BaseBackend):
         )
         self.backend._jobs[job.job_id] = job
 
-        # We don't want to actually run the job - just mark it as succeeded
         job.job_started_at = datetime.datetime.now()
+        job.log_stream_name = job._stream_name
         job._start_attempt()
-        job._mark_stopped(success=True)
+
+        # We don't want to actually run the job - just mark it as succeeded or failed
+        # depending on whether env var MOTO_SIMPLE_BATCH_FAIL_AFTER is set
+        # if MOTO_SIMPLE_BATCH_FAIL_AFTER is set to an integer then batch will
+        # sleep this many seconds
+        should_batch_fail = getenv("MOTO_SIMPLE_BATCH_FAIL_AFTER")
+        if should_batch_fail:
+            try:
+                batch_fail_delay = int(should_batch_fail)
+                sleep(batch_fail_delay)
+            except ValueError:
+                # Unable to parse value of MOTO_SIMPLE_BATCH_FAIL_AFTER as an integer
+                pass
+
+            # fail the job
+            job._mark_stopped(success=False)
+        else:
+            job._mark_stopped(success=True)
 
         return job_name, job.job_id
 

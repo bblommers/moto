@@ -4,8 +4,9 @@ import base64
 from typing import Any, Dict, Optional
 
 from moto.core import BaseBackend, BackendDict, BaseModel
-from moto.dynamodb.models import dynamodb_backends, DynamoJsonEncoder, DynamoDBBackend
-from moto.dynamodb.models import Table, StreamShard
+from moto.dynamodb.models import dynamodb_backends, DynamoDBBackend
+from moto.dynamodb.models.table import Table, StreamShard
+from moto.dynamodb.models.utilities import DynamoJsonEncoder
 
 
 class ShardIterator(BaseModel):
@@ -39,7 +40,7 @@ class ShardIterator(BaseModel):
         return {"ShardIterator": self.arn}
 
     def get(self, limit: int = 1000) -> Dict[str, Any]:
-        items = self.stream_shard.get(self.sequence_number, limit)  # type: ignore[no-untyped-call]
+        items = self.stream_shard.get(self.sequence_number, limit)
         try:
             last_sequence_number = max(
                 int(i["dynamodb"]["SequenceNumber"]) for i in items
@@ -75,7 +76,7 @@ class DynamoDBStreamsBackend(BaseBackend):
 
     def _get_table_from_arn(self, arn: str) -> Table:
         table_name = arn.split(":", 6)[5].split("/")[1]
-        return self.dynamodb.get_table(table_name)  # type: ignore[no-untyped-call]
+        return self.dynamodb.get_table(table_name)
 
     def describe_stream(self, arn: str) -> str:
         table = self._get_table_from_arn(arn)
@@ -86,7 +87,7 @@ class DynamoDBStreamsBackend(BaseBackend):
                 "StreamStatus": (
                     "ENABLED" if table.latest_stream_label else "DISABLED"
                 ),
-                "StreamViewType": table.stream_specification["StreamViewType"],
+                "StreamViewType": table.stream_specification["StreamViewType"],  # type: ignore[index]
                 "CreationRequestDateTime": table.stream_shard.created_on.isoformat(),  # type: ignore[union-attr]
                 "TableName": table.name,
                 "KeySchema": table.schema,
