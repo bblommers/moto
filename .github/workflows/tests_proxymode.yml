@@ -36,7 +36,8 @@ jobs:
       run: |
         pip install build
         python -m build
-        docker run --rm -t --name motoproxy -v `pwd`:/moto -p 5005:5005 -v /var/run/docker.sock:/var/run/docker.sock python:3.7-buster /moto/scripts/ci_moto_proxy.sh &
+        docker run --rm -t --name motoproxy -v `pwd`:/moto -p 5005:5005 -v /var/run/docker.sock:/var/run/docker.sock python:${{ matrix.python-version }}-buster /moto/scripts/ci_moto_proxy.sh &
+        python scripts/ci_wait_for_proxy.py
     - name: Test ProxyMode
       env:
         TEST_PROXY_MODE: ${{ true }}

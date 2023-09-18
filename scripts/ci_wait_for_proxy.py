@@ -1,4 +1,3 @@
-import os
 import time
 
 import urllib.request as urlrequest
