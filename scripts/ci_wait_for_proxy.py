@@ -8,12 +8,12 @@ EXCEPTIONS = (URLError, socket.timeout, ConnectionResetError)
 
 
 start_ts = time.time()
-expected_host = "http://motoapi.amazonaws.com/moto-api/reset"
-print("Waiting for service to come up on {}".format(expected_host))
+proxy_location = "127.0.0.1:5005"
+print(f"Waiting for proxy to come up for {proxy_location}")
 while True:
     try:
-        req = urlrequest.Request(expected_host)
-        req.set_proxy("127.0.0.1:5005", 'http')
+        req = urlrequest.Request("http://motoapi.amazonaws.com/moto-api/reset")
+        req.set_proxy(proxy_location, 'http')
 
         urlrequest.urlopen(req, timeout=1)
         break
@@ -21,7 +21,6 @@ while True:
         if e.code == 502:
             # Bad Gateway: The Proxy is up, but doesn't know how to respond to this request
             # Our request is to reset the Proxy, and that should be doable
-            # TODO: Figure out why reset is not working
             break
         raise e
     except EXCEPTIONS:

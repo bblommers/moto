@@ -2,11 +2,8 @@ import argparse
 import logging
 import os
 import signal
-import socket
-import ssl
 import sys
-from http.server import HTTPServer
-from socketserver import ThreadingMixIn
+from http.server import ThreadingHTTPServer
 from typing import Any
 
 from moto.moto_proxy import logger
@@ -43,19 +40,6 @@ def get_help_msg() -> str:
         text="\tHTTPS_PROXY=http://localhost:5005 MOTO_PROXY_PORT=5005 pytest tests_dir\n",
     )
     return msg
-
-
-class ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
-    address_family = socket.AF_INET
-    daemon_threads = True
-
-    def handle_error(self, request: Any, client_address: Any) -> Any:
-        # surpress socket/ssl related errors
-        cls, _ = sys.exc_info()[:2]
-        if cls is socket.error or cls is ssl.SSLError:
-            pass
-        else:
-            return HTTPServer.handle_error(self, request, client_address)
 
 
 def main(argv: Any = None) -> None:

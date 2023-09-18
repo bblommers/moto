@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import socket
 import ssl
-
+import io
 import re
 from http.server import BaseHTTPRequestHandler
 from subprocess import check_output, CalledProcessError
@@ -66,7 +66,7 @@ class MotoRequestHandler:
 
 
 class ProxyRequestHandler(BaseHTTPRequestHandler):
-    timeout = 1
+    timeout = 5
 
     def __init__(self, *args: Any, **kwargs: Any):
         sock = [a for a in args if isinstance(a, socket.socket)][0]
@@ -111,7 +111,7 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
         if self.protocol_version == "HTTP/1.1" and conntype.lower() != "close":
             self.close_connection = 0  # type: ignore
         else:
-            self.close_connection = 0  # type: ignore
+            self.close_connection = 1  # type: ignore
 
     def do_GET(self) -> None:
         req = self
@@ -121,19 +121,9 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
             req_body = self.rfile.read(content_length)
         elif "chunked" in self.headers.get("Transfer-Encoding", ""):
             # https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Transfer-Encoding
-            while True:
-                line = self.rfile.readline().strip()
-                chunk_length = int(line, 16)
-                if chunk_length != 0:
-                    req_body += self.rfile.read(chunk_length)
-
-                # Each chunk is followed by an additional empty newline
-                self.rfile.readline()
-
-                # a chunk size of 0 is an end indication
-                # AWS does add additional (checksum-)headers, but we ignore those
-                if chunk_length == 0:
-                    break
+            chunked_body = self.read_chunked_body(self.rfile)
+            # The body is chunked twice, so we need to repeat this process
+            req_body = self.read_chunked_body(io.BytesIO(chunked_body))
 
         req_body = self.decode_request_body(req.headers, req_body)  # type: ignore
         if isinstance(self.connection, ssl.SSLSocket):
@@ -192,19 +182,24 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
             self.end_headers()
         if res_body:
             self.wfile.write(res_body)
-
-    def handle(self) -> None:
-        """Handle multiple requests if necessary."""
         self.close_connection = True
 
-        self.handle_one_request()
-        while not self.close_connection:
-            try:
-                self.handle_one_request()
-            except TimeoutError:
-                # Some POST requests do not have a body - reading them may cause a timeout
-                # We can safely ignore that
-                pass
+    def read_chunked_body(self, reader: Any) -> bytes:
+        chunked_body = b""
+        while True:
+            line = reader.readline().strip()
+            chunk_length = int(line, 16)
+            if chunk_length != 0:
+                chunked_body += reader.read(chunk_length)
+
+            # Each chunk is followed by an additional empty newline
+            reader.readline()
+
+            # a chunk size of 0 is an end indication
+            if chunk_length == 0:
+                # AWS does send additional (checksum-)headers, but we can ignore them
+                break
+        return chunked_body
 
     def decode_request_body(self, headers: Dict[str, str], body: Any) -> Any:
         if body is None:
