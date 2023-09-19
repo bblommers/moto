@@ -132,6 +132,12 @@ class FakeTargetGroup(CloudFormationModel):
             "slow_start.duration_seconds": 0,
             "waf.fail_open.enabled": "false",
         }
+        if target_type == "lambda":
+            self.attributes["lambda.multi_value_headers.enabled"] = "false"
+        if self.protocol in ["HTTP", "HTTPS"]:
+            self.attributes["stickiness.type"] = "lb_cookie"
+        if self.protocol in ["TCP", "UDP", "TCP_UDP"]:
+            self.attributes["stickiness.type"] = "source_ip"
 
         self.targets: Dict[str, Dict[str, Any]] = OrderedDict()
 
@@ -1104,6 +1110,14 @@ Member must satisfy regular expression pattern: {expression}"
                     param = "VPC ID" if param == "vpc_id" else param.lower()
                     raise ValidationError(f"A {param} must be specified")
 
+        if target_type == "lambda":
+            for param in ["protocol", "port", "vpc_id"]:
+                if kwargs.get(param) is not None:
+                    param = "VPC ID" if param == "vpc_id" else param.capitalize()
+                    raise ValidationError(
+                        f"{param} cannot be specified for target groups with target type 'lambda'"
+                    )
+
         if kwargs.get("vpc_id"):
             from moto.ec2.exceptions import InvalidVPCIdError
 
@@ -1193,6 +1207,7 @@ Member must satisfy regular expression pattern: {expression}"
                 {k: kwargs.get(k) or v for k, v in conditions["target_alb"].items()}
             )
 
+        original_kwargs = dict(kwargs)
         kwargs.update(kwargs_patch)
 
         healthcheck_timeout_seconds = int(
@@ -1211,7 +1226,14 @@ Member must satisfy regular expression pattern: {expression}"
                 raise ValidationError(
                     "Health check interval must be greater than the timeout."
                 )
-            if healthcheck_interval_seconds == healthcheck_timeout_seconds:
+            both_values_supplied = (
+                original_kwargs.get("healthcheck_timeout_seconds") is not None
+                and original_kwargs.get("healthcheck_interval_seconds") is not None
+            )
+            if (
+                both_values_supplied
+                and healthcheck_interval_seconds == healthcheck_timeout_seconds
+            ):
                 raise ValidationError(
                     f"Health check timeout '{healthcheck_timeout_seconds}' must be smaller than the interval '{healthcheck_interval_seconds}'"
                 )
@@ -1568,10 +1590,10 @@ Member must satisfy regular expression pattern: {expression}"
         return modified_rules
 
     def set_ip_address_type(self, arn: str, ip_type: str) -> None:
-        if ip_type not in ("internal", "dualstack"):
+        if ip_type not in ("ipv4", "dualstack"):
             raise RESTError(
-                "InvalidParameterValue",
-                "IpAddressType must be either internal | dualstack",
+                "ValidationError",
+                f"1 validation error detected: Value '{ip_type}' at 'ipAddressType' failed to satisfy constraint: Member must satisfy enum value set: [ipv4, dualstack]",
             )
 
         balancer = self.load_balancers.get(arn)
