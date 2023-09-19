@@ -862,10 +862,12 @@ class LambdaFunction(CloudFormationModel, DockerModel):
 
             env_vars.update(self.environment_vars)
             env_vars["MOTO_HOST"] = settings.moto_server_host()
-            env_vars["MOTO_PORT"] = settings.moto_server_port()
-            env_vars[
-                "MOTO_HTTP_ENDPOINT"
-            ] = f'{env_vars["MOTO_HOST"]}:{env_vars["MOTO_PORT"]}'
+            moto_port = settings.moto_server_port()
+            env_vars["MOTO_PORT"] = moto_port
+            env_vars["MOTO_HTTP_ENDPOINT"] = f'{env_vars["MOTO_HOST"]}:{moto_port}'
+
+            if os.environ.get("TEST_PROXY_MODE", "false") == "true":
+                env_vars["HTTPS_PROXY"] = env_vars["MOTO_HTTP_ENDPOINT"]
 
             container = exit_code = None
             log_config = docker.types.LogConfig(type=docker.types.LogConfig.types.JSON)

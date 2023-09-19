@@ -74,6 +74,7 @@ def main(argv: Any = None) -> None:
 
     if "MOTO_PORT" not in os.environ:
         os.environ["MOTO_PORT"] = f"{args.port}"
+    os.environ["TEST_PROXY_MODE"] = "true"
 
     try:
         signal.signal(signal.SIGINT, signal_handler)

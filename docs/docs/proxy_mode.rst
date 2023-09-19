@@ -58,26 +58,7 @@ You can run `moto_proxy --help` to get the exact location of this certificate, d
 
 Alternatively, you can download the certificate from Github: `TODO:: LINK`
 
-
-Python Configuration
---------------------------
-
-When running tests using the boto3-SDK, a custom environment variable is exposed that configures everything automatically:
-
-.. code-block:: bash
-
-    TEST_PROXY_MODE=true pytest
-
-To configure this manually:
-
-.. code-block:: python
-
-    from botocore.config import Config
-
-    config = Config(proxies={"https": "http://localhost:5005"})
-    client = boto3.client("s3", config=config, verify=False)
-
-AWS CLI Configuration:
+Environment Variables Configuration:
 ------------------------------
 
 .. code-block:: bash
@@ -92,6 +73,25 @@ Or by configuring the AWS_CA_BUNDLE:
     export HTTPS_PROXY=http://localhost:5005
     export AWS_CA_BUNDLE=/location/of/moto/ca/cert.crt
     aws cloudformation list-stacks
+
+
+Python Configuration
+--------------------------
+
+If you're already using Moto's `mock_service`-decorators, you can use a custom environment variable that configures everything automatically:
+
+.. code-block:: bash
+
+    TEST_PROXY_MODE=true pytest
+
+To configure this manually:
+
+.. code-block:: python
+
+    from botocore.config import Config
+
+    config = Config(proxies={"https": "http://localhost:5005"})
+    client = boto3.client("s3", config=config, verify=False)
 
 
 Terraform Configuration
