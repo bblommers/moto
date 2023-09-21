@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import socket
 import ssl
-import io
 import re
 from http.server import BaseHTTPRequestHandler
 from subprocess import check_output, CalledProcessError
@@ -98,10 +97,14 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
         self.send_header("k", "v")
         self.end_headers()
 
-        self.connection = ssl.wrap_socket(
-            self.connection,
+        ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        ssl_context.load_cert_chain(
             keyfile=CertificateCreator.certkey,
             certfile=certpath,
+        )
+        ssl_context.check_hostname = False
+        self.connection = ssl_context.wrap_socket(
+            self.connection,
             server_side=True,
         )
         self.rfile = self.connection.makefile("rb", self.rbufsize)  # type: ignore
@@ -121,9 +124,7 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
             req_body = self.rfile.read(content_length)
         elif "chunked" in self.headers.get("Transfer-Encoding", ""):
             # https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Transfer-Encoding
-            chunked_body = self.read_chunked_body(self.rfile)
-            # The body is chunked twice, so we need to repeat this process
-            req_body = self.read_chunked_body(io.BytesIO(chunked_body))
+            req_body = self.read_chunked_body(self.rfile)
 
         req_body = self.decode_request_body(req.headers, req_body)  # type: ignore
         if isinstance(self.connection, ssl.SSLSocket):
@@ -178,7 +179,10 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
         )
         if res_headers:
             for k, v in res_headers.items():
-                self.send_header(k, v)
+                if isinstance(v, bytes):
+                    self.send_header(k, v.decode("utf-8"))
+                else:
+                    self.send_header(k, v)
             self.end_headers()
         if res_body:
             self.wfile.write(res_body)

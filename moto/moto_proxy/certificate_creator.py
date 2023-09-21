@@ -83,7 +83,8 @@ class CertificateCreator:
                     f.write(config_template)
 
                 # Create an Certificate Signing Request
-                subject = f"/CN={full_name}"
+                #
+                subject = f"/CN={full_name}"[0:64]
                 commands = [
                     "openssl",
                     "req",
