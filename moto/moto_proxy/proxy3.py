@@ -13,6 +13,7 @@ from moto.backend_index import backend_url_patterns
 from moto.core import BackendDict, DEFAULT_ACCOUNT_ID
 from moto.core.exceptions import RESTError
 from . import debug, error, info, with_color
+from .utils import get_body_from_form_data
 from .certificate_creator import CertificateCreator
 
 # Adapted from https://github.com/xxlv/proxy3
@@ -54,13 +55,20 @@ class MotoRequestHandler:
         return None
 
     def parse_request(
-        self, method: str, host: str, path: str, headers: Any, body: bytes
+        self,
+        method: str,
+        host: str,
+        path: str,
+        headers: Any,
+        body: bytes,
+        form_data: Dict[str, Any],
     ) -> Any:
         handler = self.get_handler_for_host(host=host, path=path)
         full_url = host + path
         request = AWSPreparedRequest(
             method, full_url, headers, body, stream_output=False
         )
+        request.form_data = form_data
         return handler(request, full_url, headers)
 
 
@@ -125,6 +133,13 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
         elif "chunked" in self.headers.get("Transfer-Encoding", ""):
             # https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Transfer-Encoding
             req_body = self.read_chunked_body(self.rfile)
+        if self.headers.get("Content-Type", "").startswith("multipart/form-data"):
+            boundary = self.headers["Content-Type"].split("boundary=")[-1]
+            req_body, form_data = get_body_from_form_data(req_body, boundary)  # type: ignore
+            for key, val in form_data.items():
+                self.headers[key] = [val]
+        else:
+            form_data = {}
 
         req_body = self.decode_request_body(req.headers, req_body)  # type: ignore
         if isinstance(self.connection, ssl.SSLSocket):
@@ -144,6 +159,7 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
                 path=path,
                 headers=req.headers,
                 body=req_body,
+                form_data=form_data,
             )
             debug("\t=====RESPONSE========")
             debug("\t" + with_color(color=33, text=response))
