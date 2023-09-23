@@ -1,6 +1,20 @@
 Moto Changelog
 ==============
 
+4.2.4
+-----
+Docker Digest for 4.2.4: _sha256:4cdda5b0245a28ae2ebf5f1d5d93425226fe00ace65819a9fa02c8aa77a7e0b6_
+
+    New Methods:
+        * OpenSearch:
+            * list_domain_names()
+
+    Miscellaneous:
+        * DynamoDB: Fixed a bug where binary data could not be queried (introduced in 4.2.3)
+        * EC2: VPC Peering Connections are now supported across accounts
+        * ECS: register_task_definition() now validates the PidMode has the correct value
+        * S3: put_bucket_notification_configuration() now supports SNS Topic targets
+
 4.2.3
 -----
 Docker Digest for 4.2.3: <autopopulateddigest>
