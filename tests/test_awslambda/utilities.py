@@ -90,7 +90,7 @@ def get_proxy_zip_file():
 import boto3
 
 def lambda_handler(event, context):
-    ec2 = boto3.resource('ec2', region_name='us-west-2', verify=False)
+    ec2 = boto3.resource('ec2', region_name='us-west-2')
 
     volume_id = event.get('volume_id')
     vol = ec2.Volume(volume_id)

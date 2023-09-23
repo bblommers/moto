@@ -27,6 +27,7 @@ from moto.awslambda.policy import Policy
 from moto.core import BaseBackend, BackendDict, BaseModel, CloudFormationModel
 from moto.core.exceptions import RESTError
 from moto.core.utils import unix_time_millis, iso_8601_datetime_with_nanoseconds, utcnow
+from moto.utilities.utils import load_resource_as_bytes
 from moto.iam.models import iam_backends
 from moto.iam.exceptions import IAMNotFoundException
 from moto.ecr.exceptions import ImageNotFoundException
@@ -82,6 +83,17 @@ def zip2tar(zip_bytes: bytes) -> io.BytesIO:
     return tarstream
 
 
+def file2tar(file_content: bytes, file_name: str) -> io.BytesIO:
+    tarstream = io.BytesIO()
+    tarf = tarfile.TarFile(fileobj=tarstream, mode="w")
+    tarinfo = tarfile.TarInfo(name=file_name)
+    tarinfo.size = len(file_content)
+    tarf.addfile(tarinfo, io.BytesIO(file_content))
+
+    tarstream.seek(0)
+    return tarstream
+
+
 class _VolumeRefCount:
     __slots__ = "refcount", "volume"
 
@@ -132,6 +144,10 @@ class _DockerDataVolumeContext:
             try:
                 with zip2tar(self._lambda_func.code_bytes) as stream:
                     container.put_archive(settings.LAMBDA_DATA_DIR, stream)
+                if settings.test_proxy_mode():
+                    ca_cert = load_resource_as_bytes(__name__, "../moto_proxy/ca.crt")
+                    with file2tar(ca_cert, "ca.crt") as cert_stream:
+                        container.put_archive(settings.LAMBDA_DATA_DIR, cert_stream)
             finally:
                 container.remove(force=True)
 
@@ -866,8 +882,9 @@ class LambdaFunction(CloudFormationModel, DockerModel):
             env_vars["MOTO_PORT"] = moto_port
             env_vars["MOTO_HTTP_ENDPOINT"] = f'{env_vars["MOTO_HOST"]}:{moto_port}'
 
-            if os.environ.get("TEST_PROXY_MODE", "false") == "true":
+            if settings.test_proxy_mode():
                 env_vars["HTTPS_PROXY"] = env_vars["MOTO_HTTP_ENDPOINT"]
+                env_vars["AWS_CA_BUNDLE"] = "/var/task/ca.crt"
 
             container = exit_code = None
             log_config = docker.types.LogConfig(type=docker.types.LogConfig.types.JSON)

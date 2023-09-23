@@ -118,7 +118,7 @@ def test_s3_object_in_public_bucket_using_multiple_presigned_urls():
         "get_object", params, ExpiresIn=900
     )
     kwargs = {}
-    if settings.TEST_PROXY_MODE:
+    if settings.test_proxy_mode():
         add_proxy_details(kwargs)
     for i in range(1, 10):
         response = requests.get(presigned_url, **kwargs)
@@ -268,7 +268,7 @@ def test_object_acl_with_presigned_post():
 
     with open(object_name, "rb") as fhandle:
         kwargs = {"files": {"file": (object_name, fhandle)}}
-        if settings.TEST_PROXY_MODE:
+        if settings.test_proxy_mode():
             add_proxy_details(kwargs)
         requests.post(response["url"], data=response["fields"], **kwargs)
 

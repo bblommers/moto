@@ -499,7 +499,7 @@ class base_decorator:
     def __call__(
         self, func: Optional[Callable[..., Any]] = None
     ) -> Union[BaseMockAWS, Callable[..., BaseMockAWS]]:
-        if settings.TEST_PROXY_MODE:
+        if settings.test_proxy_mode():
             mocked_backend: BaseMockAWS = ProxyModeMockAWS(self.backends)
         elif settings.TEST_SERVER_MODE:
             mocked_backend: BaseMockAWS = ServerModeMockAWS(self.backends)  # type: ignore
