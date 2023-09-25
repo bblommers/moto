@@ -1633,8 +1633,11 @@ class LambdaBackend(BaseBackend):
     Implementation of the AWS Lambda endpoint.
     Invoking functions is supported - they will run inside a Docker container, emulating the real AWS behaviour as closely as possible.
 
-    It is possible to connect from AWS Lambdas to other services, as long as you are running Moto in ServerMode.
-    The Lambda has access to environment variables `MOTO_HOST` and `MOTO_PORT`, which can be used to build the url that MotoServer runs on:
+    It is possible to connect from AWS Lambdas to other services, as long as you are running MotoProxy or the MotoServer.
+
+    When running the MotoProxy, calls to other AWS services are automatically proxied.
+
+    When running MotoServer, the Lambda has access to environment variables `MOTO_HOST` and `MOTO_PORT`, which can be used to build the url that MotoServer runs on:
 
     .. sourcecode:: python
 

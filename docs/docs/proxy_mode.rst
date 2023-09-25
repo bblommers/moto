@@ -10,8 +10,11 @@
 Proxy Mode
 ================================
 
-Moto has can be run as a proxy. All the official AWS SDK's can be configured to use this proxy.  :raw-html:`<br />`
-Instead of sending requests through to AWS, Moto will mock them.
+Moto can be run as a proxy, intercepting all requests to AWS and mocking them instead.  :raw-html:`<br />`
+Some of the benefits:
+ - Easy to configure for all SDK's
+ - Can be reached by Lambda containers, allowing you to mock service-calls inside a Lambda-function
+
 
 Installation
 -------------
@@ -29,10 +32,18 @@ You can then start the proxy like this:
 
     $ moto_proxy
 
+Note that, if you want your Lambda functions to reach this proxy, you need to open up the moto_proxy:
+
+.. code:: bash
+
+    $ moto_proxy -H 0.0.0.0
+
+.. warning:: Be careful not to use this on a public network - this allows all network users access to your server.
+
 
 Quick usage
 --------------
-The help command shows a quick-guide on how to connect to the proxy.
+The help command shows a quick-guide on how to configure SDK's to  use the proxy.
 .. code-block:: bash
 
     $ moto_proxy --help
@@ -46,7 +57,7 @@ To use the MotoProxy while running your tests, the AWS SDK needs to know two thi
  - The proxy endpoint
  - How to deal with SSL
 
-To set the proxy endpoint, most SDK's allow you to set a `HTTPS_PROXY`-environment variable.
+To set the proxy endpoint, use the `HTTPS_PROXY`-environment variable.
 
 Because the proxy does not have an approved SSL certificate, the SDK will not trust the proxy by default. This means that the SDK has to be configured to either
 
@@ -55,8 +66,6 @@ Because the proxy does not have an approved SSL certificate, the SDK will not tr
 
 The `AWS_CA_BUNDLE` needs to point to the location of the CA certificate that comes with Moto.  :raw-html:`<br />`
 You can run `moto_proxy --help` to get the exact location of this certificate, depending on where Moto is installed.
-
-Alternatively, you can download the certificate from Github: `TODO:: LINK`
 
 Environment Variables Configuration:
 ------------------------------
@@ -106,3 +115,11 @@ Terraform Configuration
         # OR
         insecure                    = true
     }
+
+
+Drawbacks
+------------
+
+Configuring a proxy means that all requests are intercepted, but the MotoProxy can only handle requests to AWS.
+
+If your test includes a call to `https://www.thirdpartyservice.com`, that will also be intercepted by `MotoProxy` - and subsequently throw an error because it doesn't know how to handle non-AWS requests.
