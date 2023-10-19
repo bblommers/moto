@@ -1,0 +1,58 @@
+From 1018d2469a98a0d24753d6c0d8d67ccc02936cff Mon Sep 17 00:00:00 2001
+From: Bert Blommers <info@bertblommers.nl>
+Date: Sun, 29 Oct 2023 10:23:56 -0100
+Subject: [PATCH] Batch: Reduce delays
+
+---
+ internal/service/batch/job_queue.go | 14 +++++++-------
+ 1 file changed, 7 insertions(+), 7 deletions(-)
+
+diff --git a/internal/service/batch/job_queue.go b/internal/service/batch/job_queue.go
+index 0d922f48aa..8a12159974 100644
+--- a/internal/service/batch/job_queue.go
++++ b/internal/service/batch/job_queue.go
+@@ -424,7 +424,7 @@ func disableJobQueue(ctx context.Context, conn *batch.Batch, id string, timeout
+ 		Target:     []string{batch.JQStatusValid},
+ 		Refresh:    jobQueueRefreshStatusFunc(ctx, conn, id),
+ 		Timeout:    timeout,
+-		Delay:      10 * time.Second,
++		Delay:      1 * time.Second,
+ 		MinTimeout: 3 * time.Second,
+ 	}
+ 	_, err = stateChangeConf.WaitForStateContext(ctx)
+@@ -437,8 +437,8 @@ func waitJobQueueCreated(ctx context.Context, conn *batch.Batch, id string, time
+ 		Target:     []string{batch.JQStatusValid},
+ 		Refresh:    jobQueueRefreshStatusFunc(ctx, conn, id),
+ 		Timeout:    timeout,
+-		MinTimeout: 10 * time.Second,
+-		Delay:      30 * time.Second,
++		MinTimeout: 1 * time.Second,
++		Delay:      3 * time.Second,
+ 	}
+ 
+ 	outputRaw, err := stateConf.WaitForStateContext(ctx)
+@@ -456,8 +456,8 @@ func waitJobQueueUpdated(ctx context.Context, conn *batch.Batch, id string, time
+ 		Target:     []string{batch.JQStatusValid},
+ 		Refresh:    jobQueueRefreshStatusFunc(ctx, conn, id),
+ 		Timeout:    timeout,
+-		MinTimeout: 10 * time.Second,
+-		Delay:      30 * time.Second,
++		MinTimeout: 1 * time.Second,
++		Delay:      3 * time.Second,
+ 	}
+ 
+ 	outputRaw, err := stateConf.WaitForStateContext(ctx)
+@@ -475,8 +475,8 @@ func waitJobQueueDeleted(ctx context.Context, conn *batch.Batch, id string, time
+ 		Target:     []string{batch.JQStatusDeleted},
+ 		Refresh:    jobQueueRefreshStatusFunc(ctx, conn, id),
+ 		Timeout:    timeout,
+-		MinTimeout: 10 * time.Second,
+-		Delay:      30 * time.Second,
++		MinTimeout: 1 * time.Second,
++		Delay:      3 * time.Second,
+ 	}
+ 
+ 	outputRaw, err := stateConf.WaitForStateContext(ctx)
+-- 
+2.34.1
+

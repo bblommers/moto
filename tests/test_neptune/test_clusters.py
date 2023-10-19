@@ -26,6 +26,9 @@ def test_create_db_cluster():
     assert "cluster-" in resp["DbClusterResourceId"]
     assert resp["AvailabilityZones"] == ["us-east-2a", "us-east-2b", "us-east-2c"]
     assert "ServerlessV2ScalingConfiguration" not in resp
+    assert resp.get("VpcSecurityGroups") == [
+        {"VpcSecurityGroupId": "default", "Status": "ACTIVE"}
+    ]
 
     # Double check this cluster is not available in another region
     europe_client = boto3.client("neptune", region_name="eu-west-2")
@@ -44,6 +47,7 @@ def test_create_db_cluster__with_additional_params():
         KmsKeyId="key",
         ServerlessV2ScalingConfiguration={"MinCapacity": 1.0, "MaxCapacity": 2.0},
         DatabaseName="sth",
+        VpcSecurityGroupIds=["vpc1", "vpc2"],
     )["DBCluster"]
     assert resp["StorageEncrypted"] is False
     assert resp["DBClusterParameterGroup"] == "myprm"
@@ -54,6 +58,12 @@ def test_create_db_cluster__with_additional_params():
         "MaxCapacity": 2.0,
     }
     assert resp["DatabaseName"] == "sth"
+    assert {"VpcSecurityGroupId": "vpc1", "Status": "ACTIVE"} in resp[
+        "VpcSecurityGroups"
+    ]
+    assert {"VpcSecurityGroupId": "vpc2", "Status": "ACTIVE"} in resp[
+        "VpcSecurityGroups"
+    ]
 
 
 @mock_neptune

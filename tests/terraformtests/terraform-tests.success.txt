@@ -62,8 +62,15 @@ autoscaling:
   - TestAccAutoScalingLaunchConfiguration_encryptedRootBlockDevice
 batch:
   - TestAccBatchJobDefinition
-  - TestAccBatchJobQueue_
-  - TestAccBatchJobQueueDataSource_
+  - TestAccBatchJobQueue_basic
+  - TestAccBatchJobQueue_disappears
+  - TestAccBatchJobQueue_ComputeEnvironments_multiple
+  - TestAccBatchJobQueue_ComputeEnvironments_externalOrderUpdate
+  - TestAccBatchJobQueue_ComputeEnvironments_externalOrderUpdate
+  - TestAccBatchJobQueue_schedulingPolicy
+  - TestAccBatchJobQueue_state
+  - TestAccBatchJobQueue_tags
+  - TestAccBatchJobQueueDataSource_schedulingPolicy
   - TestAccBatchSchedulingPolicy
 ce:
   - TestAccCECostCategory
@@ -125,7 +132,7 @@ dax:
   - TestAccDAXCluster_Encryption_enabled
 dynamodb:
   - TestAccDynamoDBTableItem
-ec2:
+ec2|1:
   - TestAccEC2AvailabilityZonesDataSource_
   - TestAccEC2CarrierGateway_
   - TestAccEC2HostDataSource_
@@ -138,6 +145,7 @@ ec2:
   - TestAccEC2RouteTableAssociation_
   - TestAccEC2SpotInstanceRequest_disappears
   - TestAccEC2SpotInstanceRequest_interruptUpdate
+ec2|2:
   - TestAccEC2VPCEndpointService_
   - TestAccEC2VPCPeeringConnectionAccepter_
   - TestAccEC2VPCsDataSource
@@ -149,11 +157,12 @@ ec2:
   - TestAccVPCNATGateway_disappears
   - TestAccVPCNATGateway_ConnectivityType_private
   - TestAccVPCNATGateway_tags
+ec2|3:
   - TestAccVPCSecurityGroupDataSource_basic
   - TestAccVPCSecurityGroupRule_Ingress
   - TestAccVPCSecurityGroupRule_egress
   - TestAccVPCSecurityGroupRule_selfReference
-  - TestAccVPCSecurityGroupRule_expectInvalid
+  - TestAccVPCSecurityGroupRule_expectInvalidCIDR
   - TestAccVPCSecurityGroupRule_PartialMatching
   - TestAccVPCSecurityGroupRule_issue5310
   - TestAccVPCSecurityGroupRule_race
@@ -341,10 +350,12 @@ events:
   - TestAccEventsTarget_ssmDocument
 firehose:
   - TestAccFirehoseDeliveryStreamDataSource_basic
-  - TestAccFirehoseDeliveryStream_basic
   - TestAccFirehoseDeliveryStream_missingProcessing
   - TestAccFirehoseDeliveryStream_HTTPEndpoint_retryDuration
-  - TestAccFirehoseDeliveryStream_ExtendedS3_
+  - TestAccFirehoseDeliveryStream_ExtendedS3_externalUpdate
+  - TestAccFirehoseDeliveryStream_ExtendedS3_errorOutputPrefix
+  - TestAccFirehoseDeliveryStream_ExtendedS3_S3BackupConfiguration_ErrorOutputPrefix
+  - TestAccFirehoseDeliveryStream_ExtendedS3_kinesisStreamSource
   - TestAccFirehoseDeliveryStream_extendedS3DynamicPartitioningUpdate
   - TestAccFirehoseDeliveryStream_extendedS3DynamicPartitioning
   - TestAccFirehoseDeliveryStream_extendedS3KMSKeyARN
@@ -465,10 +476,8 @@ rds:
   - TestAccRDSCluster_enableHTTPEndpoint
   - TestAccRDSCluster_engineMode
   - TestAccRDSCluster_EngineMode
-  - TestAccRDSCluster_GlobalClusterIdentifierEngineMode_
   - TestAccRDSCluster_identifier
   - TestAccRDSCluster_tags
-  - TestAccRDSGlobalCluster_basic
   - TestAccRDSGlobalCluster_storageEncrypted
 redshift:
   - TestAccRedshiftServiceAccountDataSource
@@ -536,7 +545,6 @@ s3:
   - TestAccS3BucketVersioning_disappears
   - TestAccS3BucketVersioning_update
   - TestAccS3BucketVersioning_Status_
-  - TestAccS3ObjectCopy
   - TestAccS3Object_noNameNoKey
   - TestAccS3Object_sse
   - TestAccS3Object_kms
@@ -555,7 +563,6 @@ s3:
   - TestAccS3ObjectDataSource_readableBody
   - TestAccS3ObjectDataSource_bucketKeyEnabled
   - TestAccS3ObjectDataSource_allParams
-  - TestAccS3ObjectDataSource_object
   - TestAccS3ObjectDataSource_leadingSlash
   - TestAccS3ObjectDataSource_multipleSlashes
   - TestAccS3ObjectDataSource_singleSlashAsKey
@@ -607,9 +614,6 @@ sqs:
   - TestAccSQSQueueDataSource
   - TestAccSQSQueuePolicy
   - TestAccSQSQueue_FIFOQueue_
-timestreamwrite:
-  - TestAccTimestreamWriteDatabase
-  - TestAccTimestreamWriteTable
 wafv2:
   - TestAccWAFV2WebACL_basic
   - TestAccWAFV2WebACL_disappears

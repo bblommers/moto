@@ -3,7 +3,7 @@ import json
 import weakref
 from collections import defaultdict
 from operator import itemgetter
-from typing import Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, List, Optional
 
 from moto.core import CloudFormationModel
 
@@ -35,6 +35,9 @@ from ..utils import (
 )
 from .availability_zones_and_regions import RegionsAndZonesBackend
 from .core import TaggedEC2Resource
+
+if TYPE_CHECKING:
+    from .security_groups import SecurityGroup
 
 MAX_NUMBER_OF_ENDPOINT_SERVICES_RESULTS = 1000
 DEFAULT_VPC_ENDPOINT_SERVICES: List[Dict[str, str]] = []
@@ -259,6 +262,17 @@ class VPC(TaggedEC2Resource, CloudFormationModel):
     @property
     def physical_resource_id(self) -> str:
         return self.id
+
+    def get_cfn_attribute(self, attribute_name: str) -> str:
+        from moto.cloudformation.exceptions import UnformattedGetAttTemplateException
+
+        if attribute_name == "DefaultSecurityGroup":
+            sg: Optional[
+                "SecurityGroup"
+            ] = self.ec2_backend.get_security_group_from_name("default", vpc_id=self.id)
+            if sg is not None:
+                return sg.id
+        raise UnformattedGetAttTemplateException()
 
     def get_filter_value(
         self, filter_name: str, method_name: Optional[str] = None

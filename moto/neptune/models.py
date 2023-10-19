@@ -69,6 +69,7 @@ class DBCluster(BaseModel):
         backup_retention_period: Optional[int],
         port: Optional[int],
         serverless_v2_scaling_configuration: Optional[Dict[str, int]],
+        vpc_security_group_ids: List[str],
     ):
         self.account_id = account_id
         self.region_name = region_name
@@ -96,7 +97,7 @@ class DBCluster(BaseModel):
             random.choice(string.ascii_uppercase + string.digits) for _ in range(14)
         )
         self.kms_key_id = kms_key_id or (
-            "default_kms_key_id" if self.storage_encrypted else None
+            "default_kms_key_id" if self.storage_encrypted else ""
         )
         self.preferred_maintenance_window = preferred_maintenance_window
         self.preferred_backup_window = preferred_backup_window
@@ -107,6 +108,7 @@ class DBCluster(BaseModel):
             f"{self.region_name}c",
         ]
         self.serverless_v2_scaling_configuration = serverless_v2_scaling_configuration
+        self.vpc_security_group_ids = vpc_security_group_ids
 
     @property
     def db_cluster_arn(self) -> str:
@@ -191,11 +193,11 @@ class DBCluster(BaseModel):
 {% endfor %}
         </DBClusterMembers>
         <VpcSecurityGroups>
-{% for vpcsecuritygroup in cluster.vpcsecuritygroups %}
-          <member>
-            <VpcSecurityGroupId>{{ vpcsecuritygroup.vpc_security_group_id }}</VpcSecurityGroupId>
-            <Status>{{ vpcsecuritygroup.status }}</Status>
-          </member>
+{% for vpc_id in cluster.vpc_security_group_ids %}
+          <VpcSecurityGroupMembership>
+            <VpcSecurityGroupId>{{ vpc_id }}</VpcSecurityGroupId>
+            <Status>ACTIVE</Status>
+          </VpcSecurityGroupMembership>
 {% endfor %}
         </VpcSecurityGroups>
         <HostedZoneId>{{ cluster.hosted_zone_id }}</HostedZoneId>
@@ -283,6 +285,7 @@ class NeptuneBackend(BaseBackend):
             serverless_v2_scaling_configuration=kwargs.get(
                 "serverless_v2_scaling_configuration"
             ),
+            vpc_security_group_ids=kwargs.get("vpc_security_group_ids") or ["default"],
         )
         self.clusters[cluster.db_cluster_identifier] = cluster
         return cluster

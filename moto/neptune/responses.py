@@ -28,7 +28,9 @@ class NeptuneResponse(BaseResponse):
         database_name = params.get("DatabaseName")
         db_cluster_identifier = params.get("DBClusterIdentifier")
         db_cluster_parameter_group_name = params.get("DBClusterParameterGroupName")
-        vpc_security_group_ids = params.get("VpcSecurityGroupIds")
+        vpc_security_group_ids = (
+            self._get_multi_param_dict("VpcSecurityGroupIds") or {}
+        ).get("VpcSecurityGroupId")
         db_subnet_group_name = params.get("DBSubnetGroupName")
         engine = params.get("Engine")
         engine_version = params.get("EngineVersion")

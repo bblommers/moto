@@ -1,0 +1,736 @@
+From a994c0e8e651f5dd2f5d2d77b212459d70b4b03d Mon Sep 17 00:00:00 2001
+From: Bert Blommers <info@bertblommers.nl>
+Date: Sun, 29 Oct 2023 10:42:55 -0100
+Subject: [PATCH] EC2: Reduce delays
+
+---
+ internal/service/ec2/ec2_fleet.go             |   2 +-
+ .../ec2/vpc_endpoint_subnet_association.go    |   4 +-
+ internal/service/ec2/wait.go                  | 168 +++++++++---------
+ internal/service/ec2/waitv2.go                |  12 +-
+ 4 files changed, 93 insertions(+), 93 deletions(-)
+
+diff --git a/internal/service/ec2/ec2_fleet.go b/internal/service/ec2/ec2_fleet.go
+index 9510c5fe36..96af3fcef0 100644
+--- a/internal/service/ec2/ec2_fleet.go
++++ b/internal/service/ec2/ec2_fleet.go
+@@ -920,7 +920,7 @@ func resourceFleetDelete(ctx context.Context, d *schema.ResourceData, meta inter
+ 		targetStates := []string{ec2.FleetStateCodeDeleted}
+ 		if d.Get("terminate_instances").(bool) {
+ 			pendingStates = append(pendingStates, ec2.FleetStateCodeDeletedTerminating)
+-			delay = 5 * time.Minute
++			delay = 5 * time.Second
+ 		} else {
+ 			targetStates = append(targetStates, ec2.FleetStateCodeDeletedRunning)
+ 		}
+diff --git a/internal/service/ec2/vpc_endpoint_subnet_association.go b/internal/service/ec2/vpc_endpoint_subnet_association.go
+index 1a2b190e8f..a3a9eeabe1 100644
+--- a/internal/service/ec2/vpc_endpoint_subnet_association.go
++++ b/internal/service/ec2/vpc_endpoint_subnet_association.go
+@@ -74,8 +74,8 @@ func resourceVPCEndpointSubnetAssociationCreate(ctx context.Context, d *schema.R
+ 	defer conns.GlobalMutexKV.Unlock(mk)
+ 
+ 	c := &retry.StateChangeConf{
+-		Delay:   1 * time.Minute,
+-		Timeout: 3 * time.Minute,
++		Delay:   1 * time.Second,
++		Timeout: 3 * time.Second,
+ 		Target:  []string{"ok"},
+ 		Refresh: func() (interface{}, string, error) {
+ 			output, err := conn.ModifyVpcEndpointWithContext(ctx, input)
+diff --git a/internal/service/ec2/wait.go b/internal/service/ec2/wait.go
+index 0c433184fc..c0a74de7e6 100644
+--- a/internal/service/ec2/wait.go
++++ b/internal/service/ec2/wait.go
+@@ -293,9 +293,9 @@ func WaitClientVPNAuthorizationRuleDeleted(ctx context.Context, conn *ec2.EC2, e
+ 
+ const (
+ 	ClientVPNNetworkAssociationCreatedTimeout     = 30 * time.Minute
+-	ClientVPNNetworkAssociationCreatedDelay       = 4 * time.Minute
++	ClientVPNNetworkAssociationCreatedDelay       = 4 * time.Second
+ 	ClientVPNNetworkAssociationDeletedTimeout     = 30 * time.Minute
+-	ClientVPNNetworkAssociationDeletedDelay       = 4 * time.Minute
++	ClientVPNNetworkAssociationDeletedDelay       = 4 * time.Second
+ 	ClientVPNNetworkAssociationStatusPollInterval = 10 * time.Second
+ )
+ 
+@@ -449,7 +449,7 @@ func WaitInstanceIAMInstanceProfileUpdated(ctx context.Context, conn *ec2.EC2, i
+ 		Target:     []string{expectedValue},
+ 		Refresh:    StatusInstanceIAMInstanceProfile(ctx, conn, instanceID),
+ 		Timeout:    ec2PropagationTimeout,
+-		Delay:      10 * time.Second,
++		Delay:      1 * time.Second,
+ 		MinTimeout: 3 * time.Second,
+ 	}
+ 
+@@ -468,7 +468,7 @@ func WaitInstanceCreated(ctx context.Context, conn *ec2.EC2, id string, timeout
+ 		Target:     []string{ec2.InstanceStateNameRunning},
+ 		Refresh:    StatusInstanceState(ctx, conn, id),
+ 		Timeout:    timeout,
+-		Delay:      10 * time.Second,
++		Delay:      1 * time.Second,
+ 		MinTimeout: 3 * time.Second,
+ 	}
+ 
+@@ -497,7 +497,7 @@ func WaitInstanceDeleted(ctx context.Context, conn *ec2.EC2, id string, timeout
+ 		Target:     []string{ec2.InstanceStateNameTerminated},
+ 		Refresh:    StatusInstanceState(ctx, conn, id),
+ 		Timeout:    timeout,
+-		Delay:      10 * time.Second,
++		Delay:      1 * time.Second,
+ 		MinTimeout: 3 * time.Second,
+ 	}
+ 
+@@ -520,7 +520,7 @@ func WaitInstanceReady(ctx context.Context, conn *ec2.EC2, id string, timeout ti
+ 		Target:     []string{ec2.InstanceStateNameRunning, ec2.InstanceStateNameStopped},
+ 		Refresh:    StatusInstanceState(ctx, conn, id),
+ 		Timeout:    timeout,
+-		Delay:      10 * time.Second,
++		Delay:      1 * time.Second,
+ 		MinTimeout: 3 * time.Second,
+ 	}
+ 
+@@ -543,7 +543,7 @@ func WaitInstanceStarted(ctx context.Context, conn *ec2.EC2, id string, timeout
+ 		Target:     []string{ec2.InstanceStateNameRunning},
+ 		Refresh:    StatusInstanceState(ctx, conn, id),
+ 		Timeout:    timeout,
+-		Delay:      10 * time.Second,
++		Delay:      1 * time.Second,
+ 		MinTimeout: 3 * time.Second,
+ 	}
+ 
+@@ -571,7 +571,7 @@ func WaitInstanceStopped(ctx context.Context, conn *ec2.EC2, id string, timeout
+ 		Target:     []string{ec2.InstanceStateNameStopped},
+ 		Refresh:    StatusInstanceState(ctx, conn, id),
+ 		Timeout:    timeout,
+-		Delay:      10 * time.Second,
++		Delay:      1 * time.Second,
+ 		MinTimeout: 3 * time.Second,
+ 	}
+ 
+@@ -593,7 +593,7 @@ func WaitInstanceCapacityReservationSpecificationUpdated(ctx context.Context, co
+ 		Target:     []string{strconv.FormatBool(true)},
+ 		Refresh:    StatusInstanceCapacityReservationSpecificationEquals(ctx, conn, instanceID, expectedValue),
+ 		Timeout:    ec2PropagationTimeout,
+-		Delay:      10 * time.Second,
++		Delay:      1 * time.Second,
+ 		MinTimeout: 3 * time.Second,
+ 	}
+ 
+@@ -611,7 +611,7 @@ func WaitInstanceMaintenanceOptionsAutoRecoveryUpdated(ctx context.Context, conn
+ 		Target:     []string{expectedValue},
+ 		Refresh:    StatusInstanceMaintenanceOptionsAutoRecovery(ctx, conn, id),
+ 		Timeout:    timeout,
+-		Delay:      10 * time.Second,
++		Delay:      1 * time.Second,
+ 		MinTimeout: 3 * time.Second,
+ 	}
+ 
+@@ -630,7 +630,7 @@ func WaitInstanceMetadataOptionsApplied(ctx context.Context, conn *ec2.EC2, id s
+ 		Target:     []string{ec2.InstanceMetadataOptionsStateApplied},
+ 		Refresh:    StatusInstanceMetadataOptionsState(ctx, conn, id),
+ 		Timeout:    timeout,
+-		Delay:      10 * time.Second,
++		Delay:      1 * time.Second,
+ 		MinTimeout: 3 * time.Second,
+ 	}
+ 
+@@ -648,7 +648,7 @@ func WaitInstanceRootBlockDeviceDeleteOnTerminationUpdated(ctx context.Context,
+ 		Target:     []string{strconv.FormatBool(expectedValue)},
+ 		Refresh:    StatusInstanceRootBlockDeviceDeleteOnTermination(ctx, conn, id),
+ 		Timeout:    timeout,
+-		Delay:      10 * time.Second,
++		Delay:      1 * time.Second,
+ 		MinTimeout: 3 * time.Second,
+ 	}
+ 
+@@ -895,7 +895,7 @@ func waitSubnetAssignIPv6AddressOnCreationUpdated(ctx context.Context, conn *ec2
+ 		Target:     []string{strconv.FormatBool(expectedValue)},
+ 		Refresh:    StatusSubnetAssignIPv6AddressOnCreation(ctx, conn, subnetID),
+ 		Timeout:    ec2PropagationTimeout,
+-		Delay:      10 * time.Second,
++		Delay:      1 * time.Second,
+ 		MinTimeout: 3 * time.Second,
+ 	}
+ 
+@@ -913,7 +913,7 @@ func waitSubnetEnableLniAtDeviceIndexUpdated(ctx context.Context, conn *ec2.EC2,
+ 		Target:     []string{strconv.FormatInt(expectedValue, 10)},
+ 		Refresh:    StatusSubnetEnableLniAtDeviceIndex(ctx, conn, subnetID),
+ 		Timeout:    ec2PropagationTimeout,
+-		Delay:      10 * time.Second,
++		Delay:      1 * time.Second,
+ 		MinTimeout: 3 * time.Second,
+ 	}
+ 
+@@ -931,7 +931,7 @@ func waitSubnetEnableDNS64Updated(ctx context.Context, conn *ec2.EC2, subnetID s
+ 		Target:     []string{strconv.FormatBool(expectedValue)},
+ 		Refresh:    StatusSubnetEnableDNS64(ctx, conn, subnetID),
+ 		Timeout:    ec2PropagationTimeout,
+-		Delay:      10 * time.Second,
++		Delay:      1 * time.Second,
+ 		MinTimeout: 3 * time.Second,
+ 	}
+ 
+@@ -949,7 +949,7 @@ func waitSubnetEnableResourceNameDNSAAAARecordOnLaunchUpdated(ctx context.Contex
+ 		Target:     []string{strconv.FormatBool(expectedValue)},
+ 		Refresh:    StatusSubnetEnableResourceNameDNSAAAARecordOnLaunch(ctx, conn, subnetID),
+ 		Timeout:    ec2PropagationTimeout,
+-		Delay:      10 * time.Second,
++		Delay:      1 * time.Second,
+ 		MinTimeout: 3 * time.Second,
+ 	}
+ 
+@@ -967,7 +967,7 @@ func waitSubnetEnableResourceNameDNSARecordOnLaunchUpdated(ctx context.Context,
+ 		Target:     []string{strconv.FormatBool(expectedValue)},
+ 		Refresh:    StatusSubnetEnableResourceNameDNSARecordOnLaunch(ctx, conn, subnetID),
+ 		Timeout:    ec2PropagationTimeout,
+-		Delay:      10 * time.Second,
++		Delay:      1 * time.Second,
+ 		MinTimeout: 3 * time.Second,
+ 	}
+ 
+@@ -985,7 +985,7 @@ func WaitSubnetMapCustomerOwnedIPOnLaunchUpdated(ctx context.Context, conn *ec2.
+ 		Target:     []string{strconv.FormatBool(expectedValue)},
+ 		Refresh:    StatusSubnetMapCustomerOwnedIPOnLaunch(ctx, conn, subnetID),
+ 		Timeout:    ec2PropagationTimeout,
+-		Delay:      10 * time.Second,
++		Delay:      1 * time.Second,
+ 		MinTimeout: 3 * time.Second,
+ 	}
+ 
+@@ -1003,7 +1003,7 @@ func WaitSubnetMapPublicIPOnLaunchUpdated(ctx context.Context, conn *ec2.EC2, su
+ 		Target:     []string{strconv.FormatBool(expectedValue)},
+ 		Refresh:    StatusSubnetMapPublicIPOnLaunch(ctx, conn, subnetID),
+ 		Timeout:    ec2PropagationTimeout,
+-		Delay:      10 * time.Second,
++		Delay:      1 * time.Second,
+ 		MinTimeout: 3 * time.Second,
+ 	}
+ 
+@@ -1021,7 +1021,7 @@ func WaitSubnetPrivateDNSHostnameTypeOnLaunchUpdated(ctx context.Context, conn *
+ 		Target:     []string{expectedValue},
+ 		Refresh:    StatusSubnetPrivateDNSHostnameTypeOnLaunch(ctx, conn, subnetID),
+ 		Timeout:    ec2PropagationTimeout,
+-		Delay:      10 * time.Second,
++		Delay:      1 * time.Second,
+ 		MinTimeout: 3 * time.Second,
+ 	}
+ 
+@@ -1675,7 +1675,7 @@ func WaitVolumeCreated(ctx context.Context, conn *ec2.EC2, id string, timeout ti
+ 		Target:     []string{ec2.VolumeStateAvailable},
+ 		Refresh:    StatusVolumeState(ctx, conn, id),
+ 		Timeout:    timeout,
+-		Delay:      10 * time.Second,
++		Delay:      1 * time.Second,
+ 		MinTimeout: 3 * time.Second,
+ 	}
+ 
+@@ -1694,7 +1694,7 @@ func WaitVolumeDeleted(ctx context.Context, conn *ec2.EC2, id string, timeout ti
+ 		Target:     []string{},
+ 		Refresh:    StatusVolumeState(ctx, conn, id),
+ 		Timeout:    timeout,
+-		Delay:      10 * time.Second,
++		Delay:      1 * time.Second,
+ 		MinTimeout: 3 * time.Second,
+ 	}
+ 
+@@ -1713,7 +1713,7 @@ func WaitVolumeUpdated(ctx context.Context, conn *ec2.EC2, id string, timeout ti
+ 		Target:     []string{ec2.VolumeStateAvailable, ec2.VolumeStateInUse},
+ 		Refresh:    StatusVolumeState(ctx, conn, id),
+ 		Timeout:    timeout,
+-		Delay:      10 * time.Second,
++		Delay:      1 * time.Second,
+ 		MinTimeout: 3 * time.Second,
+ 	}
+ 
+@@ -1732,7 +1732,7 @@ func WaitVolumeAttachmentCreated(ctx context.Context, conn *ec2.EC2, volumeID, i
+ 		Target:     []string{ec2.VolumeAttachmentStateAttached},
+ 		Refresh:    StatusVolumeAttachmentState(ctx, conn, volumeID, instanceID, deviceName),
+ 		Timeout:    timeout,
+-		Delay:      10 * time.Second,
++		Delay:      1 * time.Second,
+ 		MinTimeout: 3 * time.Second,
+ 	}
+ 
+@@ -1751,7 +1751,7 @@ func WaitVolumeAttachmentDeleted(ctx context.Context, conn *ec2.EC2, volumeID, i
+ 		Target:     []string{},
+ 		Refresh:    StatusVolumeAttachmentState(ctx, conn, volumeID, instanceID, deviceName),
+ 		Timeout:    timeout,
+-		Delay:      10 * time.Second,
++		Delay:      1 * time.Second,
+ 		MinTimeout: 3 * time.Second,
+ 	}
+ 
+@@ -1773,8 +1773,8 @@ func WaitVolumeModificationComplete(ctx context.Context, conn *ec2.EC2, id strin
+ 		Target:     []string{ec2.VolumeModificationStateCompleted, ec2.VolumeModificationStateOptimizing},
+ 		Refresh:    StatusVolumeModificationState(ctx, conn, id),
+ 		Timeout:    timeout,
+-		Delay:      30 * time.Second,
+-		MinTimeout: 30 * time.Second,
++		Delay:      3 * time.Second,
++		MinTimeout: 3 * time.Second,
+ 	}
+ 
+ 	outputRaw, err := stateConf.WaitForStateContext(ctx)
+@@ -1815,7 +1815,7 @@ func WaitVPCAttributeUpdated(ctx context.Context, conn *ec2.EC2, vpcID string, a
+ 		Target:     []string{strconv.FormatBool(expectedValue)},
+ 		Refresh:    StatusVPCAttributeValue(ctx, conn, vpcID, attribute),
+ 		Timeout:    ec2PropagationTimeout,
+-		Delay:      10 * time.Second,
++		Delay:      1 * time.Second,
+ 		MinTimeout: 3 * time.Second,
+ 	}
+ 
+@@ -1834,7 +1834,7 @@ func WaitVPCCIDRBlockAssociationCreated(ctx context.Context, conn *ec2.EC2, id s
+ 		Target:     []string{ec2.VpcCidrBlockStateCodeAssociated},
+ 		Refresh:    StatusVPCCIDRBlockAssociationState(ctx, conn, id),
+ 		Timeout:    timeout,
+-		Delay:      10 * time.Second,
++		Delay:      1 * time.Second,
+ 		MinTimeout: 5 * time.Second,
+ 	}
+ 
+@@ -1857,7 +1857,7 @@ func WaitVPCCIDRBlockAssociationDeleted(ctx context.Context, conn *ec2.EC2, id s
+ 		Target:     []string{},
+ 		Refresh:    StatusVPCCIDRBlockAssociationState(ctx, conn, id),
+ 		Timeout:    timeout,
+-		Delay:      10 * time.Second,
++		Delay:      1 * time.Second,
+ 		MinTimeout: 5 * time.Second,
+ 	}
+ 
+@@ -1885,7 +1885,7 @@ func WaitVPCIPv6CIDRBlockAssociationCreated(ctx context.Context, conn *ec2.EC2,
+ 		Target:     []string{ec2.VpcCidrBlockStateCodeAssociated},
+ 		Refresh:    StatusVPCIPv6CIDRBlockAssociationState(ctx, conn, id),
+ 		Timeout:    timeout,
+-		Delay:      10 * time.Second,
++		Delay:      1 * time.Second,
+ 		MinTimeout: 5 * time.Second,
+ 	}
+ 
+@@ -1908,7 +1908,7 @@ func WaitVPCIPv6CIDRBlockAssociationDeleted(ctx context.Context, conn *ec2.EC2,
+ 		Target:     []string{},
+ 		Refresh:    StatusVPCIPv6CIDRBlockAssociationState(ctx, conn, id),
+ 		Timeout:    timeout,
+-		Delay:      10 * time.Second,
++		Delay:      1 * time.Second,
+ 		MinTimeout: 5 * time.Second,
+ 	}
+ 
+@@ -2019,7 +2019,7 @@ func WaitCustomerGatewayCreated(ctx context.Context, conn *ec2.EC2, id string) (
+ 		Target:     []string{CustomerGatewayStateAvailable},
+ 		Refresh:    StatusCustomerGatewayState(ctx, conn, id),
+ 		Timeout:    customerGatewayCreatedTimeout,
+-		Delay:      10 * time.Second,
++		Delay:      1 * time.Second,
+ 		MinTimeout: 3 * time.Second,
+ 	}
+ 
+@@ -2076,8 +2076,8 @@ func WaitNATGatewayDeleted(ctx context.Context, conn *ec2.EC2, id string, timeou
+ 		Target:     []string{},
+ 		Refresh:    StatusNATGatewayState(ctx, conn, id),
+ 		Timeout:    timeout,
+-		Delay:      10 * time.Second,
+-		MinTimeout: 10 * time.Second,
++		Delay:      1 * time.Second,
++		MinTimeout: 1 * time.Second,
+ 	}
+ 
+ 	outputRaw, err := stateConf.WaitForStateContext(ctx)
+@@ -2189,8 +2189,8 @@ func WaitVPNConnectionCreated(ctx context.Context, conn *ec2.EC2, id string) (*e
+ 		Target:     []string{ec2.VpnStateAvailable},
+ 		Refresh:    StatusVPNConnectionState(ctx, conn, id),
+ 		Timeout:    vpnConnectionCreatedTimeout,
+-		Delay:      10 * time.Second,
+-		MinTimeout: 10 * time.Second,
++		Delay:      1 * time.Second,
++		MinTimeout: 1 * time.Second,
+ 	}
+ 
+ 	outputRaw, err := stateConf.WaitForStateContext(ctx)
+@@ -2208,8 +2208,8 @@ func WaitVPNConnectionDeleted(ctx context.Context, conn *ec2.EC2, id string) (*e
+ 		Target:     []string{},
+ 		Refresh:    StatusVPNConnectionState(ctx, conn, id),
+ 		Timeout:    vpnConnectionDeletedTimeout,
+-		Delay:      10 * time.Second,
+-		MinTimeout: 10 * time.Second,
++		Delay:      1 * time.Second,
++		MinTimeout: 1 * time.Second,
+ 	}
+ 
+ 	outputRaw, err := stateConf.WaitForStateContext(ctx)
+@@ -2227,8 +2227,8 @@ func WaitVPNConnectionUpdated(ctx context.Context, conn *ec2.EC2, id string) (*e
+ 		Target:     []string{ec2.VpnStateAvailable},
+ 		Refresh:    StatusVPNConnectionState(ctx, conn, id),
+ 		Timeout:    vpnConnectionUpdatedTimeout,
+-		Delay:      10 * time.Second,
+-		MinTimeout: 10 * time.Second,
++		Delay:      1 * time.Second,
++		MinTimeout: 1 * time.Second,
+ 	}
+ 
+ 	outputRaw, err := stateConf.WaitForStateContext(ctx)
+@@ -2448,7 +2448,7 @@ func WaitNetworkInsightsAnalysisCreated(ctx context.Context, conn *ec2.EC2, id s
+ 		Target:     []string{ec2.AnalysisStatusSucceeded},
+ 		Timeout:    timeout,
+ 		Refresh:    StatusNetworkInsightsAnalysis(ctx, conn, id),
+-		Delay:      10 * time.Second,
++		Delay:      1 * time.Second,
+ 		MinTimeout: 5 * time.Second,
+ 	}
+ 
+@@ -2493,8 +2493,8 @@ func WaitNetworkInterfaceAvailableAfterUse(ctx context.Context, conn *ec2.EC2, i
+ 		Target:     []string{ec2.NetworkInterfaceStatusAvailable},
+ 		Timeout:    timeout,
+ 		Refresh:    StatusNetworkInterfaceStatus(ctx, conn, id),
+-		Delay:      10 * time.Second,
+-		MinTimeout: 10 * time.Second,
++		Delay:      1 * time.Second,
++		MinTimeout: 1 * time.Second,
+ 		// Handle EC2 ENI eventual consistency. It can take up to 3 minutes.
+ 		ContinuousTargetOccurence: 18,
+ 		NotFoundChecks:            1,
+@@ -2588,8 +2588,8 @@ func WaitSpotFleetRequestCreated(ctx context.Context, conn *ec2.EC2, id string,
+ 		Target:     []string{ec2.BatchStateActive},
+ 		Refresh:    StatusSpotFleetRequestState(ctx, conn, id),
+ 		Timeout:    timeout,
+-		MinTimeout: 10 * time.Second,
+-		Delay:      30 * time.Second,
++		MinTimeout: 1 * time.Second,
++		Delay:      3 * time.Second,
+ 	}
+ 
+ 	outputRaw, err := stateConf.WaitForStateContext(ctx)
+@@ -2607,7 +2607,7 @@ func WaitSpotFleetRequestFulfilled(ctx context.Context, conn *ec2.EC2, id string
+ 		Target:     []string{ec2.ActivityStatusFulfilled},
+ 		Refresh:    StatusSpotFleetActivityStatus(ctx, conn, id),
+ 		Timeout:    timeout,
+-		Delay:      10 * time.Second,
++		Delay:      1 * time.Second,
+ 		MinTimeout: 3 * time.Second,
+ 	}
+ 
+@@ -2645,8 +2645,8 @@ func WaitSpotFleetRequestUpdated(ctx context.Context, conn *ec2.EC2, id string,
+ 		Target:     []string{ec2.BatchStateActive},
+ 		Refresh:    StatusSpotFleetRequestState(ctx, conn, id),
+ 		Timeout:    timeout,
+-		MinTimeout: 10 * time.Second,
+-		Delay:      30 * time.Second,
++		MinTimeout: 1 * time.Second,
++		Delay:      3 * time.Second,
+ 	}
+ 
+ 	outputRaw, err := stateConf.WaitForStateContext(ctx)
+@@ -2664,7 +2664,7 @@ func WaitSpotInstanceRequestFulfilled(ctx context.Context, conn *ec2.EC2, id str
+ 		Target:     []string{spotInstanceRequestStatusCodeFulfilled},
+ 		Refresh:    StatusSpotInstanceRequest(ctx, conn, id),
+ 		Timeout:    timeout,
+-		Delay:      10 * time.Second,
++		Delay:      1 * time.Second,
+ 		MinTimeout: 3 * time.Second,
+ 	}
+ 
+@@ -2690,8 +2690,8 @@ func WaitVPCEndpointAccepted(ctx context.Context, conn *ec2.EC2, vpcEndpointID s
+ 		Target:     []string{vpcEndpointStateAvailable},
+ 		Timeout:    timeout,
+ 		Refresh:    StatusVPCEndpointState(ctx, conn, vpcEndpointID),
+-		Delay:      5 * time.Second,
+-		MinTimeout: 5 * time.Second,
++		Delay:      1 * time.Second,
++		MinTimeout: 1 * time.Second,
+ 	}
+ 
+ 	outputRaw, err := stateConf.WaitForStateContext(ctx)
+@@ -2713,8 +2713,8 @@ func WaitVPCEndpointAvailable(ctx context.Context, conn *ec2.EC2, vpcEndpointID
+ 		Target:     []string{vpcEndpointStateAvailable, vpcEndpointStatePendingAcceptance},
+ 		Timeout:    timeout,
+ 		Refresh:    StatusVPCEndpointState(ctx, conn, vpcEndpointID),
+-		Delay:      5 * time.Second,
+-		MinTimeout: 5 * time.Second,
++		Delay:      1 * time.Second,
++		MinTimeout: 1 * time.Second,
+ 	}
+ 
+ 	outputRaw, err := stateConf.WaitForStateContext(ctx)
+@@ -2736,8 +2736,8 @@ func WaitVPCEndpointDeleted(ctx context.Context, conn *ec2.EC2, vpcEndpointID st
+ 		Target:     []string{},
+ 		Refresh:    StatusVPCEndpointState(ctx, conn, vpcEndpointID),
+ 		Timeout:    timeout,
+-		Delay:      5 * time.Second,
+-		MinTimeout: 5 * time.Second,
++		Delay:      1 * time.Second,
++		MinTimeout: 1 * time.Second,
+ 	}
+ 
+ 	outputRaw, err := stateConf.WaitForStateContext(ctx)
+@@ -2755,8 +2755,8 @@ func WaitVPCEndpointServiceAvailable(ctx context.Context, conn *ec2.EC2, id stri
+ 		Target:     []string{ec2.ServiceStateAvailable},
+ 		Refresh:    StatusVPCEndpointServiceStateAvailable(ctx, conn, id),
+ 		Timeout:    timeout,
+-		Delay:      5 * time.Second,
+-		MinTimeout: 5 * time.Second,
++		Delay:      1 * time.Second,
++		MinTimeout: 1 * time.Second,
+ 	}
+ 
+ 	outputRaw, err := stateConf.WaitForStateContext(ctx)
+@@ -2774,8 +2774,8 @@ func WaitVPCEndpointServiceDeleted(ctx context.Context, conn *ec2.EC2, id string
+ 		Target:     []string{},
+ 		Timeout:    timeout,
+ 		Refresh:    StatusVPCEndpointServiceStateDeleted(ctx, conn, id),
+-		Delay:      5 * time.Second,
+-		MinTimeout: 5 * time.Second,
++		Delay:      1 * time.Second,
++		MinTimeout: 1 * time.Second,
+ 	}
+ 
+ 	outputRaw, err := stateConf.WaitForStateContext(ctx)
+@@ -2827,7 +2827,7 @@ func WaitEBSSnapshotImportComplete(ctx context.Context, conn *ec2.EC2, importTas
+ 		Target:  []string{EBSSnapshotImportStateCompleted},
+ 		Refresh: StatusEBSSnapshotImport(ctx, conn, importTaskID),
+ 		Timeout: timeout,
+-		Delay:   10 * time.Second,
++		Delay:   1 * time.Second,
+ 	}
+ 
+ 	outputRaw, err := stateConf.WaitForStateContext(ctx)
+@@ -2847,8 +2847,8 @@ func waitVPCEndpointConnectionAccepted(ctx context.Context, conn *ec2.EC2, servi
+ 		Target:     []string{vpcEndpointStateAvailable},
+ 		Refresh:    statusVPCEndpointConnectionVPCEndpointState(ctx, conn, serviceID, vpcEndpointID),
+ 		Timeout:    timeout,
+-		Delay:      5 * time.Second,
+-		MinTimeout: 5 * time.Second,
++		Delay:      1 * time.Second,
++		MinTimeout: 1 * time.Second,
+ 	}
+ 
+ 	outputRaw, err := stateConf.WaitForStateContext(ctx)
+@@ -2870,7 +2870,7 @@ func waitEBSSnapshotTierArchive(ctx context.Context, conn *ec2.EC2, id string, t
+ 		Target:  []string{ec2.TargetStorageTierArchive},
+ 		Refresh: StatusSnapshotStorageTier(ctx, conn, id),
+ 		Timeout: timeout,
+-		Delay:   10 * time.Second,
++		Delay:   1 * time.Second,
+ 	}
+ 
+ 	outputRaw, err := stateConf.WaitForStateContext(ctx)
+@@ -2890,7 +2890,7 @@ func WaitIPAMCreated(ctx context.Context, conn *ec2.EC2, id string, timeout time
+ 		Target:  []string{ec2.IpamStateCreateComplete},
+ 		Refresh: StatusIPAMState(ctx, conn, id),
+ 		Timeout: timeout,
+-		Delay:   5 * time.Second,
++		Delay:   1 * time.Second,
+ 	}
+ 
+ 	outputRaw, err := stateConf.WaitForStateContext(ctx)
+@@ -2908,7 +2908,7 @@ func WaitIPAMDeleted(ctx context.Context, conn *ec2.EC2, id string, timeout time
+ 		Target:  []string{},
+ 		Refresh: StatusIPAMState(ctx, conn, id),
+ 		Timeout: timeout,
+-		Delay:   5 * time.Second,
++		Delay:   1 * time.Second,
+ 	}
+ 
+ 	outputRaw, err := stateConf.WaitForStateContext(ctx)
+@@ -2926,7 +2926,7 @@ func WaitIPAMUpdated(ctx context.Context, conn *ec2.EC2, id string, timeout time
+ 		Target:  []string{ec2.IpamStateModifyComplete},
+ 		Refresh: StatusIPAMState(ctx, conn, id),
+ 		Timeout: timeout,
+-		Delay:   5 * time.Second,
++		Delay:   1 * time.Second,
+ 	}
+ 
+ 	outputRaw, err := stateConf.WaitForStateContext(ctx)
+@@ -2944,7 +2944,7 @@ func WaitIPAMPoolCreated(ctx context.Context, conn *ec2.EC2, id string, timeout
+ 		Target:  []string{ec2.IpamPoolStateCreateComplete},
+ 		Refresh: StatusIPAMPoolState(ctx, conn, id),
+ 		Timeout: timeout,
+-		Delay:   5 * time.Second,
++		Delay:   1 * time.Second,
+ 	}
+ 
+ 	outputRaw, err := stateConf.WaitForStateContext(ctx)
+@@ -2966,7 +2966,7 @@ func WaitIPAMPoolDeleted(ctx context.Context, conn *ec2.EC2, id string, timeout
+ 		Target:  []string{},
+ 		Refresh: StatusIPAMPoolState(ctx, conn, id),
+ 		Timeout: timeout,
+-		Delay:   5 * time.Second,
++		Delay:   1 * time.Second,
+ 	}
+ 
+ 	outputRaw, err := stateConf.WaitForStateContext(ctx)
+@@ -2988,7 +2988,7 @@ func WaitIPAMPoolUpdated(ctx context.Context, conn *ec2.EC2, id string, timeout
+ 		Target:  []string{ec2.IpamPoolStateModifyComplete},
+ 		Refresh: StatusIPAMPoolState(ctx, conn, id),
+ 		Timeout: timeout,
+-		Delay:   5 * time.Second,
++		Delay:   1 * time.Second,
+ 	}
+ 
+ 	outputRaw, err := stateConf.WaitForStateContext(ctx)
+@@ -3010,7 +3010,7 @@ func WaitIPAMPoolCIDRIdCreated(ctx context.Context, conn *ec2.EC2, poolCidrId, p
+ 		Target:         []string{ec2.IpamPoolCidrStateProvisioned},
+ 		Refresh:        StatusIPAMPoolCIDRState(ctx, conn, cidrBlock, poolID, poolCidrId),
+ 		Timeout:        timeout,
+-		Delay:          5 * time.Second,
++		Delay:          1 * time.Second,
+ 		NotFoundChecks: IPAMPoolCIDRNotFoundChecks,
+ 	}
+ 
+@@ -3033,7 +3033,7 @@ func WaitIPAMPoolCIDRDeleted(ctx context.Context, conn *ec2.EC2, cidrBlock, pool
+ 		Target:  []string{},
+ 		Refresh: StatusIPAMPoolCIDRState(ctx, conn, cidrBlock, poolID, poolCidrId),
+ 		Timeout: timeout,
+-		Delay:   5 * time.Second,
++		Delay:   1 * time.Second,
+ 	}
+ 
+ 	outputRaw, err := stateConf.WaitForStateContext(ctx)
+@@ -3055,7 +3055,7 @@ func WaitIPAMPoolCIDRAllocationCreated(ctx context.Context, conn *ec2.EC2, alloc
+ 		Target:  []string{IpamPoolCIDRAllocationCreateComplete},
+ 		Refresh: StatusIPAMPoolCIDRAllocationState(ctx, conn, allocationID, poolID),
+ 		Timeout: timeout,
+-		Delay:   5 * time.Second,
++		Delay:   1 * time.Second,
+ 	}
+ 
+ 	outputRaw, err := stateConf.WaitForStateContext(ctx)
+@@ -3073,7 +3073,7 @@ func WaitIPAMResourceDiscoveryAvailable(ctx context.Context, conn *ec2.EC2, id s
+ 		Target:  []string{ec2.IpamResourceDiscoveryStateCreateComplete},
+ 		Refresh: StatusIPAMResourceDiscoveryState(ctx, conn, id),
+ 		Timeout: timeout,
+-		Delay:   5 * time.Second,
++		Delay:   1 * time.Second,
+ 	}
+ 
+ 	outputRaw, err := stateConf.WaitForStateContext(ctx)
+@@ -3091,7 +3091,7 @@ func WaitIPAMResourceDiscoveryAssociationAvailable(ctx context.Context, conn *ec
+ 		Target:  []string{ec2.IpamResourceDiscoveryAssociationStateAssociateComplete},
+ 		Refresh: StatusIPAMResourceDiscoveryAssociationStatus(ctx, conn, id),
+ 		Timeout: timeout,
+-		Delay:   5 * time.Second,
++		Delay:   1 * time.Second,
+ 	}
+ 
+ 	outputRaw, err := stateConf.WaitForStateContext(ctx)
+@@ -3109,7 +3109,7 @@ func WaitIPAMResourceDiscoveryAssociationDeleted(ctx context.Context, conn *ec2.
+ 		Target:  []string{},
+ 		Refresh: StatusIPAMResourceDiscoveryAssociationStatus(ctx, conn, id),
+ 		Timeout: timeout,
+-		Delay:   5 * time.Second,
++		Delay:   1 * time.Second,
+ 	}
+ 
+ 	outputRaw, err := stateConf.WaitForStateContext(ctx)
+@@ -3127,7 +3127,7 @@ func WaitIPAMResourceDiscoveryDeleted(ctx context.Context, conn *ec2.EC2, id str
+ 		Target:  []string{},
+ 		Refresh: StatusIPAMResourceDiscoveryState(ctx, conn, id),
+ 		Timeout: timeout,
+-		Delay:   5 * time.Second,
++		Delay:   1 * time.Second,
+ 	}
+ 
+ 	outputRaw, err := stateConf.WaitForStateContext(ctx)
+@@ -3145,7 +3145,7 @@ func WaitIPAMResourceDiscoveryUpdated(ctx context.Context, conn *ec2.EC2, id str
+ 		Target:  []string{ec2.IpamResourceDiscoveryStateModifyComplete},
+ 		Refresh: StatusIPAMResourceDiscoveryState(ctx, conn, id),
+ 		Timeout: timeout,
+-		Delay:   5 * time.Second,
++		Delay:   1 * time.Second,
+ 	}
+ 
+ 	outputRaw, err := stateConf.WaitForStateContext(ctx)
+@@ -3163,7 +3163,7 @@ func WaitIPAMScopeCreated(ctx context.Context, conn *ec2.EC2, id string, timeout
+ 		Target:  []string{ec2.IpamScopeStateCreateComplete},
+ 		Refresh: StatusIPAMScopeState(ctx, conn, id),
+ 		Timeout: timeout,
+-		Delay:   5 * time.Second,
++		Delay:   1 * time.Second,
+ 	}
+ 
+ 	outputRaw, err := stateConf.WaitForStateContext(ctx)
+@@ -3181,7 +3181,7 @@ func WaitIPAMScopeDeleted(ctx context.Context, conn *ec2.EC2, id string, timeout
+ 		Target:  []string{},
+ 		Refresh: StatusIPAMScopeState(ctx, conn, id),
+ 		Timeout: timeout,
+-		Delay:   5 * time.Second,
++		Delay:   1 * time.Second,
+ 	}
+ 
+ 	outputRaw, err := stateConf.WaitForStateContext(ctx)
+@@ -3199,7 +3199,7 @@ func WaitIPAMScopeUpdated(ctx context.Context, conn *ec2.EC2, id string, timeout
+ 		Target:  []string{ec2.IpamScopeStateModifyComplete},
+ 		Refresh: StatusIPAMScopeState(ctx, conn, id),
+ 		Timeout: timeout,
+-		Delay:   5 * time.Second,
++		Delay:   1 * time.Second,
+ 	}
+ 
+ 	outputRaw, err := stateConf.WaitForStateContext(ctx)
+@@ -3222,7 +3222,7 @@ func WaitInstanceStoppedWithContext(ctx context.Context, conn *ec2.EC2, id strin
+ 		Target:     []string{ec2.InstanceStateNameStopped},
+ 		Refresh:    StatusInstanceState(ctx, conn, id),
+ 		Timeout:    timeout,
+-		Delay:      10 * time.Second,
++		Delay:      1 * time.Second,
+ 		MinTimeout: 3 * time.Second,
+ 	}
+ 
+@@ -3245,7 +3245,7 @@ func WaitInstanceStartedWithContext(ctx context.Context, conn *ec2.EC2, id strin
+ 		Target:     []string{ec2.InstanceStateNameRunning},
+ 		Refresh:    StatusInstanceState(ctx, conn, id),
+ 		Timeout:    timeout,
+-		Delay:      10 * time.Second,
++		Delay:      1 * time.Second,
+ 		MinTimeout: 3 * time.Second,
+ 	}
+ 
+@@ -3268,7 +3268,7 @@ func WaitInstanceReadyWithContext(ctx context.Context, conn *ec2.EC2, id string,
+ 		Target:     []string{ec2.InstanceStateNameRunning, ec2.InstanceStateNameStopped},
+ 		Refresh:    StatusInstanceState(ctx, conn, id),
+ 		Timeout:    timeout,
+-		Delay:      10 * time.Second,
++		Delay:      1 * time.Second,
+ 		MinTimeout: 3 * time.Second,
+ 	}
+ 
+diff --git a/internal/service/ec2/waitv2.go b/internal/service/ec2/waitv2.go
+index c47658bc28..134edf3b85 100644
+--- a/internal/service/ec2/waitv2.go
++++ b/internal/service/ec2/waitv2.go
+@@ -40,8 +40,8 @@ func waitVPCIPv6CIDRBlockAssociationCreatedV2(ctx context.Context, conn *ec2.Cli
+ 		Target:     enum.Slice(types.VpcCidrBlockStateCodeAssociated),
+ 		Refresh:    statusVPCIPv6CIDRBlockAssociationStateV2(ctx, conn, id),
+ 		Timeout:    timeout,
+-		Delay:      10 * time.Second,
+-		MinTimeout: 5 * time.Second,
++		Delay:      1 * time.Second,
++		MinTimeout: 1 * time.Second,
+ 	}
+ 
+ 	outputRaw, err := stateConf.WaitForStateContext(ctx)
+@@ -62,8 +62,8 @@ func waitVPCAttributeUpdatedV2(ctx context.Context, conn *ec2.Client, vpcID stri
+ 		Target:     []string{strconv.FormatBool(expectedValue)},
+ 		Refresh:    statusVPCAttributeValueV2(ctx, conn, vpcID, attribute),
+ 		Timeout:    ec2PropagationTimeout,
+-		Delay:      10 * time.Second,
+-		MinTimeout: 3 * time.Second,
++		Delay:      1 * time.Second,
++		MinTimeout: 1 * time.Second,
+ 	}
+ 
+ 	outputRaw, err := stateConf.WaitForStateContext(ctx)
+@@ -81,8 +81,8 @@ func waitVPCIPv6CIDRBlockAssociationDeletedV2(ctx context.Context, conn *ec2.Cli
+ 		Target:     []string{},
+ 		Refresh:    statusVPCIPv6CIDRBlockAssociationStateV2(ctx, conn, id),
+ 		Timeout:    timeout,
+-		Delay:      10 * time.Second,
+-		MinTimeout: 5 * time.Second,
++		Delay:      1 * time.Second,
++		MinTimeout: 1 * time.Second,
+ 	}
+ 
+ 	outputRaw, err := stateConf.WaitForStateContext(ctx)
+-- 
+2.34.1
+
