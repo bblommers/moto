@@ -3,6 +3,7 @@ import inspect
 import itertools
 import os
 import re
+import types
 import unittest
 from threading import Lock
 from types import FunctionType
@@ -46,6 +47,32 @@ if TYPE_CHECKING:
 
 DEFAULT_ACCOUNT_ID = "123456789012"
 T = TypeVar("T")
+
+def _mock_function(mock_aws_class, caller, func):
+
+    def wrapper(*args: Any, **kwargs: Any) -> T:
+        all_methods = get_supermethods(caller)
+        has_setup_method = ("setup" in all_methods) or ("setup_method" in all_methods) or (
+                "setUp" in all_methods and unittest.TestCase in type(caller).__mro__)
+        has_teardown_method = ("teardown" in all_methods) or ("teardown_method" in all_methods) or (
+                "tearDown" in all_methods and unittest.TestCase in type(caller).__mro__)
+        reset = not has_setup_method
+        remove_data = not has_teardown_method
+        print(f"_decorator({func}, caller={caller}, reset={reset}, remove={remove_data})")
+
+        mock_aws_class.start(reset=reset)
+        try:
+            print("dict of func")
+            print(func.__dict__)
+            print(caller.__dict__)
+            result = func(*args, **kwargs)
+        finally:
+            mock_aws_class.stop(remove_data=remove_data)
+        return result
+
+    #functools.update_wrapper(wrapper, func)
+    #wrapper.__wrapped__ = func  # type: ignore[attr-defined]
+    return wrapper
 
 
 class MockAWS(ContextManager["MockAWS"]):
@@ -130,70 +157,44 @@ class MockAWS(ContextManager["MockAWS"]):
 
     def _decorate_class(self, klass: "Callable[P, T]") -> "Callable[P, T]":
         assert inspect.isclass(klass)  # Keep mypy happy
-        direct_methods = get_direct_methods_of(klass)
-        defined_classes = set(
-            x for x, y in klass.__dict__.items() if inspect.isclass(y)
-        )
 
-        # Get a list of all userdefined superclasses
-        superclasses = [
-            c for c in klass.__mro__ if c not in [unittest.TestCase, object]
-        ]
-        # Get a list of all userdefined methods
-        supermethods = list(
-            itertools.chain(*[get_direct_methods_of(c) for c in superclasses])
-        )
-        # Check whether the user has overridden the setUp-method
-        has_setup_method = (
-            ("setUp" in supermethods and unittest.TestCase in klass.__mro__)
-            or "setup" in supermethods
-            or "setup_method" in supermethods
-        )
+        def getattribute__(caller, name):
+            attr = object.__getattribute__(caller, name)
+            is_method = inspect.ismethod(attr)
 
-        for attr in itertools.chain(direct_methods, defined_classes):
-            if attr.startswith("_"):
-                continue
+            if inspect.isclass(attr) and attr is not AssertionError:
+                #print(f"attr {name} on {caller} is class == {attr}")
+                attr.__getattribute__ = getattribute__
+                return attr
 
-            attr_value = getattr(klass, attr)
-            if not hasattr(attr_value, "__call__"):
-                continue
-            if not hasattr(attr_value, "__name__"):
-                continue
+            print(f"get {name} == {attr}")
+            if not is_method:
+                return attr
+            is_setup_method = name in ["setup", "setup_method"] or (name in ["setUp"] and unittest.TestCase in type(caller).__mro__)
+            if is_setup_method:
+                return self._decorate_callable(attr, reset=True, remove_data=False)
 
-            # Check if this is a classmethod. If so, skip patching
-            if inspect.ismethod(attr_value) and attr_value.__self__ is klass:
-                continue
+            is_teardown_method = name in ["teardown", "teardown_method"] or (name in ["tearDown"] and unittest.TestCase in type(caller).__mro__)
+            if is_teardown_method:
+                return self._decorate_callable(attr, reset=False, remove_data=True)
 
-            # Check if this is a staticmethod. If so, skip patching
-            for cls in inspect.getmro(klass):
-                if attr_value.__name__ not in cls.__dict__:
-                    continue
-                bound_attr_value = cls.__dict__[attr_value.__name__]
-                if not isinstance(bound_attr_value, staticmethod):
-                    break
-            else:
-                # It is a staticmethod, skip patching
-                continue
-
-            try:
-                # Special case for UnitTests-class
-                is_test_method = attr.startswith(unittest.TestLoader.testMethodPrefix)
-                should_reset = False
-                should_remove_data = False
-                if attr in ["setUp", "setup_method"]:
-                    should_reset = True
-                elif not has_setup_method and is_test_method:
-                    should_reset = True
-                    should_remove_data = True
+            is_test_method = name.startswith(unittest.TestLoader.testMethodPrefix)
+            if is_test_method:
+                all_methods = get_supermethods(caller)
+                has_setup_method = ("setup" in all_methods) or ("setup_method" in all_methods) or (
+                        "setUp" in all_methods and unittest.TestCase in type(caller).__mro__)
+                has_teardown_method = ("teardown" in all_methods) or ("teardown_method" in all_methods) or (
+                        "tearDown" in all_methods and unittest.TestCase in type(caller).__mro__)
+                reset = not has_setup_method
+                remove_data = not has_teardown_method
+                if not testcase and not has_setup_method:
+                    return attr
                 else:
-                    # Method is unrelated to the test setup
-                    # Method is a test, but was already reset while executing the setUp-method
-                    pass
-                kwargs = {"reset": should_reset, "remove_data": should_remove_data}
-                setattr(klass, attr, self(attr_value, **kwargs))
-            except TypeError:
-                # Sometimes we can't set this for built-in types
-                continue
+                    return self._decorate_callable(attr, reset=reset, remove_data=remove_data)
+                #return _mock_function(mock_aws_class=self, caller=caller, func=attr)
+            return attr
+
+        klass.__getattribute__ = getattribute__
         return klass
 
     def _mock_env_variables(self) -> None:
@@ -250,6 +251,17 @@ def get_direct_methods_of(klass: object) -> Set[str]:
         x
         for x, y in klass.__dict__.items()
         if isinstance(y, (FunctionType, classmethod, staticmethod))
+    )
+
+
+def get_supermethods(caller):
+    # Get a list of all userdefined superclasses
+    superclasses = [
+        c for c in type(caller).__mro__ if c not in [unittest.TestCase, object]
+    ]
+    # Get a list of all userdefined methods
+    return list(
+        itertools.chain(*[get_direct_methods_of(c) for c in superclasses])
     )
 
 

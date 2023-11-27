@@ -91,7 +91,14 @@ def test_decorater_wrapped_gets_set() -> None:
 
 
 @mock_aws
-class Tester:
+class NameNotStartingWithTest(unittest.TestCase):
+    def test_the_class(self) -> None:
+        client = boto3.client("ec2", region_name="us-west-1")
+        assert client.describe_addresses()["Addresses"] == []
+
+
+@mock_aws
+class TestClassThatDoesNotExtend_UnitTest_TestCase:
     def test_the_class(self) -> None:
         client = boto3.client("ec2", region_name="us-west-1")
         assert client.describe_addresses()["Addresses"] == []
@@ -179,20 +186,25 @@ class TestWithSetupMethod:
 @mock_aws
 class TestKinesisUsingSetupMethod:
     def setup_method(self, *args: Any) -> None:  # pylint: disable=unused-argument
+        print("setup_method")
         self.stream_name = "test_stream"
         self.boto3_kinesis_client = boto3.client("kinesis", region_name="us-east-1")
         self.boto3_kinesis_client.create_stream(
             StreamName=self.stream_name, ShardCount=1
         )
+        print(self)
+        print(self.__dict__)
 
     def test_stream_creation(self) -> None:
-        pass
+        print(self)
+        print(self.__dict__)
+        assert self.stream_name == "test_stream"
 
     def test_stream_recreation(self) -> None:
         # The setup-method will run again for this test
         # The fact that it passes, means the state was reset
         # Otherwise it would complain about a stream already existing
-        pass
+        assert self.stream_name == "test_stream"
 
 
 @mock_aws
@@ -206,6 +218,11 @@ class TestWithInvalidSetupMethod:
         s3 = boto3.client("s3", region_name="us-east-1")
         with pytest.raises(ClientError):
             s3.head_bucket(Bucket="mybucket")
+        self.hi = "th"
+
+    def teardown_method(self):
+        print("td")
+        print(self.hi)
 
 
 @mock_aws
@@ -265,7 +282,7 @@ class TestSetUpInBaseClass(Baseclass):
 
 @mock_aws
 class TestWithNestedClasses:
-    class NestedClass(unittest.TestCase):
+    class NestedClassWithSingleMethod(unittest.TestCase):
         def _ensure_bucket_exists(self) -> None:
             s3 = boto3.client("s3", region_name="us-east-1")
             s3.create_bucket(Bucket="bucketclass1")
@@ -275,7 +292,7 @@ class TestWithNestedClasses:
             s3 = boto3.client("s3", region_name="us-east-1")
             s3.head_bucket(Bucket="bucketclass1")
 
-    class NestedClass2(unittest.TestCase):
+    class NestedClassWithMultipleMethods(unittest.TestCase):
         def _ensure_bucket_exists(self) -> None:
             s3 = boto3.client("s3", region_name="us-east-1")
             s3.create_bucket(Bucket="bucketclass2")
@@ -290,16 +307,15 @@ class TestWithNestedClasses:
             with pytest.raises(ClientError):
                 s3.head_bucket(Bucket="bucketclass1")
 
-    class TestWithSetup(unittest.TestCase):
+    class TestNestedClassWithSetup(unittest.TestCase):
         def setUp(self) -> None:
-            s3 = boto3.client("s3", region_name="us-east-1")
-            s3.create_bucket(Bucket="mybucket")
+            self.s3 = boto3.client("s3", region_name="us-east-1")
+            self.s3.create_bucket(Bucket="mybucket")
 
         def test_should_find_bucket(self) -> None:
-            s3 = boto3.client("s3", region_name="us-east-1")
-            s3.head_bucket(Bucket="mybucket")
+            self.s3.head_bucket(Bucket="mybucket")
 
-            s3.create_bucket(Bucket="bucketinsidetest")
+            self.s3.create_bucket(Bucket="bucketinsidetest")
 
         def test_should_not_find_bucket_from_test_method(self) -> None:
             s3 = boto3.client("s3", region_name="us-east-1")
@@ -307,3 +323,74 @@ class TestWithNestedClasses:
 
             with pytest.raises(ClientError):
                 s3.head_bucket(Bucket="bucketinsidetest")
+
+
+@mock_aws
+class TestMotoWithoutTestCase:
+    def setUp(self):
+        self.s3 = boto3.client("s3", region_name="us-east-1")
+        self.s3.create_bucket(Bucket="bucket_inside_setup")
+
+    def test_bug(self):
+        s3 = boto3.client("s3", region_name="us-east-1")
+        # This class is mocked, so we can create things
+        s3.create_bucket(Bucket="sth")
+
+
+class TestInheritingBothMotoAndTestCase(TestMotoWithoutTestCase, unittest.TestCase):
+    def test_inherited(self):
+        self.s3.head_bucket(Bucket="bucket_inside_setup")
+
+
+@mock_aws
+class TestCase(unittest.TestCase):
+    def setUp(self):
+        self.s3 = boto3.client("s3", region_name="us-east-1")
+        self.s3.create_bucket(Bucket="bucket_inside_setup")
+
+
+class TestThatExtendsMockedClass(TestCase):
+    def test_logs(self):
+        self.s3.head_bucket(Bucket="bucket_inside_setup")
+
+
+@mock_aws
+class TestWithTearDown_UppercaseD(unittest.TestCase):
+    def test_bucket_is_deleted_during_teardown(self):
+        self.s3 = boto3.client("s3", region_name="us-east-1")
+        self.s3.create_bucket(Bucket="bucket")
+
+    def tearDown(self):
+        self.s3.delete_bucket(Bucket="bucket")
+
+
+@mock_aws
+class TestWithTearDown_LowercaseD:
+    def test_bucket_is_deleted_during_teardown(self):
+        self.s3 = boto3.client("s3", region_name="us-east-1")
+        self.s3.create_bucket(Bucket="bucket")
+
+    def teardown(self):
+        print("hi")
+        self.s3.delete_bucket(Bucket="bucket")
+
+
+@mock_aws
+class TestWithTearDownMethod:
+    def setup_method(self):
+        print("setup")
+        self.some = "thing"
+        print(self.__dict__)
+
+    def test_bucket_is_deleted_during_teardown(self):
+        print(self.__dict__)
+        self.s3 = boto3.client("s3", region_name="us-east-1")
+        #self.s3.create_bucket(Bucket="bucket")
+        print(self.__dict__)
+        assert self.some == "thing"
+
+    def teardown_method(self):
+        print("hi")
+        print(self.__dict__)
+        assert self.some == "thing"
+        #self.s3.delete_bucket(Bucket="bucket")
