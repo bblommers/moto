@@ -84,7 +84,7 @@ class MockAWS(ContextManager["MockAWS"]):
             if mock_credentials():
                 self._mock_env_variables()
             if not self.__class__._mocks_active:
-                self._default_session_mock.start()
+                # self._default_session_mock.start()
                 self.__class__._mocks_active = True
 
             self.__class__._nested_count += 1
@@ -104,7 +104,7 @@ class MockAWS(ContextManager["MockAWS"]):
 
             if self.__class__._nested_count == 0:
                 if self.__class__._mocks_active:
-                    self._default_session_mock.stop()
+                    # self._default_session_mock.stop()
                     self._user_config_mock.stop()
                     self.__class__._mocks_active = False
                 self._disable_patching(remove_data)
