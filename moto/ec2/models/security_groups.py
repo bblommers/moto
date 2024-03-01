@@ -18,6 +18,7 @@ from ..exceptions import (
     RulesPerSecurityGroupLimitExceededError,
 )
 from ..utils import (
+    generic_filter,
     is_tag_filter,
     is_valid_cidr,
     is_valid_ipv6_cidr,
@@ -39,6 +40,7 @@ class SecurityRule(TaggedEC2Resource):
         source_groups: List[Dict[str, Any]],
         prefix_list_ids: Optional[List[Dict[str, str]]] = None,
         is_egress: bool = True,
+        tags: Optional[Dict[str, str]] = None,
     ):
         self.ec2_backend = ec2_backend
         self.id = random_security_group_rule_id()
@@ -48,6 +50,7 @@ class SecurityRule(TaggedEC2Resource):
         self.prefix_list_ids = prefix_list_ids or []
         self.from_port = self.to_port = None
         self.is_egress = is_egress
+        self.add_tags(tags or {})
 
         if self.ip_protocol and self.ip_protocol != "-1":
             self.from_port = int(from_port)  # type: ignore[arg-type]
@@ -122,6 +125,13 @@ class SecurityRule(TaggedEC2Resource):
             else:
                 setattr(new, k, copy.deepcopy(v, memodict))
         return new
+
+    def get_filter_value(
+        self, filter_name: str, method_name: Optional[str] = None
+    ) -> Any:
+        if filter_name == "security-group-rule-id":
+            return self.id
+        return super().get_filter_value(filter_name, method_name)
 
 
 class SecurityGroup(TaggedEC2Resource, CloudFormationModel):
@@ -573,16 +583,29 @@ class SecurityGroupBackend:
     def describe_security_group_rules(
         self, group_ids: Optional[List[str]] = None, filters: Any = None
     ) -> Dict[str, List[SecurityRule]]:
-        matches = self.describe_security_groups(group_ids=group_ids, filters=filters)
-        if not matches:
-            raise InvalidSecurityGroupNotFoundError(
-                "No security groups found matching the filters provided."
+        matches = []
+        if group_ids:
+            matches.extend(self.describe_security_groups(group_ids=group_ids))
+        if "group-id" in filters:
+            matches.extend(
+                self.describe_security_groups(filters={"group-id": filters["group-id"]})
             )
+            # We'll re-use these filters to find SecurityRules directly
+            # No point in filtering by group-id again
+            filters.pop("group-id")
         rules = {}
         for group in matches:
             group_rules = []
             group_rules.extend(group.ingress_rules)
             group_rules.extend(group.egress_rules)
+            if group_rules:
+                rules[group.group_id] = group_rules
+
+        # Find Rules with the specified filters
+        for group in self.describe_security_groups():
+            group_rules = []
+            group_rules.extend(generic_filter(filters, group.egress_rules))
+            group_rules.extend(generic_filter(filters, group.ingress_rules))
             if group_rules:
                 rules[group.group_id] = group_rules
 
@@ -661,6 +684,7 @@ class SecurityGroupBackend:
         prefix_list_ids: Optional[List[Dict[str, str]]] = None,
         security_rule_ids: Optional[List[str]] = None,  # pylint:disable=unused-argument
         vpc_id: Optional[str] = None,
+        tags: Optional[Dict[str, str]] = None,
     ) -> Tuple[SecurityRule, SecurityGroup]:
         group = self.get_security_group_by_name_or_id(group_name_or_id, vpc_id)
         if group is None:
@@ -701,6 +725,7 @@ class SecurityGroupBackend:
             _source_groups,
             prefix_list_ids,
             is_egress=False,
+            tags=tags,
         )
 
         if security_rule in group.ingress_rules:
@@ -823,6 +848,7 @@ class SecurityGroupBackend:
         prefix_list_ids: Optional[List[Dict[str, str]]] = None,
         security_rule_ids: Optional[List[str]] = None,  # pylint:disable=unused-argument
         vpc_id: Optional[str] = None,
+        tags: Optional[Dict[str, str]] = None,
     ) -> Tuple[SecurityRule, SecurityGroup]:
         group = self.get_security_group_by_name_or_id(group_name_or_id, vpc_id)
         if group is None:
@@ -865,6 +891,7 @@ class SecurityGroupBackend:
             ip_ranges,
             _source_groups,
             prefix_list_ids,
+            tags=tags,
         )
 
         if security_rule in group.egress_rules:

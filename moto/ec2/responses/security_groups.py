@@ -135,8 +135,11 @@ class SecurityGroups(EC2BaseResponse):
     def authorize_security_group_egress(self) -> str:
         self.error_on_dryrun()
 
+        tags = self._parse_tag_specification().get("security-group-rule", {})
         for args in self._process_rules_from_querystring():
-            rule, group = self.ec2_backend.authorize_security_group_egress(*args)
+            rule, group = self.ec2_backend.authorize_security_group_egress(
+                *args, tags=tags
+            )
         self.ec2_backend.sg_old_egress_ruls[group.id] = group.egress_rules.copy()
         template = self.response_template(AUTHORIZE_SECURITY_GROUP_EGRESS_RESPONSE)
         return template.render(rule=rule, group=group)
@@ -144,8 +147,11 @@ class SecurityGroups(EC2BaseResponse):
     def authorize_security_group_ingress(self) -> str:
         self.error_on_dryrun()
 
+        tags = self._parse_tag_specification().get("security-group-rule", {})
         for args in self._process_rules_from_querystring():
-            rule, group = self.ec2_backend.authorize_security_group_ingress(*args)
+            rule, group = self.ec2_backend.authorize_security_group_ingress(
+                *args, tags=tags
+            )
         self.ec2_backend.sg_old_ingress_ruls[group.id] = group.ingress_rules.copy()
         template = self.response_template(AUTHORIZE_SECURITY_GROUP_INGRESS_RESPONSE)
         return template.render(rule=rule, group=group)
@@ -470,6 +476,14 @@ AUTHORIZE_SECURITY_GROUP_INGRESS_RESPONSE = """<AuthorizeSecurityGroupIngressRes
             {% if rule.to_port is not none %}
             <toPort>{{ rule.to_port }}</toPort>
             {% endif %}
+          <tagSet>
+          {% for tag in rule.get_tags() %}
+            <item>
+            <key>{{ tag.key }}</key>
+            <value>{{ tag.value }}</value>
+            </item>
+          {% endfor %}
+          </tagSet>
         </item>
     {% endfor %}
     {% for item in rule.prefix_list_ids %}
@@ -550,6 +564,14 @@ AUTHORIZE_SECURITY_GROUP_EGRESS_RESPONSE = """<AuthorizeSecurityGroupEgressRespo
             {% if rule.to_port is not none %}
             <toPort>{{ rule.to_port }}</toPort>
             {% endif %}
+            <tagSet>
+          {% for tag in rule.get_tags() %}
+            <item>
+            <key>{{ tag.key }}</key>
+            <value>{{ tag.value }}</value>
+            </item>
+          {% endfor %}
+          </tagSet>
         </item>
     {% endfor %}
     {% for item in rule.prefix_list_ids %}
