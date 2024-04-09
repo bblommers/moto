@@ -15,6 +15,7 @@ import pytest
 import requests
 from botocore.exceptions import ClientError, ParamValidationError
 from joserfc import jwk, jws, jwt
+from pycognito import AWSSRP
 
 import moto.cognitoidp.models
 from moto import cognitoidp, mock_aws, settings
@@ -22,6 +23,8 @@ from moto.cognitoidp.utils import create_id
 from moto.core import DEFAULT_ACCOUNT_ID as ACCOUNT_ID
 from moto.core import set_initial_no_auth_action_count
 from moto.utilities.utils import load_resource
+
+from . import cognitoidp_aws_verified
 
 private_key = load_resource(cognitoidp.__name__, "resources/jwks-private.json")
 PUBLIC_KEY = jwk.RSAKey.import_key(private_key)
@@ -4016,40 +4019,63 @@ def test_confirm_sign_up_with_username_attributes():
     assert result["UserStatus"] == "CONFIRMED"
 
 
-@mock_aws
+@pytest.mark.aws_verified
+@cognitoidp_aws_verified()
 def test_initiate_auth_USER_SRP_AUTH():
-    conn = boto3.client("cognito-idp", "us-west-2")
+    conn = boto3.client("cognito-idp", "us-east-1")
     username = str(uuid.uuid4())
     password = "P2$Sword"
     user_pool_id = conn.create_user_pool(PoolName=str(uuid.uuid4()))["UserPool"]["Id"]
-    client_id = conn.create_user_pool_client(
+    userpool = conn.create_user_pool_client(
         UserPoolId=user_pool_id, ClientName=str(uuid.uuid4()), GenerateSecret=True
-    )["UserPoolClient"]["ClientId"]
-    conn.sign_up(ClientId=client_id, Username=username, Password=password)
-    client_secret = conn.describe_user_pool_client(
-        UserPoolId=user_pool_id, ClientId=client_id
-    )["UserPoolClient"]["ClientSecret"]
-    conn.confirm_sign_up(
-        ClientId=client_id, Username=username, ConfirmationCode="123456"
+    )["UserPoolClient"]
+    client_id = userpool["ClientId"]
+
+    aws_srp = AWSSRP(
+        username=username,
+        password=password,
+        pool_id=user_pool_id,
+        client_id=client_id,
+        client=conn,
     )
+    secret_hash = aws_srp.get_secret_hash(username, client_id, userpool["ClientSecret"])
 
-    key = bytes(str(client_secret).encode("latin-1"))
-    msg = bytes(str(username + client_id).encode("latin-1"))
-    new_digest = hmac.new(key, msg, hashlib.sha256).digest()
-    secret_hash = base64.b64encode(new_digest).decode()
+    conn.sign_up(
+        ClientId=client_id, Username=username, SecretHash=secret_hash, Password=password
+    )
+    # confirm_sign_up needs a ConfirmationCode from email/SMS - and that's not possible to fake in a AWS-verified test
+    conn.admin_confirm_sign_up(UserPoolId=user_pool_id, Username=username)
 
-    result = conn.initiate_auth(
+    auth_params = aws_srp.get_auth_params()
+    auth_params["SECRET_HASH"] = secret_hash
+
+    auth_result = conn.initiate_auth(
         ClientId=client_id,
         AuthFlow="USER_SRP_AUTH",
-        AuthParameters={
-            "USERNAME": username,
-            "SRP_A": uuid.uuid4().hex,
-            "SECRET_HASH": secret_hash,
-        },
+        AuthParameters=auth_params,
     )
 
-    assert result["ChallengeName"] == "PASSWORD_VERIFIER"
-    assert result["ChallengeParameters"]["USERNAME"] == username
+    assert auth_result["ChallengeName"] == "PASSWORD_VERIFIER"
+    assert auth_result["ChallengeParameters"]["USERNAME"] == username
+    assert auth_result["ChallengeParameters"]["SECRET_BLOCK"]
+    assert auth_result["ChallengeParameters"]["SRP_B"]
+    assert auth_result["ChallengeParameters"]["USER_ID_FOR_SRP"]
+
+    challenge_response = aws_srp.process_challenge(
+        auth_result["ChallengeParameters"], auth_params
+    )
+    challenge_response["SECRET_HASH"] = secret_hash
+
+    result = conn.respond_to_auth_challenge(
+        ClientId=client_id,
+        ChallengeName="PASSWORD_VERIFIER",
+        ChallengeResponses=challenge_response,
+    )
+    assert result["AuthenticationResult"]["AccessToken"]
+    assert result["AuthenticationResult"]["IdToken"]
+    assert result["AuthenticationResult"]["RefreshToken"]
+
+    conn.delete_user_pool(UserPoolId=user_pool_id)
 
 
 @mock_aws
