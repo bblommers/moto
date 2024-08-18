@@ -84,9 +84,8 @@ def _decode_dict(d: Dict[Any, Any]) -> Dict[str, Any]:
 @functools.lru_cache(maxsize=None)
 def _get_method_urls(service_name: str, region: str) -> Dict[str, Dict[str, str]]:
     method_urls: Dict[str, Dict[str, str]] = defaultdict(dict)
-    service_name = boto3_service_name.get(service_name) or service_name  # type: ignore
     conn = boto3.client(service_name, region_name=region)
-    op_names = conn._service_model.operation_names
+    op_names = _get_service_operations(conn, service_name)
     for op_name in op_names:
         op_model = conn._service_model.operation_model(op_name)
         _method = op_model.http["method"]
@@ -97,6 +96,13 @@ def _get_method_urls(service_name: str, region: str) -> Dict[str, Dict[str, str]
         method_urls[_method][uri_regexp] = op_model.name
 
     return method_urls
+
+
+@functools.lru_cache(maxsize=None)
+def _get_service_operations(conn, service_name):
+    service_name = boto3_service_name.get(service_name) or service_name  # type: ignore
+    op_names = conn._service_model.operation_names
+    return op_names
 
 
 class DynamicDictLoader(DictLoader):
@@ -285,6 +291,31 @@ class BaseResponse(_TemplateEnvironmentMixin, ActionAuthenticatorMixin):
         self.service_name = service_name
         self.allow_request_decompression = True
 
+    def __getattribute__(self, item):
+        actual = object.__getattribute__(self, item)
+        if item in ["service_name"]:
+            return actual
+        conn = boto3.client(self.service_name, region_name="us-east-1")
+        op_names = _get_service_operations(conn, self.service_name)
+        # TODO: op_names are CamelCase, item is snake_case
+        if item in op_names:
+            def f(*args, **kwargs):
+                print(f"executing f (instead of {item})")
+                print(args)
+                print(kwargs)
+                from moto.moto_api._internal.extensions import extension_manager
+
+                response = extension_manager.process_request(service_feature=f"{self.service_name}:{item}",
+                                                             request=None)
+                if not response:
+                    response = actual(*args, **kwargs)
+                return response
+             #TODO: post request hook
+            return f
+        else:
+            print(f"{item} not in botocore")
+        return actual
+
     @classmethod
     def dispatch(cls, *args: Any, **kwargs: Any) -> Any:  # type: ignore[misc]
         return cls()._dispatch(*args, **kwargs)
@@ -422,6 +453,7 @@ class BaseResponse(_TemplateEnvironmentMixin, ActionAuthenticatorMixin):
         else:
             self.raw_path = self.path
 
+        self.request = request
         self.querystring = querystring
         self.data = querystring
         self.method = request.method
@@ -584,7 +616,11 @@ class BaseResponse(_TemplateEnvironmentMixin, ActionAuthenticatorMixin):
         if action in method_names:
             method = getattr(self, action)
             try:
-                response = method()
+                from moto.moto_api._internal.extensions import extension_manager
+
+                response = extension_manager.process_request(service_feature=f"{self.service_name}:{action}", request=self.request)
+                if not response:
+                    response = method()
             except HTTPException as http_error:
                 response_headers: Dict[str, Union[str, int]] = dict(
                     http_error.get_headers() or []
@@ -599,6 +635,9 @@ class BaseResponse(_TemplateEnvironmentMixin, ActionAuthenticatorMixin):
                 status, headers, body = self._transform_response(headers, response)
 
             headers, body = self._enrich_response(headers, body)
+            response = extension_manager.process_response(service_feature=f"{self.service_name}:{action}", headers=headers, status=status, body=body)
+            if response:
+                (status, headers, body) = response
 
             return status, headers, body
 
