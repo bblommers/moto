@@ -91,10 +91,16 @@ def _get_method_urls(service_name: str, region: str) -> Dict[str, Dict[str, str]
         op_model = conn._service_model.operation_model(op_name)
         _method = op_model.http["method"]
         request_uri = op_model.http["requestUri"]
+        if _method == "PUT":
+            print(f"processing PUT: {request_uri}")
         if service_name == "route53" and request_uri.endswith("/rrset/"):
             request_uri += "?"
         uri_regexp = BaseResponse.uri_to_regexp(request_uri)
-        method_urls[_method][uri_regexp] = op_model.name
+        if uri_regexp == "^/(?P<Bucket>[^/]+)$":
+            uri_regexp = "^/(?P<Bucket>[^/]*)$"
+        if uri_regexp not in method_urls[_method]:
+            method_urls[_method][uri_regexp] = []
+        method_urls[_method][uri_regexp].append((request_uri, op_model.name))
 
     return method_urls
 
@@ -422,6 +428,7 @@ class BaseResponse(_TemplateEnvironmentMixin, ActionAuthenticatorMixin):
         else:
             self.raw_path = self.path
 
+        self.request = request
         self.querystring = querystring
         self.data = querystring
         self.method = request.method
@@ -523,10 +530,16 @@ class BaseResponse(_TemplateEnvironmentMixin, ActionAuthenticatorMixin):
                 .replace("+", "")
                 .replace("-", "_")
             )
+            if uri == "/{Bucket}":
+                # If we're using virtual-hosted buckets, the bucket-name is part of the domain name
+                # Which means that the name is empty
+                return f"(?P<{name}>[^/]*)"
             if is_last:
                 return f"(?P<{name}>[^/]+)"
             return f"(?P<{name}>.*)"
 
+        if "?" in uri:
+            uri, _ = uri.split("?")
         elems = uri.split("/")
         num_elems = len(elems)
         regexp = "/".join(
@@ -537,18 +550,63 @@ class BaseResponse(_TemplateEnvironmentMixin, ActionAuthenticatorMixin):
     def _get_action_from_method_and_request_uri(
         self, method: str, request_uri: str
     ) -> str:
+        print(f"_get_action_from({method}, {request_uri}, {self.parsed_url.query})")
         """basically used for `rest-json` APIs
         You can refer to example from link below
         https://github.com/boto/botocore/blob/develop/botocore/data/iot/2015-05-28/service-2.json
         """
         methods_url = _get_method_urls(self.service_name, self.region)
         regexp_and_names = methods_url[method]
-        for regexp, name in regexp_and_names.items():
+        print(regexp_and_names)
+        print(f"all querystrings for {request_uri}")
+        #print([o for o, _ in uris_and_names])
+        # print(uris_and_names)
+        possible_querystrings = []
+        for uris_and_names in regexp_and_names.values():
+            possible_querystrings.extend([o.split("?")[-1] for o, _ in uris_and_names if "?" in o])
+        possible_querystrings = set(possible_querystrings)
+        print(possible_querystrings)
+        for regexp, uris_and_names in regexp_and_names.items():
+            #print(original_uri)
+
             match = re.match(regexp, request_uri)
+
             self.uri_match = match
-            if match:
-                return name
+            if match or (regexp == "^$" and request_uri == "/"):
+                print(f"{regexp} matches {request_uri}: {match} ({uris_and_names})")
+
+                for original_uri, name in uris_and_names:
+                    if "?" in original_uri:
+                        # print(f"splitting {original_uri}")
+                        # print(original_uri.split("?"))
+                        _, querystring_to_match = original_uri.split("?")
+                    else:
+                        querystring_to_match = None
+                    #print(f"match for {method} {request_uri}{self.parsed_url.query} -> {name} ({querystring_to_match})")
+                    if not querystring_to_match and not self.parsed_url.query:
+                        #print("match, no qs")
+                        return name
+                    if self.parsed_url.query and querystring_to_match and self._querystring_matches(querystring_to_match):
+                        print(f"match qs -> {name}")
+                        return name
+                    if self.parsed_url.query == "publicAccessBlock":
+                        print("===")
+                        print(querystring_to_match)
+                    if self.parsed_url.query and not querystring_to_match and all((q not in possible_querystrings for q in self.parsed_url.query.split("&"))):
+                        print(f"unknown qs supplied -> {name}")
+                        print(self.parsed_url.query)
+                        print(querystring_to_match)
+                        print(possible_querystrings)
+                        return name
+            else:
+                print(f"{regexp} did not match {request_uri}")
+        print("no match")
         return None  # type: ignore[return-value]
+
+    def _querystring_matches(self, requested):
+        #print(f"qs matches: '{requested}' in {self.parsed_url.query}")
+        return requested and any((requested == q for q in self.parsed_url.query.split("&")))
+        return requested and requested in self.parsed_url.query
 
     def _get_action(self) -> str:
         action = self.querystring.get("Action", [""])[0]

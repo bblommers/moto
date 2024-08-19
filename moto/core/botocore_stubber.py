@@ -88,6 +88,8 @@ class BotocoreStubber:
                             status, headers, body = method_to_execute(
                                 request, request.url, request.headers
                             )
+                            if status != 200 and "status" not in headers:
+                                headers["status"] = str(status)
                         except HTTPException as e:
                             status = e.code
                             headers = e.get_headers()
