@@ -1,3 +1,4 @@
+from collections import defaultdict
 from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 from moto.acm.models import AWSCertificateManagerBackend, acm_backends
@@ -6,7 +7,6 @@ from moto.backup.models import BackupBackend, backup_backends
 from moto.core.base_backend import BackendDict, BaseBackend
 from moto.core.exceptions import RESTError
 from moto.dynamodb.models import DynamoDBBackend, dynamodb_backends
-from moto.ec2 import ec2_backends
 from moto.ecs.models import EC2ContainerServiceBackend, ecs_backends
 from moto.efs.models import EFSBackend, efs_backends
 from moto.elb.models import ELBBackend, elb_backends
@@ -44,13 +44,11 @@ class ResourceGroupsTaggingAPIBackend(BaseBackend):
         # fit in the current request. As we only store generators
         # there is really no point cleaning up
 
+        self.tags: Dict[str, Dict[str, str]] = defaultdict(dict)
+
     @property
     def s3_backend(self) -> S3Backend:
         return s3_backends[self.account_id][self.partition]
-
-    @property
-    def ec2_backend(self) -> Any:  # type: ignore[misc]
-        return ec2_backends[self.account_id][self.region_name]
 
     @property
     def efs_backend(self) -> EFSBackend:
@@ -268,114 +266,16 @@ class ResourceGroupsTaggingAPIBackend(BaseBackend):
                         continue
                     yield {"ResourceARN": f"{task.task_arn}", "Tags": tags}
 
-        # EC2 AMI, resource type ec2:image
-        if (
-            not resource_type_filters
-            or "ec2" in resource_type_filters
-            or "ec2:image" in resource_type_filters
-        ):
-            for ami in self.ec2_backend.amis.values():
-                tags = format_tags(self.ec2_backend.tags.get(ami.id, {}))
-
+        for arn, tags_for_arn in self.tags.items():
+            tags = format_tags(tags_for_arn)
+            resource_type_parts = []
+            for resource_type in resource_type_filters or []:
+                resource_type_parts.extend(resource_type.split(":"))
+            if all([f":{part}" in arn for part in resource_type_parts]):
                 if not tags or not tag_filter(tags):
                     # Skip if no tags, or invalid filter
                     continue
-                yield {
-                    "ResourceARN": f"arn:{self.partition}:ec2:{self.region_name}::image/{ami.id}",
-                    "Tags": tags,
-                }
-
-        # EC2 Instance, resource type ec2:instance
-        if (
-            not resource_type_filters
-            or "ec2" in resource_type_filters
-            or "ec2:instance" in resource_type_filters
-        ):
-            for reservation in self.ec2_backend.reservations.values():
-                for instance in reservation.instances:
-                    tags = format_tags(self.ec2_backend.tags.get(instance.id, {}))
-
-                    if not tags or not tag_filter(tags):
-                        # Skip if no tags, or invalid filter
-                        continue
-                    yield {
-                        "ResourceARN": f"arn:{self.partition}:ec2:{self.region_name}::instance/{instance.id}",
-                        "Tags": tags,
-                    }
-
-        # EC2 NetworkInterface, resource type ec2:network-interface
-        if (
-            not resource_type_filters
-            or "ec2" in resource_type_filters
-            or "ec2:network-interface" in resource_type_filters
-        ):
-            for eni in self.ec2_backend.enis.values():
-                tags = format_tags(self.ec2_backend.tags.get(eni.id, {}))
-
-                if not tags or not tag_filter(tags):
-                    # Skip if no tags, or invalid filter
-                    continue
-                yield {
-                    "ResourceARN": f"arn:{self.partition}:ec2:{self.region_name}::network-interface/{eni.id}",
-                    "Tags": tags,
-                }
-
-        # TODO EC2 ReservedInstance
-
-        # EC2 SecurityGroup, resource type ec2:security-group
-        if (
-            not resource_type_filters
-            or "ec2" in resource_type_filters
-            or "ec2:security-group" in resource_type_filters
-        ):
-            for vpc in self.ec2_backend.groups.values():
-                for sg in vpc.values():
-                    tags = format_tags(self.ec2_backend.tags.get(sg.id, {}))
-
-                    if not tags or not tag_filter(tags):
-                        # Skip if no tags, or invalid filter
-                        continue
-                    yield {
-                        "ResourceARN": f"arn:{self.partition}:ec2:{self.region_name}::security-group/{sg.id}",
-                        "Tags": tags,
-                    }
-
-        # EC2 Snapshot, resource type ec2:snapshot
-        if (
-            not resource_type_filters
-            or "ec2" in resource_type_filters
-            or "ec2:snapshot" in resource_type_filters
-        ):
-            for snapshot in self.ec2_backend.snapshots.values():
-                tags = format_tags(self.ec2_backend.tags.get(snapshot.id, {}))
-
-                if not tags or not tag_filter(tags):
-                    # Skip if no tags, or invalid filter
-                    continue
-                yield {
-                    "ResourceARN": f"arn:{self.partition}:ec2:{self.region_name}::snapshot/{snapshot.id}",
-                    "Tags": tags,
-                }
-
-        # TODO EC2 SpotInstanceRequest
-
-        # EC2 Volume, resource type ec2:volume
-        if (
-            not resource_type_filters
-            or "ec2" in resource_type_filters
-            or "ec2:volume" in resource_type_filters
-        ):
-            for volume in self.ec2_backend.volumes.values():
-                tags = format_tags(self.ec2_backend.tags.get(volume.id, {}))
-
-                if not tags or not tag_filter(
-                    tags
-                ):  # Skip if no tags, or invalid filter
-                    continue
-                yield {
-                    "ResourceARN": f"arn:{self.partition}:ec2:{self.region_name}::volume/{volume.id}",
-                    "Tags": tags,
-                }
+                yield {"ResourceARN": f"{arn}", "Tags": tags}
 
         # EFS, resource type elasticfilesystem:access-point
         if (
@@ -626,31 +526,6 @@ class ResourceGroupsTaggingAPIBackend(BaseBackend):
                     "Tags": tags,
                 }
 
-        # VPC
-        if (
-            not resource_type_filters
-            or "ec2" in resource_type_filters
-            or "ec2:vpc" in resource_type_filters
-        ):
-            for vpc in self.ec2_backend.vpcs.values():
-                tags = format_tags(self.ec2_backend.tags.get(vpc.id, {}))
-                if not tags or not tag_filter(
-                    tags
-                ):  # Skip if no tags, or invalid filter
-                    continue
-                yield {
-                    "ResourceARN": f"arn:{self.partition}:ec2:{self.region_name}:{self.account_id}:vpc/{vpc.id}",
-                    "Tags": tags,
-                }
-        # VPC Customer Gateway
-        # VPC DHCP Option Set
-        # VPC Internet Gateway
-        # VPC Network ACL
-        # VPC Route Table
-        # VPC Subnet
-        # VPC Virtual Private Gateway
-        # VPC VPN Connection
-
         # Lambda Instance
         if (
             not resource_type_filters
@@ -718,48 +593,9 @@ class ResourceGroupsTaggingAPIBackend(BaseBackend):
             for key, _ in tags.items():
                 yield key
 
-        # EC2 tags
-        def get_ec2_keys(res_id: str) -> List[Dict[str, str]]:
-            result = []
-            for key in self.ec2_backend.tags.get(res_id, {}):
-                result.append(key)
-            return result
-
-        # EC2 AMI, resource type ec2:image
-        for ami in self.ec2_backend.amis.values():
-            for key in get_ec2_keys(ami.id):  # type: ignore[assignment]
-                yield key
-
-        # EC2 Instance, resource type ec2:instance
-        for reservation in self.ec2_backend.reservations.values():
-            for instance in reservation.instances:
-                for key in get_ec2_keys(instance.id):  # type: ignore[assignment]
-                    yield key
-
-        # EC2 NetworkInterface, resource type ec2:network-interface
-        for eni in self.ec2_backend.enis.values():
-            for key in get_ec2_keys(eni.id):  # type: ignore[assignment]
-                yield key
-
-        # TODO EC2 ReservedInstance
-
-        # EC2 SecurityGroup, resource type ec2:security-group
-        for vpc in self.ec2_backend.groups.values():
-            for sg in vpc.values():
-                for key in get_ec2_keys(sg.id):  # type: ignore[assignment]
-                    yield key
-
-        # EC2 Snapshot, resource type ec2:snapshot
-        for snapshot in self.ec2_backend.snapshots.values():
-            for key in get_ec2_keys(snapshot.id):  # type: ignore[assignment]
-                yield key
-
-        # TODO EC2 SpotInstanceRequest
-
-        # EC2 Volume, resource type ec2:volume
-        for volume in self.ec2_backend.volumes.values():
-            for key in get_ec2_keys(volume.id):  # type: ignore[assignment]
-                yield key
+        for tags in self.tags.values():
+            for tag_key in tags:
+                yield tag_key
 
         # Glue
         for tag_dict in self.glue_backend.tagger.tags.values():
@@ -777,49 +613,9 @@ class ResourceGroupsTaggingAPIBackend(BaseBackend):
                 if key == tag_key:
                     yield value
 
-        # EC2 tags
-        def get_ec2_values(res_id: str) -> List[Dict[str, str]]:
-            result = []
-            for key, value in self.ec2_backend.tags.get(res_id, {}).items():
-                if key == tag_key:
-                    result.append(value)
-            return result
-
-        # EC2 AMI, resource type ec2:image
-        for ami in self.ec2_backend.amis.values():
-            for value in get_ec2_values(ami.id):  # type: ignore[assignment]
-                yield value
-
-        # EC2 Instance, resource type ec2:instance
-        for reservation in self.ec2_backend.reservations.values():
-            for instance in reservation.instances:
-                for value in get_ec2_values(instance.id):  # type: ignore[assignment]
-                    yield value
-
-        # EC2 NetworkInterface, resource type ec2:network-interface
-        for eni in self.ec2_backend.enis.values():
-            for value in get_ec2_values(eni.id):  # type: ignore[assignment]
-                yield value
-
-        # TODO EC2 ReservedInstance
-
-        # EC2 SecurityGroup, resource type ec2:security-group
-        for vpc in self.ec2_backend.groups.values():
-            for sg in vpc.values():
-                for value in get_ec2_values(sg.id):  # type: ignore[assignment]
-                    yield value
-
-        # EC2 Snapshot, resource type ec2:snapshot
-        for snapshot in self.ec2_backend.snapshots.values():
-            for value in get_ec2_values(snapshot.id):  # type: ignore[assignment]
-                yield value
-
-        # TODO EC2 SpotInstanceRequest
-
-        # EC2 Volume, resource type ec2:volume
-        for volume in self.ec2_backend.volumes.values():
-            for value in get_ec2_values(volume.id):  # type: ignore[assignment]
-                yield value
+        for tags in self.tags.values():
+            for tag_key in tags:
+                yield tags[tag_key]
 
         # Glue
         for tag_dict in self.glue_backend.tagger.tags.values():
@@ -995,6 +791,8 @@ class ResourceGroupsTaggingAPIBackend(BaseBackend):
     def tag_resources(
         self, resource_arns: List[str], tags: Dict[str, str]
     ) -> Dict[str, Dict[str, Any]]:
+        for arn in resource_arns:
+            self.tags[arn].update(tags)
         """
         Only DynamoDB, Logs, RDS, and SageMaker resources are currently supported
         """

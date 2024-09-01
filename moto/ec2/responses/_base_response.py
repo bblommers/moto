@@ -1,14 +1,16 @@
-from typing import Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from moto.core.responses import BaseResponse
 
 from ..exceptions import EmptyTagSpecError, InvalidParameter
 from ..utils import convert_tag_spec
+if TYPE_CHECKING:
+    from moto.ec2.models import EC2Backend
 
 
 class EC2BaseResponse(BaseResponse):
     @property
-    def ec2_backend(self) -> Any:  # type: ignore[misc]
+    def ec2_backend(self) -> "EC2Backend":
         from moto.ec2.models import ec2_backends
 
         return ec2_backends[self.current_account][self.region]

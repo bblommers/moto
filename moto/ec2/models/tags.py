@@ -32,6 +32,26 @@ class TagBackend:
                     raise TagLimitExceeded()
             elif len([tag for tag in tags if not tag.startswith("aws:")]) > 50:
                 raise TagLimitExceeded()
+
+        from moto.resourcegroupstaggingapi import resourcegroupstaggingapi_backends
+        rt_api = resourcegroupstaggingapi_backends[self.account_id][self.region_name]
+        resource_arns = []
+        for res_id in resource_ids:
+            if res_id.startswith("ami-"):
+                resource_arns.append(f"arn:{self.partition}:ec2:{self.region_name}::image/{res_id}")
+            if res_id.startswith("eni-"):
+                resource_arns.append(f"arn:{self.partition}:ec2:{self.region_name}::network-interface/{res_id}")
+            if res_id.startswith("i-"):
+                resource_arns.append(f"arn:{self.partition}:ec2:{self.region_name}::instance/{res_id}")
+            if res_id.startswith("sg-"):
+                resource_arns.append(f"arn:{self.partition}:ec2:{self.region_name}::security-group/{res_id}")
+            if res_id.startswith("snapshot-"):
+                resource_arns.append(f"arn:{self.partition}:ec2:{self.region_name}::snapshot/{res_id}")
+            if res_id.startswith("v-"):
+                resource_arns.append(f"arn:{self.partition}:ec2:{self.region_name}::volume/{res_id}")
+            if res_id.startswith("vpc-"):
+                resource_arns.append(f"arn:{self.partition}:ec2:{self.region_name}:{self.account_id}:vpc/{res_id}")
+        rt_api.tag_resources(resource_arns, tags)
         for resource_id in resource_ids:
             for tag in tags:
                 self.tags[resource_id][tag] = tags[tag]
