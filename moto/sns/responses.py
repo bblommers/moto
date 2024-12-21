@@ -1,7 +1,7 @@
 import json
 import re
 from collections import defaultdict
-from typing import Any, Dict, Tuple, Union
+from typing import Any
 
 from moto.core.responses import TYPE_RESPONSE, BaseResponse
 from moto.core.utils import camelcase_to_underscores
@@ -28,23 +28,23 @@ class SNSResponse(BaseResponse):
         template = self.response_template(ERROR_RESPONSE)
         return template.render(code=code, message=message, sender=sender)
 
-    def _get_attributes(self) -> Dict[str, str]:
+    def _get_attributes(self) -> dict[str, str]:
         attributes = self._get_list_prefix("Attributes.entry")
         return dict((attribute["key"], attribute["value"]) for attribute in attributes)
 
-    def _get_tags(self) -> Dict[str, str]:
+    def _get_tags(self) -> dict[str, str]:
         tags = self._get_list_prefix("Tags.member")
         return {tag["key"]: tag["value"] for tag in tags}
 
-    def _parse_message_attributes(self) -> Dict[str, Any]:
+    def _parse_message_attributes(self) -> dict[str, Any]:
         message_attributes = self._get_object_map(
             "MessageAttributes.entry", name="Name", value="Value"
         )
         return self._transform_message_attributes(message_attributes)
 
     def _transform_message_attributes(
-        self, message_attributes: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, message_attributes: dict[str, Any]
+    ) -> dict[str, Any]:
         # SNS converts some key names before forwarding messages
         # DataType -> Type, StringValue -> Value, BinaryValue -> Value
         transformed_message_attributes = {}
@@ -339,7 +339,7 @@ class SNSResponse(BaseResponse):
         template = self.response_template(LIST_SUBSCRIPTIONS_BY_TOPIC_TEMPLATE)
         return template.render(subscriptions=subscriptions, next_token=next_token)
 
-    def publish(self) -> Union[str, Tuple[str, Dict[str, int]]]:
+    def publish(self) -> str | tuple[str, dict[str, int]]:
         target_arn = self._get_param("TargetArn")
         topic_arn = self._get_param("TopicArn")
         phone_number = self._get_param("PhoneNumber")
@@ -590,7 +590,7 @@ class SNSResponse(BaseResponse):
         )
         return template.render(endpoints=endpoints)
 
-    def get_endpoint_attributes(self) -> Union[str, Tuple[str, Dict[str, int]]]:
+    def get_endpoint_attributes(self) -> str | tuple[str, dict[str, int]]:
         arn = self._get_param("EndpointArn")
         try:
             attributes = self.backend.get_endpoint_attributes(arn)
@@ -613,7 +613,7 @@ class SNSResponse(BaseResponse):
             error_response = self._error("NotFound", "Endpoint does not exist")
             return error_response, dict(status=404)
 
-    def set_endpoint_attributes(self) -> Union[str, Tuple[str, Dict[str, int]]]:
+    def set_endpoint_attributes(self) -> str | tuple[str, dict[str, int]]:
         arn = self._get_param("EndpointArn")
         attributes = self._get_attributes()
 
@@ -670,7 +670,7 @@ class SNSResponse(BaseResponse):
         # attributes.entry.1.value
         # to
         # 1: {key:X, value:Y}
-        temp_dict: Dict[str, Any] = defaultdict(dict)
+        temp_dict: dict[str, Any] = defaultdict(dict)
         for key, value in self.querystring.items():
             match = self.SMS_ATTR_REGEX.match(key)
             if match is not None:
@@ -703,7 +703,7 @@ class SNSResponse(BaseResponse):
 
     def check_if_phone_number_is_opted_out(
         self,
-    ) -> Union[str, Tuple[str, Dict[str, int]]]:
+    ) -> str | tuple[str, dict[str, int]]:
         number = self._get_param("phoneNumber")
         if self.OPT_OUT_PHONE_NUMBER_REGEX.match(number) is None:
             error_response = self._error(
@@ -755,7 +755,7 @@ class SNSResponse(BaseResponse):
         template = self.response_template(DEL_PERMISSION_TEMPLATE)
         return template.render()
 
-    def confirm_subscription(self) -> Union[str, Tuple[str, Dict[str, int]]]:
+    def confirm_subscription(self) -> str | tuple[str, dict[str, int]]:
         arn = self._get_param("TopicArn")
 
         if arn not in self.backend.topics:

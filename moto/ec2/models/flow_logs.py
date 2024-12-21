@@ -1,5 +1,5 @@
 import itertools
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional
 
 from moto.core.common_models import CloudFormationModel
 
@@ -32,7 +32,7 @@ class FlowLogs(TaggedEC2Resource, CloudFormationModel):
         log_destination_type: str,
         log_format: str,
         deliver_logs_status: str = "SUCCESS",
-        deliver_logs_error_message: Optional[str] = None,
+        deliver_logs_error_message: str | None = None,
     ):
         self.ec2_backend = ec2_backend
         self.id = flow_log_id
@@ -104,9 +104,7 @@ class FlowLogs(TaggedEC2Resource, CloudFormationModel):
     def physical_resource_id(self) -> str:
         return self.id
 
-    def get_filter_value(
-        self, filter_name: str, method_name: Optional[str] = None
-    ) -> Any:
+    def get_filter_value(self, filter_name: str, method_name: str | None = None) -> Any:
         """
         API Version 2016-11-15 defines the following filters for DescribeFlowLogs:
 
@@ -139,7 +137,7 @@ class FlowLogs(TaggedEC2Resource, CloudFormationModel):
 
 class FlowLogsBackend:
     def __init__(self) -> None:
-        self.flow_logs: Dict[str, FlowLogs] = {}
+        self.flow_logs: dict[str, FlowLogs] = {}
 
     def _validate_request(
         self,
@@ -173,7 +171,7 @@ class FlowLogsBackend:
     def create_flow_logs(
         self,
         resource_type: str,
-        resource_ids: List[str],
+        resource_ids: list[str],
         traffic_type: str,
         deliver_logs_permission_arn: str,
         log_destination_type: str,
@@ -181,7 +179,7 @@ class FlowLogsBackend:
         log_group_name: str,
         log_format: str,
         max_aggregation_interval: str,
-    ) -> Tuple[List[FlowLogs], List[Any]]:
+    ) -> tuple[list[FlowLogs], list[Any]]:
         # Guess it's best to put it here due to possible
         # lack of them in the CloudFormation template
         max_aggregation_interval = (
@@ -280,8 +278,8 @@ class FlowLogsBackend:
         return flow_logs_set, unsuccessful
 
     def describe_flow_logs(
-        self, flow_log_ids: Optional[List[str]] = None, filters: Any = None
-    ) -> List[FlowLogs]:
+        self, flow_log_ids: Optional[list[str]] = None, filters: Any = None
+    ) -> list[FlowLogs]:
         matches = list(itertools.chain([i for i in self.flow_logs.values()]))
         if flow_log_ids:
             matches = [flow_log for flow_log in matches if flow_log.id in flow_log_ids]
@@ -289,7 +287,7 @@ class FlowLogsBackend:
             matches = generic_filter(filters, matches)
         return matches
 
-    def delete_flow_logs(self, flow_log_ids: List[str]) -> None:
+    def delete_flow_logs(self, flow_log_ids: list[str]) -> None:
         non_existing = []
         for flow_log in flow_log_ids:
             if flow_log in self.flow_logs:

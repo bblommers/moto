@@ -1,7 +1,7 @@
 """NetworkManagerBackend class with methods for supported APIs."""
 
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from moto.core.base_backend import BackendDict, BaseBackend
 from moto.core.common_models import BaseModel
@@ -50,8 +50,8 @@ class GlobalNetwork(BaseModel):
         self,
         account_id: str,
         partition: str,
-        description: Optional[str],
-        tags: Optional[List[Dict[str, str]]],
+        description: str | None,
+        tags: Optional[list[dict[str, str]]],
     ):
         self.description = description
         self.tags = tags or []
@@ -62,7 +62,7 @@ class GlobalNetwork(BaseModel):
         self.created_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         self.state = "PENDING"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "GlobalNetworkId": self.global_network_id,
             "GlobalNetworkArn": self.global_network_arn,
@@ -79,8 +79,8 @@ class CoreNetwork(BaseModel):
         account_id: str,
         partition: str,
         global_network_id: str,
-        description: Optional[str],
-        tags: Optional[List[Dict[str, str]]],
+        description: str | None,
+        tags: Optional[list[dict[str, str]]],
         policy_document: str,
         client_token: str,
     ):
@@ -95,7 +95,7 @@ class CoreNetwork(BaseModel):
         self.created_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         self.state = "PENDING"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "CoreNetworkId": self.core_network_id,
             "CoreNetworkArn": self.core_network_arn,
@@ -114,9 +114,9 @@ class Site(BaseModel):
         account_id: str,
         partition: str,
         global_network_id: str,
-        description: Optional[str],
-        location: Optional[Dict[str, Any]],
-        tags: Optional[List[Dict[str, str]]],
+        description: str | None,
+        location: Optional[dict[str, Any]],
+        tags: Optional[list[dict[str, str]]],
     ):
         self.global_network_id = global_network_id
         self.description = description
@@ -129,7 +129,7 @@ class Site(BaseModel):
         self.created_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         self.state = "PENDING"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "SiteId": self.site_id,
             "SiteArn": self.site_arn,
@@ -148,12 +148,12 @@ class Link(BaseModel):
         account_id: str,
         partition: str,
         global_network_id: str,
-        description: Optional[str],
-        type: Optional[str],
-        bandwidth: Dict[str, int],
-        provider: Optional[str],
+        description: str | None,
+        type: str | None,
+        bandwidth: dict[str, int],
+        provider: str | None,
         site_id: str,
-        tags: Optional[List[Dict[str, str]]],
+        tags: Optional[list[dict[str, str]]],
     ):
         self.global_network_id = global_network_id
         self.description = description
@@ -169,7 +169,7 @@ class Link(BaseModel):
         self.created_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         self.state = "PENDING"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "LinkId": self.link_id,
             "LinkArn": self.link_arn,
@@ -191,15 +191,15 @@ class Device(BaseModel):
         account_id: str,
         partition: str,
         global_network_id: str,
-        aws_location: Optional[Dict[str, str]],
-        description: Optional[str],
-        type: Optional[str],
-        vendor: Optional[str],
-        model: Optional[str],
-        serial_number: Optional[str],
-        location: Optional[Dict[str, str]],
-        site_id: Optional[str],
-        tags: Optional[List[Dict[str, str]]],
+        aws_location: Optional[dict[str, str]],
+        description: str | None,
+        type: str | None,
+        vendor: str | None,
+        model: str | None,
+        serial_number: str | None,
+        location: Optional[dict[str, str]],
+        site_id: str | None,
+        tags: Optional[list[dict[str, str]]],
     ):
         self.global_network_id = global_network_id
         self.aws_location = aws_location
@@ -218,7 +218,7 @@ class Device(BaseModel):
         self.created_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         self.state = "PENDING"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "DeviceId": self.device_id,
             "DeviceArn": self.device_arn,
@@ -242,14 +242,14 @@ class NetworkManagerBackend(BaseBackend):
 
     def __init__(self, region_name: str, account_id: str) -> None:
         super().__init__(region_name, account_id)
-        self.global_networks: Dict[str, GlobalNetwork] = {}
-        self.core_networks: Dict[str, CoreNetwork] = {}
-        self.sites: Dict[str, Dict[str, Site]] = {}
-        self.links: Dict[str, Dict[str, Link]] = {}
-        self.devices: Dict[str, Dict[str, Device]] = {}
+        self.global_networks: dict[str, GlobalNetwork] = {}
+        self.core_networks: dict[str, CoreNetwork] = {}
+        self.sites: dict[str, dict[str, Site]] = {}
+        self.links: dict[str, dict[str, Link]] = {}
+        self.devices: dict[str, dict[str, Device]] = {}
 
     def _get_resource_from_arn(self, arn: str) -> Any:
-        resources_types: Dict[str, Dict[str, Any]] = {
+        resources_types: dict[str, dict[str, Any]] = {
             "core-network": self.core_networks,
             "global-network": self.global_networks,
             "site": self.sites,
@@ -277,8 +277,8 @@ class NetworkManagerBackend(BaseBackend):
 
     def create_global_network(
         self,
-        description: Optional[str],
-        tags: Optional[List[Dict[str, str]]],
+        description: str | None,
+        tags: Optional[list[dict[str, str]]],
     ) -> GlobalNetwork:
         global_network = GlobalNetwork(
             description=description,
@@ -297,8 +297,8 @@ class NetworkManagerBackend(BaseBackend):
     def create_core_network(
         self,
         global_network_id: str,
-        description: Optional[str],
-        tags: Optional[List[Dict[str, str]]],
+        description: str | None,
+        tags: Optional[list[dict[str, str]]],
         policy_document: str,
         client_token: str,
     ) -> CoreNetwork:
@@ -327,17 +327,17 @@ class NetworkManagerBackend(BaseBackend):
         core_network.state = "DELETING"
         return core_network
 
-    def tag_resource(self, resource_arn: str, tags: List[Dict[str, Any]]) -> None:
+    def tag_resource(self, resource_arn: str, tags: list[dict[str, Any]]) -> None:
         resource = self._get_resource_from_arn(resource_arn)
         resource.tags.extend(tags)
 
-    def untag_resource(self, resource_arn: str, tag_keys: Optional[List[str]]) -> None:
+    def untag_resource(self, resource_arn: str, tag_keys: Optional[list[str]]) -> None:
         resource = self._get_resource_from_arn(resource_arn)
         if tag_keys:
             resource.tags = [tag for tag in resource.tags if tag["Key"] not in tag_keys]
 
     @paginate(pagination_model=PAGINATION_MODEL)
-    def list_core_networks(self) -> List[CoreNetwork]:
+    def list_core_networks(self) -> list[CoreNetwork]:
         return list(self.core_networks.values())
 
     def get_core_network(self, core_network_id: str) -> CoreNetwork:
@@ -348,8 +348,8 @@ class NetworkManagerBackend(BaseBackend):
 
     @paginate(pagination_model=PAGINATION_MODEL)
     def describe_global_networks(
-        self, global_network_ids: List[str]
-    ) -> List[GlobalNetwork]:
+        self, global_network_ids: list[str]
+    ) -> list[GlobalNetwork]:
         queried_global_networks = []
         if not global_network_ids:
             queried_global_networks = list(self.global_networks.values())
@@ -367,9 +367,9 @@ class NetworkManagerBackend(BaseBackend):
     def create_site(
         self,
         global_network_id: str,
-        description: Optional[str],
-        location: Optional[Dict[str, str]],
-        tags: Optional[List[Dict[str, str]]],
+        description: str | None,
+        location: Optional[dict[str, str]],
+        tags: Optional[list[dict[str, str]]],
     ) -> Site:
         # check if global network exists
         if global_network_id not in self.global_networks:
@@ -397,7 +397,7 @@ class NetworkManagerBackend(BaseBackend):
         return site
 
     @paginate(pagination_model=PAGINATION_MODEL)
-    def get_sites(self, global_network_id: str, site_ids: List[str]) -> List[Site]:
+    def get_sites(self, global_network_id: str, site_ids: list[str]) -> list[Site]:
         if global_network_id not in self.global_networks:
             raise ValidationError("Incorrect input.")
         gn_sites = self.sites.get(global_network_id) or {}
@@ -415,12 +415,12 @@ class NetworkManagerBackend(BaseBackend):
     def create_link(
         self,
         global_network_id: str,
-        description: Optional[str],
-        type: Optional[str],
-        bandwidth: Dict[str, Any],
-        provider: Optional[str],
+        description: str | None,
+        type: str | None,
+        bandwidth: dict[str, Any],
+        provider: str | None,
         site_id: str,
-        tags: Optional[List[Dict[str, str]]],
+        tags: Optional[list[dict[str, str]]],
     ) -> Link:
         # check if global network exists
         if global_network_id not in self.global_networks:
@@ -443,11 +443,11 @@ class NetworkManagerBackend(BaseBackend):
     def get_links(
         self,
         global_network_id: str,
-        link_ids: List[str],
+        link_ids: list[str],
         site_id: str,
         type: str,
         provider: str,
-    ) -> List[Link]:
+    ) -> list[Link]:
         if global_network_id not in self.global_networks:
             raise ValidationError("Incorrect input.")
         # TODO: Implement filtering by site_id, type, provider
@@ -473,15 +473,15 @@ class NetworkManagerBackend(BaseBackend):
     def create_device(
         self,
         global_network_id: str,
-        aws_location: Optional[Dict[str, str]],
-        description: Optional[str],
-        type: Optional[str],
-        vendor: Optional[str],
-        model: Optional[str],
-        serial_number: Optional[str],
-        location: Optional[Dict[str, str]],
-        site_id: Optional[str],
-        tags: Optional[List[Dict[str, str]]],
+        aws_location: Optional[dict[str, str]],
+        description: str | None,
+        type: str | None,
+        vendor: str | None,
+        model: str | None,
+        serial_number: str | None,
+        location: Optional[dict[str, str]],
+        site_id: str | None,
+        tags: Optional[list[dict[str, str]]],
     ) -> Device:
         # check if global network exists
         if global_network_id not in self.global_networks:
@@ -505,8 +505,8 @@ class NetworkManagerBackend(BaseBackend):
 
     @paginate(pagination_model=PAGINATION_MODEL)
     def get_devices(
-        self, global_network_id: str, device_ids: List[str], site_id: Optional[str]
-    ) -> List[Device]:
+        self, global_network_id: str, device_ids: list[str], site_id: str | None
+    ) -> list[Device]:
         if global_network_id not in self.global_networks:
             raise ValidationError("Incorrect input.")
         # TODO: Implement filtering by site_id
@@ -530,7 +530,7 @@ class NetworkManagerBackend(BaseBackend):
         device.state = "DELETING"
         return device
 
-    def list_tags_for_resource(self, resource_arn: str) -> List[Dict[str, str]]:
+    def list_tags_for_resource(self, resource_arn: str) -> list[dict[str, str]]:
         resource = self._get_resource_from_arn(resource_arn)
         tag_list = resource.tags
         return tag_list

@@ -1,5 +1,4 @@
 import json
-from typing import Dict, Tuple, Union
 
 from moto.core.responses import BaseResponse
 
@@ -14,7 +13,7 @@ class AthenaResponse(BaseResponse):
     def athena_backend(self) -> AthenaBackend:
         return athena_backends[self.current_account][self.region]
 
-    def create_work_group(self) -> Union[Tuple[str, Dict[str, int]], str]:
+    def create_work_group(self) -> tuple[str, dict[str, int]] | str:
         name = self._get_param("Name")
         description = self._get_param("Description")
         configuration = self._get_param("Configuration")
@@ -46,7 +45,7 @@ class AthenaResponse(BaseResponse):
         self.athena_backend.delete_work_group(name)
         return "{}"
 
-    def start_query_execution(self) -> Union[Tuple[str, Dict[str, int]], str]:
+    def start_query_execution(self) -> tuple[str, dict[str, int]] | str:
         query = self._get_param("QueryString")
         context = self._get_param("QueryExecutionContext")
         config = self._get_param("ResultConfiguration")
@@ -113,13 +112,13 @@ class AthenaResponse(BaseResponse):
         self.athena_backend.stop_query_execution(exec_id)
         return json.dumps({})
 
-    def error(self, msg: str, status: int) -> Tuple[str, Dict[str, int]]:
+    def error(self, msg: str, status: int) -> tuple[str, dict[str, int]]:
         return (
             json.dumps({"__type": "InvalidRequestException", "Message": msg}),
             dict(status=status),
         )
 
-    def create_named_query(self) -> Union[Tuple[str, Dict[str, int]], str]:
+    def create_named_query(self) -> tuple[str, dict[str, int]] | str:
         name = self._get_param("Name")
         description = self._get_param("Description")
         database = self._get_param("Database")
@@ -157,7 +156,7 @@ class AthenaResponse(BaseResponse):
         name = self._get_param("Name")
         return json.dumps({"DataCatalog": self.athena_backend.get_data_catalog(name)})
 
-    def create_data_catalog(self) -> Union[Tuple[str, Dict[str, int]], str]:
+    def create_data_catalog(self) -> tuple[str, dict[str, int]] | str:
         name = self._get_param("Name")
         catalog_type = self._get_param("Type")
         description = self._get_param("Description")
@@ -187,7 +186,7 @@ class AthenaResponse(BaseResponse):
         )
         return json.dumps({"NamedQueryIds": named_query_ids, "NextToken": next_token})
 
-    def create_prepared_statement(self) -> Union[str, Tuple[str, Dict[str, int]]]:
+    def create_prepared_statement(self) -> str | tuple[str, dict[str, int]]:
         statement_name = self._get_param("StatementName")
         work_group = self._get_param("WorkGroup")
         query_statement = self._get_param("QueryStatement")

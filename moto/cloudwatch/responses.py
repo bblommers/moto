@@ -1,5 +1,5 @@
 import json
-from typing import Dict, Iterable, List, Tuple, Union
+from typing import Iterable
 
 from dateutil.parser import parse as dtparse
 
@@ -16,7 +16,7 @@ from .models import (
     cloudwatch_backends,
 )
 
-ERROR_RESPONSE = Tuple[str, Dict[str, int]]
+ERROR_RESPONSE = tuple[str, dict[str, int]]
 
 
 class CloudWatchResponse(BaseResponse):
@@ -232,7 +232,7 @@ class CloudWatchResponse(BaseResponse):
         template = self.response_template(LIST_METRICS_TEMPLATE)
         return template.render(metrics=metrics, next_token=next_token)
 
-    def delete_dashboards(self) -> Union[str, ERROR_RESPONSE]:
+    def delete_dashboards(self) -> str | ERROR_RESPONSE:
         dashboards = self._get_multi_param("DashboardNames.member")
         if not dashboards:
             return self._error("InvalidParameterValue", "Need at least 1 dashboard")
@@ -247,7 +247,7 @@ class CloudWatchResponse(BaseResponse):
     @staticmethod
     def filter_alarms(
         alarms: Iterable[FakeAlarm], metric_name: str, namespace: str
-    ) -> List[FakeAlarm]:
+    ) -> list[FakeAlarm]:
         metric_filtered_alarms = []
 
         for alarm in alarms:
@@ -269,7 +269,7 @@ class CloudWatchResponse(BaseResponse):
     def enable_alarm_actions(self) -> str:
         raise NotImplementedError()
 
-    def get_dashboard(self) -> Union[str, ERROR_RESPONSE]:
+    def get_dashboard(self) -> str | ERROR_RESPONSE:
         dashboard_name = self._get_param("DashboardName")
 
         dashboard = self.cloudwatch_backend.get_dashboard(dashboard_name)
@@ -287,7 +287,7 @@ class CloudWatchResponse(BaseResponse):
         template = self.response_template(LIST_DASHBOARD_RESPONSE)
         return template.render(dashboards=dashboards)
 
-    def put_dashboard(self) -> Union[str, ERROR_RESPONSE]:
+    def put_dashboard(self) -> str | ERROR_RESPONSE:
         name = self._get_param("DashboardName")
         body = self._get_param("DashboardBody")
 

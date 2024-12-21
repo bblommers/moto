@@ -2,7 +2,7 @@
 
 import json
 from datetime import datetime
-from typing import Dict, Optional, Union
+from typing import Optional
 
 from moto.core.responses import BaseResponse
 
@@ -21,8 +21,8 @@ class QLDBResponse(BaseResponse):
         return qldb_backends[self.current_account][self.region]
 
     def _format_encryption_description(
-        self, encryption_description: Optional[Dict[str, Union[str, datetime]]]
-    ) -> Dict[str, Optional[Union[str, datetime]]]:
+        self, encryption_description: Optional[dict[str, str | datetime]]
+    ) -> dict[str, Optional[str | datetime]]:
         return {
             "KmsKeyArn": (encryption_description or {}).get("kms_key_arn"),
             "EncryptionStatus": (encryption_description or {}).get("encryption_status"),

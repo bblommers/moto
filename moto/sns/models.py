@@ -5,7 +5,7 @@ import re
 from collections import OrderedDict
 from datetime import timedelta
 from functools import lru_cache
-from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
+from typing import Any, Iterable, Optional
 
 import cryptography
 import requests
@@ -67,25 +67,25 @@ class Topic(CloudFormationModel):
         self.subscriptions_pending = 0
         self.subscriptions_confimed = 0
         self.subscriptions_deleted = 0
-        self.sent_notifications: List[
-            Tuple[str, str, Optional[str], Optional[Dict[str, Any]], Optional[str]]
+        self.sent_notifications: list[
+            tuple[str, str, str | None, Optional[dict[str, Any]], str | None]
         ] = []
 
         self._policy_json = self._create_default_topic_policy(
             sns_backend.region_name, self.account_id, name
         )
-        self._tags: Dict[str, str] = {}
+        self._tags: dict[str, str] = {}
         self.fifo_topic = "false"
         self.content_based_deduplication = "false"
 
     def publish(
         self,
         message: str,
-        subject: Optional[str] = None,
-        message_attributes: Optional[Dict[str, Any]] = None,
-        group_id: Optional[str] = None,
-        deduplication_id: Optional[str] = None,
-        message_structure: Optional[str] = None,
+        subject: str | None = None,
+        message_attributes: Optional[dict[str, Any]] = None,
+        group_id: str | None = None,
+        deduplication_id: str | None = None,
+        message_structure: str | None = None,
     ) -> str:
         message_id = str(mock_random.uuid4())
         subscriptions, _ = self.sns_backend.list_subscriptions_by_topic(
@@ -178,7 +178,7 @@ class Topic(CloudFormationModel):
 
     def _create_default_topic_policy(
         self, region_name: str, account_id: str, name: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         return {
             "Version": "2008-10-17",
             "Id": "__default_policy_ID",
@@ -212,7 +212,7 @@ class Subscription(BaseModel):
         self.endpoint = endpoint
         self.protocol = protocol
         self.arn = make_arn_for_subscription(self.topic.arn)
-        self.attributes: Dict[str, Any] = {}
+        self.attributes: dict[str, Any] = {}
         self._filter_policy = None  # filter policy as a dict, not json.
         self._filter_policy_matcher = None
         self.confirmed = False
@@ -221,11 +221,11 @@ class Subscription(BaseModel):
         self,
         message: str,
         message_id: str,
-        subject: Optional[str] = None,
-        message_attributes: Optional[Dict[str, Any]] = None,
-        group_id: Optional[str] = None,
-        deduplication_id: Optional[str] = None,
-        message_structure: Optional[str] = None,
+        subject: str | None = None,
+        message_attributes: Optional[dict[str, Any]] = None,
+        group_id: str | None = None,
+        deduplication_id: str | None = None,
+        message_structure: str | None = None,
     ) -> None:
         if self._filter_policy_matcher is not None:
             if not self._filter_policy_matcher.matches(message_attributes, message):
@@ -310,9 +310,9 @@ class Subscription(BaseModel):
         self,
         message: str,
         message_id: str,
-        subject: Optional[str],
-        message_attributes: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        subject: str | None,
+        message_attributes: Optional[dict[str, Any]] = None,
+    ) -> dict[str, Any]:
         key = self.private_key()
         cert_subject = [NameAttribute(NameOID.COMMON_NAME, "sns.amazonaws.com")]
         issuer = [
@@ -366,7 +366,7 @@ Notification
             serialization.Encoding.PEM
         )
 
-        post_data: Dict[str, Any] = {
+        post_data: dict[str, Any] = {
             "Type": "Notification",
             "MessageId": message_id,
             "TopicArn": self.topic.arn,
@@ -412,7 +412,7 @@ class PlatformApplication(BaseModel):
         region: str,
         name: str,
         platform: str,
-        attributes: Dict[str, str],
+        attributes: dict[str, str],
     ):
         self.region = region
         self.name = name
@@ -429,7 +429,7 @@ class PlatformEndpoint(BaseModel):
         application: PlatformApplication,
         custom_user_data: str,
         token: str,
-        attributes: Dict[str, str],
+        attributes: dict[str, str],
     ):
         self.region = region
         self.application = application
@@ -438,7 +438,7 @@ class PlatformEndpoint(BaseModel):
         self.attributes = attributes
         self.id = mock_random.uuid4()
         self.arn = f"arn:{get_partition(region)}:sns:{region}:{account_id}:endpoint/{self.application.platform}/{self.application.name}/{self.id}"
-        self.messages: Dict[str, str] = OrderedDict()
+        self.messages: dict[str, str] = OrderedDict()
         self.__fixup_attributes()
 
     def __fixup_attributes(self) -> None:
@@ -486,13 +486,13 @@ class SNSBackend(BaseBackend):
 
     def __init__(self, region_name: str, account_id: str):
         super().__init__(region_name, account_id)
-        self.topics: Dict[str, Topic] = OrderedDict()
+        self.topics: dict[str, Topic] = OrderedDict()
         self.subscriptions: OrderedDict[str, Subscription] = OrderedDict()
-        self.applications: Dict[str, PlatformApplication] = {}
-        self.platform_endpoints: Dict[str, PlatformEndpoint] = {}
+        self.applications: dict[str, PlatformApplication] = {}
+        self.platform_endpoints: dict[str, PlatformEndpoint] = {}
         self.region_name = region_name
-        self.sms_attributes: Dict[str, str] = {}
-        self.sms_messages: Dict[str, Tuple[str, str]] = OrderedDict()
+        self.sms_attributes: dict[str, str] = {}
+        self.sms_messages: dict[str, tuple[str, str]] = OrderedDict()
         self.opt_out_numbers = [
             "+447420500600",
             "+447420505401",
@@ -504,22 +504,22 @@ class SNSBackend(BaseBackend):
             "+447700900907",
         ]
 
-        self._message_public_keys: Dict[str, bytes] = {}
+        self._message_public_keys: dict[str, bytes] = {}
 
-    def get_sms_attributes(self, filter_list: Set[str]) -> Dict[str, str]:
+    def get_sms_attributes(self, filter_list: set[str]) -> dict[str, str]:
         if len(filter_list) > 0:
             return {k: v for k, v in self.sms_attributes.items() if k in filter_list}
         else:
             return self.sms_attributes
 
-    def set_sms_attributes(self, attrs: Dict[str, str]) -> None:
+    def set_sms_attributes(self, attrs: dict[str, str]) -> None:
         self.sms_attributes.update(attrs)
 
     def create_topic(
         self,
         name: str,
-        attributes: Optional[Dict[str, str]] = None,
-        tags: Optional[Dict[str, str]] = None,
+        attributes: Optional[dict[str, str]] = None,
+        tags: Optional[dict[str, str]] = None,
     ) -> Topic:
         if attributes is None:
             attributes = {}
@@ -551,8 +551,8 @@ class SNSBackend(BaseBackend):
             return candidate_topic
 
     def _get_values_nexttoken(
-        self, values_map: Dict[str, Any], next_token: Optional[str] = None
-    ) -> Tuple[List[Any], Optional[int]]:
+        self, values_map: dict[str, Any], next_token: str | None = None
+    ) -> tuple[list[Any], Optional[int]]:
         i_next_token = int(next_token or "0")
         values = list(values_map.values())[
             i_next_token : i_next_token + DEFAULT_PAGE_SIZE
@@ -563,12 +563,12 @@ class SNSBackend(BaseBackend):
             i_next_token = None  # type: ignore
         return values, i_next_token
 
-    def _get_topic_subscriptions(self, topic: Topic) -> List[Subscription]:
+    def _get_topic_subscriptions(self, topic: Topic) -> list[Subscription]:
         return [sub for sub in self.subscriptions.values() if sub.topic == topic]
 
     def list_topics(
-        self, next_token: Optional[str] = None
-    ) -> Tuple[List[Topic], Optional[int]]:
+        self, next_token: str | None = None
+    ) -> tuple[list[Topic], Optional[int]]:
         return self._get_values_nexttoken(self.topics, next_token)
 
     def delete_topic_subscriptions(self, topic: Topic) -> None:
@@ -660,13 +660,13 @@ class SNSBackend(BaseBackend):
         self.subscriptions.pop(subscription_arn, None)
 
     def list_subscriptions(
-        self, next_token: Optional[str] = None
-    ) -> Tuple[List[Subscription], Optional[int]]:
+        self, next_token: str | None = None
+    ) -> tuple[list[Subscription], Optional[int]]:
         return self._get_values_nexttoken(self.subscriptions, next_token)
 
     def list_subscriptions_by_topic(
-        self, topic_arn: str, next_token: Optional[str] = None
-    ) -> Tuple[List[Subscription], Optional[int]]:
+        self, topic_arn: str, next_token: str | None = None
+    ) -> tuple[list[Subscription], Optional[int]]:
         topic = self.get_topic(topic_arn)
         filtered = OrderedDict(
             [(sub.arn, sub) for sub in self._get_topic_subscriptions(topic)]
@@ -676,13 +676,13 @@ class SNSBackend(BaseBackend):
     def publish(
         self,
         message: str,
-        arn: Optional[str],
-        phone_number: Optional[str] = None,
-        subject: Optional[str] = None,
-        message_attributes: Optional[Dict[str, Any]] = None,
-        group_id: Optional[str] = None,
-        deduplication_id: Optional[str] = None,
-        message_structure: Optional[str] = None,
+        arn: str | None,
+        phone_number: str | None = None,
+        subject: str | None = None,
+        message_attributes: Optional[dict[str, Any]] = None,
+        group_id: str | None = None,
+        deduplication_id: str | None = None,
+        message_structure: str | None = None,
     ) -> str:
         if subject is not None and len(subject) > 100:
             # Note that the AWS docs around length are wrong: https://github.com/getmoto/moto/issues/1503
@@ -740,7 +740,7 @@ class SNSBackend(BaseBackend):
         return message_id
 
     def create_platform_application(
-        self, name: str, platform: str, attributes: Dict[str, str]
+        self, name: str, platform: str, attributes: dict[str, str]
     ) -> PlatformApplication:
         application = PlatformApplication(
             self.account_id, self.region_name, name, platform, attributes
@@ -755,7 +755,7 @@ class SNSBackend(BaseBackend):
             raise SNSNotFoundError("PlatformApplication does not exist")
 
     def set_platform_application_attributes(
-        self, arn: str, attributes: Dict[str, Any]
+        self, arn: str, attributes: dict[str, Any]
     ) -> PlatformApplication:
         application = self.get_application(arn)
         application.attributes.update(attributes)
@@ -775,7 +775,7 @@ class SNSBackend(BaseBackend):
         application: PlatformApplication,
         custom_user_data: str,
         token: str,
-        attributes: Dict[str, str],
+        attributes: dict[str, str],
     ) -> PlatformEndpoint:
         for endpoint in self.platform_endpoints.values():
             if token == endpoint.token:
@@ -803,7 +803,7 @@ class SNSBackend(BaseBackend):
 
     def list_endpoints_by_platform_application(
         self, application_arn: str
-    ) -> List[PlatformEndpoint]:
+    ) -> list[PlatformEndpoint]:
         return [
             endpoint
             for endpoint in self.platform_endpoints.values()
@@ -817,7 +817,7 @@ class SNSBackend(BaseBackend):
             raise SNSNotFoundError("Endpoint does not exist")
 
     def set_endpoint_attributes(
-        self, arn: str, attributes: Dict[str, Any]
+        self, arn: str, attributes: dict[str, Any]
     ) -> PlatformEndpoint:
         endpoint = self.get_endpoint(arn)
         if "Enabled" in attributes:
@@ -831,7 +831,7 @@ class SNSBackend(BaseBackend):
         except KeyError:
             pass  # idempotent operation
 
-    def get_subscription_attributes(self, arn: str) -> Dict[str, Any]:
+    def get_subscription_attributes(self, arn: str) -> dict[str, Any]:
         subscription = self.subscriptions.get(arn)
 
         if not subscription:
@@ -888,8 +888,8 @@ class SNSBackend(BaseBackend):
         combinations = 1
 
         def aggregate_rules(
-            filter_policy: Dict[str, Any], depth: int = 1
-        ) -> List[List[Any]]:
+            filter_policy: dict[str, Any], depth: int = 1
+        ) -> list[list[Any]]:
             """
             This method evaluate the filter policy recursively, and returns only a list of lists of rules.
             It also calculates the combinations of rules, calculated depending on the nesting of the rules.
@@ -1063,8 +1063,8 @@ class SNSBackend(BaseBackend):
         region_name: str,
         topic_arn: str,
         label: str,
-        aws_account_ids: List[str],
-        action_names: List[str],
+        aws_account_ids: list[str],
+        action_names: list[str],
     ) -> None:
         topic = self.get_topic(topic_arn)
         policy = topic._policy_json
@@ -1108,13 +1108,13 @@ class SNSBackend(BaseBackend):
 
         topic._policy_json["Statement"] = statements
 
-    def list_tags_for_resource(self, resource_arn: str) -> Dict[str, str]:
+    def list_tags_for_resource(self, resource_arn: str) -> dict[str, str]:
         if resource_arn not in self.topics:
             raise ResourceNotFoundError
 
         return self.topics[resource_arn]._tags
 
-    def tag_resource(self, resource_arn: str, tags: Dict[str, str]) -> None:
+    def tag_resource(self, resource_arn: str, tags: dict[str, str]) -> None:
         if resource_arn not in self.topics:
             raise ResourceNotFoundError
 
@@ -1126,7 +1126,7 @@ class SNSBackend(BaseBackend):
 
         self.topics[resource_arn]._tags = updated_tags
 
-    def untag_resource(self, resource_arn: str, tag_keys: List[str]) -> None:
+    def untag_resource(self, resource_arn: str, tag_keys: list[str]) -> None:
         if resource_arn not in self.topics:
             raise ResourceNotFoundError
 
@@ -1134,8 +1134,8 @@ class SNSBackend(BaseBackend):
             self.topics[resource_arn]._tags.pop(key, None)
 
     def publish_batch(
-        self, topic_arn: str, publish_batch_request_entries: List[Dict[str, Any]]
-    ) -> Tuple[List[Dict[str, str]], List[Dict[str, Any]]]:
+        self, topic_arn: str, publish_batch_request_entries: list[dict[str, Any]]
+    ) -> tuple[list[dict[str, str]], list[dict[str, Any]]]:
         """
         The MessageDeduplicationId-parameter has not yet been implemented.
         """
@@ -1157,8 +1157,8 @@ class SNSBackend(BaseBackend):
                     "Invalid parameter: The MessageGroupId parameter is required for FIFO topics"
                 )
 
-        successful: List[Dict[str, str]] = []
-        failed: List[Dict[str, Any]] = []
+        successful: list[dict[str, str]] = []
+        failed: list[dict[str, Any]] = []
 
         for entry in publish_batch_request_entries:
             try:
@@ -1190,7 +1190,7 @@ class SNSBackend(BaseBackend):
         """
         return number.endswith("99")
 
-    def list_phone_numbers_opted_out(self) -> List[str]:
+    def list_phone_numbers_opted_out(self) -> list[str]:
         return self.opt_out_numbers
 
     def opt_in_phone_number(self, number: str) -> None:
@@ -1202,11 +1202,11 @@ class SNSBackend(BaseBackend):
     def confirm_subscription(self) -> None:
         pass
 
-    def get_endpoint_attributes(self, arn: str) -> Dict[str, str]:
+    def get_endpoint_attributes(self, arn: str) -> dict[str, str]:
         endpoint = self.get_endpoint(arn)
         return endpoint.attributes
 
-    def get_platform_application_attributes(self, arn: str) -> Dict[str, str]:
+    def get_platform_application_attributes(self, arn: str) -> dict[str, str]:
         application = self.get_application(arn)
         return application.attributes
 

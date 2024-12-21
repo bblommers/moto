@@ -1,4 +1,3 @@
-from typing import Optional
 
 from jinja2 import Template
 
@@ -13,7 +12,7 @@ class UnformattedGetAttTemplateException(Exception):
 
 
 class ValidationError(RESTError):
-    def __init__(self, name_or_id: Optional[str] = None, message: Optional[str] = None):
+    def __init__(self, name_or_id: str | None = None, message: str | None = None):
         if message is None:
             message = f"Stack with id {name_or_id} does not exist"
 

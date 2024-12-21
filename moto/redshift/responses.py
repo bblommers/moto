@@ -1,5 +1,5 @@
 import json
-from typing import Any, Dict, List
+from typing import Any
 
 import xmltodict
 from jinja2 import Template
@@ -28,7 +28,7 @@ def convert_json_error_to_xml(json_error: Any) -> str:
     return template.render(code=code, message=message)
 
 
-def itemize(data: Any) -> Dict[str, Any]:
+def itemize(data: Any) -> dict[str, Any]:
     """
     The xmltodict.unparse requires we modify the shape of the input dictionary slightly. Instead of a dict of the form:
         {'key': ['value1', 'value2']}
@@ -73,7 +73,7 @@ class RedshiftResponse(BaseResponse):
         root = self._get_multi_param_dict(label) or {}
         return root.get(child_label, [])
 
-    def _get_cluster_security_groups(self) -> List[str]:
+    def _get_cluster_security_groups(self) -> list[str]:
         cluster_security_groups = self._get_multi_param("ClusterSecurityGroups.member")
         if not cluster_security_groups:
             cluster_security_groups = self._get_multi_param(
@@ -81,7 +81,7 @@ class RedshiftResponse(BaseResponse):
             )
         return cluster_security_groups
 
-    def _get_vpc_security_group_ids(self) -> List[str]:
+    def _get_vpc_security_group_ids(self) -> list[str]:
         vpc_security_group_ids = self._get_multi_param("VpcSecurityGroupIds.member")
         if not vpc_security_group_ids:
             vpc_security_group_ids = self._get_multi_param(
@@ -89,13 +89,13 @@ class RedshiftResponse(BaseResponse):
             )
         return vpc_security_group_ids
 
-    def _get_iam_roles(self) -> List[str]:
+    def _get_iam_roles(self) -> list[str]:
         iam_roles = self._get_multi_param("IamRoles.member")
         if not iam_roles:
             iam_roles = self._get_multi_param("IamRoles.IamRoleArn")
         return iam_roles
 
-    def _get_subnet_ids(self) -> List[str]:
+    def _get_subnet_ids(self) -> list[str]:
         subnet_ids = self._get_multi_param("SubnetIds.member")
         if not subnet_ids:
             subnet_ids = self._get_multi_param("SubnetIds.SubnetIdentifier")

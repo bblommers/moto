@@ -1,6 +1,6 @@
 import base64
 from datetime import datetime
-from typing import Any, List, Optional
+from typing import Any
 
 from .exceptions import InvalidArgumentError
 
@@ -31,7 +31,7 @@ PAGINATION_MODEL = {
 
 
 def compose_new_shard_iterator(
-    stream_name: Optional[str],
+    stream_name: str | None,
     shard: Any,
     shard_iterator_type: str,
     starting_sequence_number: int,
@@ -53,12 +53,12 @@ def compose_new_shard_iterator(
 
 
 def compose_shard_iterator(
-    stream_name: Optional[str], shard: Any, last_sequence_id: int
+    stream_name: str | None, shard: Any, last_sequence_id: int
 ) -> str:
     return encode_method(
         f"{stream_name}:{shard.shard_id}:{last_sequence_id}".encode("utf-8")
     ).decode("utf-8")
 
 
-def decompose_shard_iterator(shard_iterator: str) -> List[str]:
+def decompose_shard_iterator(shard_iterator: str) -> list[str]:
     return decode_method(shard_iterator.encode("utf-8")).decode("utf-8").split(":")

@@ -1,5 +1,5 @@
 import json
-from typing import Any, Dict
+from typing import Any
 from urllib.parse import urlencode
 
 from flask.testing import FlaskClient
@@ -29,7 +29,7 @@ class AWSTestHelper(FlaskClient):
         )
         return res.data.decode("utf-8")
 
-    def action_json(self, action_name: str, **kwargs: Any) -> Dict[str, Any]:
+    def action_json(self, action_name: str, **kwargs: Any) -> dict[str, Any]:
         """
         Method calls resource with action_name and returns object obtained via
         deserialization of output.

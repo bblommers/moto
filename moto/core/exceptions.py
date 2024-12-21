@@ -1,5 +1,5 @@
 import json
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional
 
 from jinja2 import DictLoader, Environment
 from werkzeug.exceptions import HTTPException
@@ -77,7 +77,7 @@ class RESTError(HTTPException):
         self,
         *args: Any,
         **kwargs: Any,  # pylint: disable=unused-argument
-    ) -> List[Tuple[str, str]]:
+    ) -> list[tuple[str, str]]:
         return [
             ("X-Amzn-ErrorType", self.relative_error_type or "UnknownError"),
             ("Content-Type", self.content_type),
@@ -100,7 +100,7 @@ class RESTError(HTTPException):
         return err
 
     @classmethod
-    def extended_environment(cls, extended_templates: Dict[str, str]) -> Environment:
+    def extended_environment(cls, extended_templates: dict[str, str]) -> Environment:
         # Can be simplified to cls.templates | extended_templates when we drop Python 3.8 support
         # https://docs.python.org/3/library/stdtypes.html#mapping-types-dict
         templates = dict(cls.templates.items() | extended_templates.items())
@@ -171,13 +171,13 @@ class AuthFailureError(RESTError):
 
 
 class AWSError(JsonRESTError):
-    TYPE: Optional[str] = None
+    TYPE: str | None = None
     STATUS = 400
 
     def __init__(
         self,
         message: str,
-        exception_type: Optional[str] = None,
+        exception_type: str | None = None,
         status: Optional[int] = None,
     ):
         super().__init__(exception_type or self.TYPE, message)  # type: ignore[arg-type]

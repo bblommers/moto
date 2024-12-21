@@ -3,7 +3,7 @@ import re
 import time
 from collections import OrderedDict
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from moto.core.base_backend import BackendDict, BaseBackend
 from moto.core.common_models import BaseModel
@@ -103,22 +103,22 @@ class GlueBackend(BaseBackend):
 
     def __init__(self, region_name: str, account_id: str):
         super().__init__(region_name, account_id)
-        self.databases: Dict[str, FakeDatabase] = OrderedDict()
-        self.crawlers: Dict[str, FakeCrawler] = OrderedDict()
-        self.jobs: Dict[str, FakeJob] = OrderedDict()
-        self.job_runs: Dict[str, FakeJobRun] = OrderedDict()
-        self.sessions: Dict[str, FakeSession] = OrderedDict()
+        self.databases: dict[str, FakeDatabase] = OrderedDict()
+        self.crawlers: dict[str, FakeCrawler] = OrderedDict()
+        self.jobs: dict[str, FakeJob] = OrderedDict()
+        self.job_runs: dict[str, FakeJobRun] = OrderedDict()
+        self.sessions: dict[str, FakeSession] = OrderedDict()
         self.tagger = TaggingService()
-        self.triggers: Dict[str, FakeTrigger] = OrderedDict()
-        self.registries: Dict[str, FakeRegistry] = OrderedDict()
+        self.triggers: dict[str, FakeTrigger] = OrderedDict()
+        self.registries: dict[str, FakeRegistry] = OrderedDict()
         self.num_schemas = 0
         self.num_schema_versions = 0
 
     def create_database(
         self,
         database_name: str,
-        database_input: Dict[str, Any],
-        tags: Optional[Dict[str, str]] = None,
+        database_input: dict[str, Any],
+        tags: Optional[dict[str, str]] = None,
     ) -> "FakeDatabase":
         if database_name in self.databases:
             raise DatabaseAlreadyExistsException()
@@ -138,14 +138,14 @@ class GlueBackend(BaseBackend):
             raise DatabaseNotFoundException(database_name)
 
     def update_database(
-        self, database_name: str, database_input: Dict[str, Any]
+        self, database_name: str, database_input: dict[str, Any]
     ) -> None:
         if database_name not in self.databases:
             raise DatabaseNotFoundException(database_name)
 
         self.databases[database_name].input = database_input
 
-    def get_databases(self) -> List["FakeDatabase"]:
+    def get_databases(self) -> list["FakeDatabase"]:
         return [self.databases[key] for key in self.databases] if self.databases else []
 
     def delete_database(self, database_name: str) -> None:
@@ -154,7 +154,7 @@ class GlueBackend(BaseBackend):
         del self.databases[database_name]
 
     def create_table(
-        self, database_name: str, table_name: str, table_input: Dict[str, Any]
+        self, database_name: str, table_name: str, table_input: dict[str, Any]
     ) -> "FakeTable":
         database = self.get_database(database_name)
 
@@ -175,8 +175,8 @@ class GlueBackend(BaseBackend):
             raise TableNotFoundException(table_name)
 
     def get_tables(
-        self, database_name: str, expression: Optional[str]
-    ) -> List["FakeTable"]:
+        self, database_name: str, expression: str | None
+    ) -> list["FakeTable"]:
         database = self.get_database(database_name)
         if expression:
             # sanitise expression, * is treated as a glob-like wildcard
@@ -204,7 +204,7 @@ class GlueBackend(BaseBackend):
             raise TableNotFoundException(table_name)
 
     def update_table(
-        self, database_name: str, table_name: str, table_input: Dict[str, Any]
+        self, database_name: str, table_name: str, table_input: dict[str, Any]
     ) -> None:
         table = self.get_table(database_name, table_name)
         table.update(table_input)
@@ -225,7 +225,7 @@ class GlueBackend(BaseBackend):
 
     def get_table_versions(
         self, database_name: str, table_name: str
-    ) -> Dict[str, Dict[str, Any]]:
+    ) -> dict[str, dict[str, Any]]:
         table = self.get_table(database_name, table_name)
         return {version: table.as_dict(version) for version in table.versions.keys()}
 
@@ -236,7 +236,7 @@ class GlueBackend(BaseBackend):
         table.delete_version(version_id)
 
     def create_partition(
-        self, database_name: str, table_name: str, part_input: Dict[str, Any]
+        self, database_name: str, table_name: str, part_input: dict[str, Any]
     ) -> None:
         table = self.get_table(database_name, table_name)
         table.create_partition(part_input)
@@ -249,7 +249,7 @@ class GlueBackend(BaseBackend):
 
     def get_partitions(
         self, database_name: str, table_name: str, expression: str
-    ) -> List["FakePartition"]:
+    ) -> list["FakePartition"]:
         """
         See https://docs.aws.amazon.com/glue/latest/webapi/API_GetPartitions.html
         for supported expressions.
@@ -268,7 +268,7 @@ class GlueBackend(BaseBackend):
         self,
         database_name: str,
         table_name: str,
-        part_input: Dict[str, Any],
+        part_input: dict[str, Any],
         part_to_update: str,
     ) -> None:
         table = self.get_table(database_name, table_name)
@@ -286,16 +286,16 @@ class GlueBackend(BaseBackend):
         role: str,
         database_name: str,
         description: str,
-        targets: Dict[str, Any],
+        targets: dict[str, Any],
         schedule: str,
-        classifiers: List[str],
+        classifiers: list[str],
         table_prefix: str,
-        schema_change_policy: Dict[str, str],
-        recrawl_policy: Dict[str, str],
-        lineage_configuration: Dict[str, str],
+        schema_change_policy: dict[str, str],
+        recrawl_policy: dict[str, str],
+        lineage_configuration: dict[str, str],
         configuration: str,
         crawler_security_configuration: str,
-        tags: Dict[str, str],
+        tags: dict[str, str],
     ) -> None:
         if name in self.crawlers:
             raise CrawlerAlreadyExistsException()
@@ -325,11 +325,11 @@ class GlueBackend(BaseBackend):
         except KeyError:
             raise CrawlerNotFoundException(name)
 
-    def get_crawlers(self) -> List["FakeCrawler"]:
+    def get_crawlers(self) -> list["FakeCrawler"]:
         return [self.crawlers[key] for key in self.crawlers] if self.crawlers else []
 
     @paginate(pagination_model=PAGINATION_MODEL)
-    def list_crawlers(self) -> List["FakeCrawler"]:
+    def list_crawlers(self) -> list["FakeCrawler"]:
         return [crawler for _, crawler in self.crawlers.items()]
 
     def start_crawler(self, name: str) -> None:
@@ -353,23 +353,23 @@ class GlueBackend(BaseBackend):
         command: str,
         description: str,
         log_uri: str,
-        execution_property: Dict[str, int],
-        default_arguments: Dict[str, str],
-        non_overridable_arguments: Dict[str, str],
-        connections: Dict[str, List[str]],
+        execution_property: dict[str, int],
+        default_arguments: dict[str, str],
+        non_overridable_arguments: dict[str, str],
+        connections: dict[str, list[str]],
         max_retries: int,
         allocated_capacity: int,
         timeout: int,
         max_capacity: float,
         security_configuration: str,
-        tags: Dict[str, str],
-        notification_property: Dict[str, int],
+        tags: dict[str, str],
+        notification_property: dict[str, int],
         glue_version: str,
         number_of_workers: int,
         worker_type: str,
-        code_gen_configuration_nodes: Dict[str, Any],
+        code_gen_configuration_nodes: dict[str, Any],
         execution_class: str,
-        source_control_details: Dict[str, str],
+        source_control_details: dict[str, str],
     ) -> None:
         self.jobs[name] = FakeJob(
             name,
@@ -404,7 +404,7 @@ class GlueBackend(BaseBackend):
             raise JobNotFoundException(name)
 
     @paginate(pagination_model=PAGINATION_MODEL)
-    def get_jobs(self) -> List["FakeJob"]:
+    def get_jobs(self) -> list["FakeJob"]:
         return [job for _, job in self.jobs.items()]
 
     def start_job_run(self, name: str) -> str:
@@ -416,29 +416,29 @@ class GlueBackend(BaseBackend):
         return job.get_job_run(run_id)
 
     @paginate(pagination_model=PAGINATION_MODEL)
-    def list_jobs(self) -> List["FakeJob"]:
+    def list_jobs(self) -> list["FakeJob"]:
         return [job for _, job in self.jobs.items()]
 
     def delete_job(self, name: str) -> None:
         if name in self.jobs:
             del self.jobs[name]
 
-    def get_tags(self, resource_id: str) -> Dict[str, str]:
+    def get_tags(self, resource_id: str) -> dict[str, str]:
         return self.tagger.get_tag_dict_for_resource(resource_id)
 
-    def tag_resource(self, resource_arn: str, tags: Optional[Dict[str, str]]) -> None:
+    def tag_resource(self, resource_arn: str, tags: Optional[dict[str, str]]) -> None:
         tag_list = TaggingService.convert_dict_to_tags_input(tags or {})
         self.tagger.tag_resource(resource_arn, tag_list)
 
-    def untag_resource(self, resource_arn: str, tag_keys: List[str]) -> None:
+    def untag_resource(self, resource_arn: str, tag_keys: list[str]) -> None:
         self.tagger.untag_resource_using_names(resource_arn, tag_keys)
 
     def create_registry(
         self,
         registry_name: str,
-        description: Optional[str] = None,
-        tags: Optional[Dict[str, str]] = None,
-    ) -> Dict[str, Any]:
+        description: str | None = None,
+        tags: Optional[dict[str, str]] = None,
+    ) -> dict[str, Any]:
         # If registry name id default-registry, create default-registry
         if registry_name == DEFAULT_REGISTRY_NAME:
             registry = FakeRegistry(self, registry_name, description, tags)
@@ -452,27 +452,27 @@ class GlueBackend(BaseBackend):
         self.registries[registry_name] = registry
         return registry.as_dict()
 
-    def delete_registry(self, registry_id: Dict[str, Any]) -> Dict[str, Any]:
+    def delete_registry(self, registry_id: dict[str, Any]) -> dict[str, Any]:
         registry_name = validate_registry_id(registry_id, self.registries)
         return self.registries.pop(registry_name).as_dict()
 
-    def get_registry(self, registry_id: Dict[str, Any]) -> Dict[str, Any]:
+    def get_registry(self, registry_id: dict[str, Any]) -> dict[str, Any]:
         registry_name = validate_registry_id(registry_id, self.registries)
         return self.registries[registry_name].as_dict()
 
-    def list_registries(self) -> List[Dict[str, Any]]:
+    def list_registries(self) -> list[dict[str, Any]]:
         return [reg.as_dict() for reg in self.registries.values()]
 
     def create_schema(
         self,
-        registry_id: Dict[str, Any],
+        registry_id: dict[str, Any],
         schema_name: str,
         data_format: str,
         compatibility: str,
         schema_definition: str,
-        description: Optional[str] = None,
-        tags: Optional[Dict[str, str]] = None,
-    ) -> Dict[str, Any]:
+        description: str | None = None,
+        tags: Optional[dict[str, str]] = None,
+    ) -> dict[str, Any]:
         """
         The following parameters/features are not yet implemented: Glue Schema Registry: compatibility checks NONE | BACKWARD | BACKWARD_ALL | FORWARD | FORWARD_ALL | FULL | FULL_ALL and  Data format parsing and syntax validation.
         """
@@ -531,8 +531,8 @@ class GlueBackend(BaseBackend):
         return resp
 
     def register_schema_version(
-        self, schema_id: Dict[str, Any], schema_definition: str
-    ) -> Dict[str, Any]:
+        self, schema_id: dict[str, Any], schema_definition: str
+    ) -> dict[str, Any]:
         # Validate Schema Id
         registry_name, schema_name, schema_arn = validate_schema_id(
             schema_id, self.registries
@@ -592,10 +592,10 @@ class GlueBackend(BaseBackend):
 
     def get_schema_version(
         self,
-        schema_id: Optional[Dict[str, str]] = None,
-        schema_version_id: Optional[str] = None,
-        schema_version_number: Optional[Dict[str, Any]] = None,
-    ) -> Dict[str, Any]:
+        schema_id: Optional[dict[str, str]] = None,
+        schema_version_id: str | None = None,
+        schema_version_number: Optional[dict[str, Any]] = None,
+    ) -> dict[str, Any]:
         # Validate Schema Parameters
         (
             schema_version_id,
@@ -641,8 +641,8 @@ class GlueBackend(BaseBackend):
         )
 
     def get_schema_by_definition(
-        self, schema_id: Dict[str, str], schema_definition: str
-    ) -> Dict[str, Any]:
+        self, schema_id: dict[str, str], schema_definition: str
+    ) -> dict[str, Any]:
         # Validate SchemaId
         validate_schema_definition_length(schema_definition)
         registry_name, schema_name, schema_arn = validate_schema_id(
@@ -665,11 +665,11 @@ class GlueBackend(BaseBackend):
 
     def put_schema_version_metadata(
         self,
-        schema_id: Dict[str, Any],
-        schema_version_number: Dict[str, str],
+        schema_id: dict[str, Any],
+        schema_version_number: dict[str, str],
         schema_version_id: str,
-        metadata_key_value: Dict[str, str],
-    ) -> Dict[str, Any]:
+        metadata_key_value: dict[str, str],
+    ) -> dict[str, Any]:
         # Validate metadata_key_value and schema version params
         (
             metadata_key,
@@ -739,12 +739,12 @@ class GlueBackend(BaseBackend):
             registry_name, schema_name, schema_arn, version_number, latest_version
         )
 
-    def get_schema(self, schema_id: Dict[str, str]) -> Dict[str, Any]:
+    def get_schema(self, schema_id: dict[str, str]) -> dict[str, Any]:
         registry_name, schema_name, _ = validate_schema_id(schema_id, self.registries)
         schema = self.registries[registry_name].schemas[schema_name]
         return schema.as_dict()
 
-    def delete_schema(self, schema_id: Dict[str, str]) -> Dict[str, Any]:
+    def delete_schema(self, schema_id: dict[str, str]) -> dict[str, Any]:
         # Validate schema_id
         registry_name, schema_name, _ = validate_schema_id(schema_id, self.registries)
 
@@ -764,8 +764,8 @@ class GlueBackend(BaseBackend):
         return response
 
     def update_schema(
-        self, schema_id: Dict[str, str], compatibility: str, description: str
-    ) -> Dict[str, Any]:
+        self, schema_id: dict[str, str], compatibility: str, description: str
+    ) -> dict[str, Any]:
         """
         The SchemaVersionNumber-argument is not yet implemented
         """
@@ -784,17 +784,17 @@ class GlueBackend(BaseBackend):
         session_id: str,
         description: str,
         role: str,
-        command: Dict[str, str],
+        command: dict[str, str],
         timeout: int,
         idle_timeout: int,
-        default_arguments: Dict[str, str],
-        connections: Dict[str, List[str]],
+        default_arguments: dict[str, str],
+        connections: dict[str, list[str]],
         max_capacity: float,
         number_of_workers: int,
         worker_type: str,
         security_configuration: str,
         glue_version: str,
-        tags: Dict[str, str],
+        tags: dict[str, str],
         request_origin: str,
     ) -> None:
         if session_id in self.sessions:
@@ -827,7 +827,7 @@ class GlueBackend(BaseBackend):
             raise SessionNotFoundException(session_id)
 
     @paginate(pagination_model=PAGINATION_MODEL)
-    def list_sessions(self) -> List["FakeSession"]:
+    def list_sessions(self) -> list["FakeSession"]:
         return [session for _, session in self.sessions.items()]
 
     def stop_session(self, session_id: str) -> None:
@@ -846,12 +846,12 @@ class GlueBackend(BaseBackend):
         workflow_name: str,
         trigger_type: str,
         schedule: str,
-        predicate: Dict[str, Any],
-        actions: List[Dict[str, Any]],
+        predicate: dict[str, Any],
+        actions: list[dict[str, Any]],
         description: str,
         start_on_creation: bool,
-        tags: Dict[str, str],
-        event_batching_condition: Dict[str, Any],
+        tags: dict[str, str],
+        event_batching_condition: dict[str, Any],
     ) -> None:
         self.triggers[name] = FakeTrigger(
             name=name,
@@ -882,7 +882,7 @@ class GlueBackend(BaseBackend):
         trigger.stop_trigger()
 
     @paginate(pagination_model=PAGINATION_MODEL)
-    def get_triggers(self, dependent_job_name: str) -> List["FakeTrigger"]:
+    def get_triggers(self, dependent_job_name: str) -> list["FakeTrigger"]:
         if dependent_job_name:
             triggers = []
             for trigger in self.triggers.values():
@@ -896,7 +896,7 @@ class GlueBackend(BaseBackend):
         return list(self.triggers.values())
 
     @paginate(pagination_model=PAGINATION_MODEL)
-    def list_triggers(self, dependent_job_name: str) -> List["FakeTrigger"]:
+    def list_triggers(self, dependent_job_name: str) -> list["FakeTrigger"]:
         if dependent_job_name:
             triggers = []
             for trigger in self.triggers.values():
@@ -914,8 +914,8 @@ class GlueBackend(BaseBackend):
             del self.triggers[name]
 
     def batch_delete_table(
-        self, database_name: str, tables: List[str]
-    ) -> List[Dict[str, Any]]:
+        self, database_name: str, tables: list[str]
+    ) -> list[dict[str, Any]]:
         errors = []
         for table_name in tables:
             try:
@@ -936,8 +936,8 @@ class GlueBackend(BaseBackend):
         self,
         database_name: str,
         table_name: str,
-        partitions_to_get: List[Dict[str, str]],
-    ) -> List[Dict[str, Any]]:
+        partitions_to_get: list[dict[str, str]],
+    ) -> list[dict[str, Any]]:
         table = self.get_table(database_name, table_name)
 
         partitions = []
@@ -950,8 +950,8 @@ class GlueBackend(BaseBackend):
         return partitions
 
     def batch_create_partition(
-        self, database_name: str, table_name: str, partition_input: List[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
+        self, database_name: str, table_name: str, partition_input: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
         table = self.get_table(database_name, table_name)
 
         errors_output = []
@@ -971,8 +971,8 @@ class GlueBackend(BaseBackend):
         return errors_output
 
     def batch_update_partition(
-        self, database_name: str, table_name: str, entries: List[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
+        self, database_name: str, table_name: str, entries: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
         table = self.get_table(database_name, table_name)
 
         errors_output = []
@@ -995,8 +995,8 @@ class GlueBackend(BaseBackend):
         return errors_output
 
     def batch_delete_partition(
-        self, database_name: str, table_name: str, parts: List[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
+        self, database_name: str, table_name: str, parts: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
         table = self.get_table(database_name, table_name)
 
         errors_output = []
@@ -1016,21 +1016,21 @@ class GlueBackend(BaseBackend):
                 )
         return errors_output
 
-    def batch_get_crawlers(self, crawler_names: List[str]) -> List[Dict[str, Any]]:
+    def batch_get_crawlers(self, crawler_names: list[str]) -> list[dict[str, Any]]:
         crawlers = []
         for crawler in self.get_crawlers():
             if crawler.as_dict()["Name"] in crawler_names:
                 crawlers.append(crawler.as_dict())
         return crawlers
 
-    def batch_get_jobs(self, job_names: List[str]) -> List[Dict[str, Any]]:
+    def batch_get_jobs(self, job_names: list[str]) -> list[dict[str, Any]]:
         jobs = []
         for job_name in job_names:
             if job_name in self.jobs:
                 jobs.append(self.jobs[job_name].as_dict())
         return jobs
 
-    def batch_get_triggers(self, trigger_names: List[str]) -> List[Dict[str, Any]]:
+    def batch_get_triggers(self, trigger_names: list[str]) -> list[dict[str, Any]]:
         triggers = []
         for trigger_name in trigger_names:
             if trigger_name in self.triggers:
@@ -1040,15 +1040,15 @@ class GlueBackend(BaseBackend):
 
 class FakeDatabase(BaseModel):
     def __init__(
-        self, database_name: str, database_input: Dict[str, Any], catalog_id: str
+        self, database_name: str, database_input: dict[str, Any], catalog_id: str
     ):
         self.name = database_name
         self.input = database_input
         self.catalog_id = catalog_id
         self.created_time = utcnow()
-        self.tables: Dict[str, FakeTable] = OrderedDict()
+        self.tables: dict[str, FakeTable] = OrderedDict()
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         return {
             "Name": self.name,
             "Description": self.input.get("Description"),
@@ -1068,26 +1068,26 @@ class FakeTable(BaseModel):
         self,
         database_name: str,
         table_name: str,
-        table_input: Dict[str, Any],
+        table_input: dict[str, Any],
         catalog_id: str,
     ):
         self.database_name = database_name
         self.name = table_name
         self.catalog_id = catalog_id
-        self.partitions: Dict[str, FakePartition] = OrderedDict()
+        self.partitions: dict[str, FakePartition] = OrderedDict()
         self.created_time = utcnow()
         self.updated_time: Optional[datetime] = None
         self._current_version = 1
-        self.versions: Dict[str, Dict[str, Any]] = {
+        self.versions: dict[str, dict[str, Any]] = {
             str(self._current_version): table_input
         }
 
-    def update(self, table_input: Dict[str, Any]) -> None:
+    def update(self, table_input: dict[str, Any]) -> None:
         self.versions[str(self._current_version + 1)] = table_input
         self._current_version += 1
         self.updated_time = utcnow()
 
-    def get_version(self, ver: str) -> Dict[str, Any]:
+    def get_version(self, ver: str) -> dict[str, Any]:
         try:
             int(ver)
         except ValueError as e:
@@ -1101,7 +1101,7 @@ class FakeTable(BaseModel):
     def delete_version(self, version_id: str) -> None:
         self.versions.pop(version_id)
 
-    def as_dict(self, version: Optional[str] = None) -> Dict[str, Any]:
+    def as_dict(self, version: str | None = None) -> dict[str, Any]:
         version = version or self._current_version  # type: ignore
         obj = {
             "DatabaseName": self.database_name,
@@ -1116,14 +1116,14 @@ class FakeTable(BaseModel):
             obj["UpdateTime"] = unix_time(self.updated_time)
         return obj
 
-    def create_partition(self, partiton_input: Dict[str, Any]) -> None:
+    def create_partition(self, partiton_input: dict[str, Any]) -> None:
         partition = FakePartition(self.database_name, self.name, partiton_input)
         key = str(partition.values)
         if key in self.partitions:
             raise PartitionAlreadyExistsException()
         self.partitions[str(partition.values)] = partition
 
-    def get_partitions(self, expression: str) -> List["FakePartition"]:
+    def get_partitions(self, expression: str) -> list["FakePartition"]:
         return list(filter(PartitionFilter(expression, self), self.partitions.values()))
 
     def get_partition(self, values: str) -> "FakePartition":
@@ -1132,7 +1132,7 @@ class FakeTable(BaseModel):
         except KeyError:
             raise PartitionNotFoundException()
 
-    def update_partition(self, old_values: str, partiton_input: Dict[str, Any]) -> None:
+    def update_partition(self, old_values: str, partiton_input: dict[str, Any]) -> None:
         partition = FakePartition(self.database_name, self.name, partiton_input)
         key = str(partition.values)
         if old_values == partiton_input["Values"]:
@@ -1158,7 +1158,7 @@ class FakeTable(BaseModel):
 
 class FakePartition(BaseModel):
     def __init__(
-        self, database_name: str, table_name: str, partiton_input: Dict[str, Any]
+        self, database_name: str, table_name: str, partiton_input: dict[str, Any]
     ):
         self.creation_time = time.time()
         self.database_name = database_name
@@ -1166,7 +1166,7 @@ class FakePartition(BaseModel):
         self.partition_input = partiton_input
         self.values = self.partition_input.get("Values", [])
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         obj = {
             "DatabaseName": self.database_name,
             "TableName": self.table_name,
@@ -1183,16 +1183,16 @@ class FakeCrawler(BaseModel):
         role: str,
         database_name: str,
         description: str,
-        targets: Dict[str, Any],
+        targets: dict[str, Any],
         schedule: str,
-        classifiers: List[str],
+        classifiers: list[str],
         table_prefix: str,
-        schema_change_policy: Dict[str, str],
-        recrawl_policy: Dict[str, str],
-        lineage_configuration: Dict[str, str],
+        schema_change_policy: dict[str, str],
+        recrawl_policy: dict[str, str],
+        lineage_configuration: dict[str, str],
         configuration: str,
         crawler_security_configuration: str,
-        tags: Dict[str, str],
+        tags: dict[str, str],
         backend: GlueBackend,
     ):
         self.name = name
@@ -1221,7 +1221,7 @@ class FakeCrawler(BaseModel):
     def get_name(self) -> str:
         return self.name
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         last_crawl = self.last_crawl_info.as_dict() if self.last_crawl_info else None  # type: ignore
         data = {
             "Name": self.name,
@@ -1287,7 +1287,7 @@ class LastCrawlInfo(BaseModel):
         self.start_time = start_time
         self.status = status
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         return {
             "ErrorMessage": self.error_message,
             "LogGroup": self.log_group,
@@ -1306,23 +1306,23 @@ class FakeJob:
         command: str,
         description: str,
         log_uri: str,
-        execution_property: Dict[str, int],
-        default_arguments: Dict[str, str],
-        non_overridable_arguments: Dict[str, str],
-        connections: Dict[str, List[str]],
+        execution_property: dict[str, int],
+        default_arguments: dict[str, str],
+        non_overridable_arguments: dict[str, str],
+        connections: dict[str, list[str]],
         max_retries: int,
         allocated_capacity: int,
         timeout: int,
         max_capacity: float,
         security_configuration: str,
-        tags: Dict[str, str],
-        notification_property: Dict[str, int],
+        tags: dict[str, str],
+        notification_property: dict[str, int],
         glue_version: str,
         number_of_workers: int,
         worker_type: str,
-        code_gen_configuration_nodes: Dict[str, Any],
+        code_gen_configuration_nodes: dict[str, Any],
         execution_class: str,
-        source_control_details: Dict[str, str],
+        source_control_details: dict[str, str],
         backend: GlueBackend,
     ):
         self.name = name
@@ -1352,12 +1352,12 @@ class FakeJob:
         self.backend = backend
         self.backend.tag_resource(self.arn, tags)
 
-        self.job_runs: List[FakeJobRun] = []
+        self.job_runs: list[FakeJobRun] = []
 
     def get_name(self) -> str:
         return self.name
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         return {
             "Name": self.name,
             "Description": self.description,
@@ -1409,7 +1409,7 @@ class FakeJobRun(ManagedState):
         self,
         job_name: str,
         job_run_id: str = "01",
-        arguments: Optional[Dict[str, Any]] = None,
+        arguments: Optional[dict[str, Any]] = None,
         allocated_capacity: Optional[int] = None,
         timeout: Optional[int] = None,
         worker_type: str = "Standard",
@@ -1432,7 +1432,7 @@ class FakeJobRun(ManagedState):
     def get_name(self) -> str:
         return self.job_name
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         return {
             "Id": self.job_run_id,
             "Attempt": 1,
@@ -1466,8 +1466,8 @@ class FakeRegistry(BaseModel):
         self,
         backend: GlueBackend,
         registry_name: str,
-        description: Optional[str] = None,
-        tags: Optional[Dict[str, str]] = None,
+        description: str | None = None,
+        tags: Optional[dict[str, str]] = None,
     ):
         self.name = registry_name
         self.description = description
@@ -1476,9 +1476,9 @@ class FakeRegistry(BaseModel):
         self.updated_time = utcnow()
         self.status = "AVAILABLE"
         self.registry_arn = f"arn:{get_partition(backend.region_name)}:glue:{backend.region_name}:{backend.account_id}:registry/{self.name}"
-        self.schemas: Dict[str, FakeSchema] = OrderedDict()
+        self.schemas: dict[str, FakeSchema] = OrderedDict()
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         return {
             "RegistryArn": self.registry_arn,
             "RegistryName": self.name,
@@ -1496,7 +1496,7 @@ class FakeSchema(BaseModel):
         data_format: str,
         compatibility: str,
         schema_version_id: str,
-        description: Optional[str] = None,
+        description: str | None = None,
     ):
         self.registry_name = registry_name
         self.registry_arn = f"arn:{get_partition(backend.region_name)}:glue:{backend.region_name}:{backend.account_id}:registry/{self.registry_name}"
@@ -1513,7 +1513,7 @@ class FakeSchema(BaseModel):
         self.schema_version_status = AVAILABLE_STATUS
         self.created_time = utcnow()
         self.updated_time = utcnow()
-        self.schema_versions: Dict[str, FakeSchemaVersion] = OrderedDict()
+        self.schema_versions: dict[str, FakeSchemaVersion] = OrderedDict()
 
     def update_next_schema_version(self) -> None:
         self.next_schema_version += 1
@@ -1524,7 +1524,7 @@ class FakeSchema(BaseModel):
     def get_next_schema_version(self) -> int:
         return self.next_schema_version
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         return {
             "RegistryArn": self.registry_arn,
             "RegistryName": self.registry_name,
@@ -1560,19 +1560,19 @@ class FakeSchemaVersion(BaseModel):
         self.schema_version_id = str(mock_random.uuid4())
         self.created_time = utcnow()
         self.updated_time = utcnow()
-        self.metadata: Dict[str, Any] = {}
+        self.metadata: dict[str, Any] = {}
 
     def get_schema_version_id(self) -> str:
         return self.schema_version_id
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         return {
             "SchemaVersionId": self.schema_version_id,
             "VersionNumber": self.version_number,
             "Status": self.schema_version_status,
         }
 
-    def get_schema_version_as_dict(self) -> Dict[str, Any]:
+    def get_schema_version_as_dict(self) -> dict[str, Any]:
         # add data_format for full return dictionary of get_schema_version
         return {
             "SchemaVersionId": self.schema_version_id,
@@ -1583,7 +1583,7 @@ class FakeSchemaVersion(BaseModel):
             "CreatedTime": str(self.created_time),
         }
 
-    def get_schema_by_definition_as_dict(self) -> Dict[str, Any]:
+    def get_schema_by_definition_as_dict(self) -> dict[str, Any]:
         # add data_format for full return dictionary of get_schema_by_definition
         return {
             "SchemaVersionId": self.schema_version_id,
@@ -1599,17 +1599,17 @@ class FakeSession(BaseModel):
         session_id: str,
         description: str,
         role: str,
-        command: Dict[str, str],
+        command: dict[str, str],
         timeout: int,
         idle_timeout: int,
-        default_arguments: Dict[str, str],
-        connections: Dict[str, List[str]],
+        default_arguments: dict[str, str],
+        connections: dict[str, list[str]],
         max_capacity: float,
         number_of_workers: int,
         worker_type: str,
         security_configuration: str,
         glue_version: str,
-        tags: Dict[str, str],
+        tags: dict[str, str],
         request_origin: str,
         backend: GlueBackend,
     ):
@@ -1638,7 +1638,7 @@ class FakeSession(BaseModel):
     def get_id(self) -> str:
         return self.session_id
 
-    def as_dict(self) -> Dict[str, Any]:
+    def as_dict(self) -> dict[str, Any]:
         return {
             "Id": self.session_id,
             "CreatedOn": self.creation_time.isoformat(),
@@ -1669,12 +1669,12 @@ class FakeTrigger(BaseModel):
         workflow_name: str,
         trigger_type: str,  # to avoid any issues with built-in function type()
         schedule: str,
-        predicate: Dict[str, Any],
-        actions: List[Dict[str, Any]],
+        predicate: dict[str, Any],
+        actions: list[dict[str, Any]],
         description: str,
         start_on_creation: bool,
-        tags: Dict[str, str],
-        event_batching_condition: Dict[str, Any],
+        tags: dict[str, str],
+        event_batching_condition: dict[str, Any],
     ):
         self.name = name
         self.workflow_name = workflow_name
@@ -1701,8 +1701,8 @@ class FakeTrigger(BaseModel):
     def stop_trigger(self) -> None:
         self.state = "DEACTIVATED"
 
-    def as_dict(self) -> Dict[str, Any]:
-        data: Dict[str, Any] = {
+    def as_dict(self) -> dict[str, Any]:
+        data: dict[str, Any] = {
             "Name": self.name,
             "Type": self.trigger_type,
             "Actions": self.actions,

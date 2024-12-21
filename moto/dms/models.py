@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Iterable, Optional
 
 from moto.core.base_backend import BackendDict, BaseBackend
 from moto.core.common_models import BaseModel
@@ -17,7 +17,7 @@ from .utils import filter_tasks
 class DatabaseMigrationServiceBackend(BaseBackend):
     def __init__(self, region_name: str, account_id: str):
         super().__init__(region_name, account_id)
-        self.replication_tasks: Dict[str, "FakeReplicationTask"] = {}
+        self.replication_tasks: dict[str, "FakeReplicationTask"] = {}
 
     def create_replication_task(
         self,
@@ -85,7 +85,7 @@ class DatabaseMigrationServiceBackend(BaseBackend):
         return task
 
     def describe_replication_tasks(
-        self, filters: List[Dict[str, Any]], max_records: int
+        self, filters: list[dict[str, Any]], max_records: int
     ) -> Iterable["FakeReplicationTask"]:
         """
         The parameter WithoutSettings has not yet been implemented
@@ -127,7 +127,7 @@ class FakeReplicationTask(BaseModel):
         self.start_date: Optional[datetime] = None
         self.stop_date: Optional[datetime] = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         start_date = self.start_date.isoformat() if self.start_date else None
         stop_date = self.stop_date.isoformat() if self.stop_date else None
 

@@ -1,6 +1,6 @@
 """ComprehendBackend class with methods for supported APIs."""
 
-from typing import Any, Dict, Iterable, List
+from typing import Any, Iterable
 
 from moto.core.base_backend import BackendDict, BaseBackend
 from moto.core.common_models import BaseModel
@@ -69,12 +69,12 @@ class EntityRecognizer(BaseModel):
         region_name: str,
         account_id: str,
         language_code: str,
-        input_data_config: Dict[str, Any],
+        input_data_config: dict[str, Any],
         data_access_role_arn: str,
         version_name: str,
         recognizer_name: str,
         volume_kms_key_id: str,
-        vpc_config: Dict[str, List[str]],
+        vpc_config: dict[str, list[str]],
         model_kms_key_id: str,
         model_policy: str,
     ):
@@ -92,7 +92,7 @@ class EntityRecognizer(BaseModel):
         self.model_policy = model_policy
         self.status = "TRAINED"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "EntityRecognizerArn": self.arn,
             "LanguageCode": self.language_code,
@@ -130,11 +130,11 @@ class ComprehendBackend(BaseBackend):
 
     def __init__(self, region_name: str, account_id: str):
         super().__init__(region_name, account_id)
-        self.recognizers: Dict[str, EntityRecognizer] = dict()
+        self.recognizers: dict[str, EntityRecognizer] = dict()
         self.tagger = TaggingService()
 
     def list_entity_recognizers(
-        self, _filter: Dict[str, Any]
+        self, _filter: dict[str, Any]
     ) -> Iterable[EntityRecognizer]:
         """
         Pagination is not yet implemented.
@@ -153,11 +153,11 @@ class ComprehendBackend(BaseBackend):
         recognizer_name: str,
         version_name: str,
         data_access_role_arn: str,
-        tags: List[Dict[str, str]],
-        input_data_config: Dict[str, Any],
+        tags: list[dict[str, str]],
+        input_data_config: dict[str, Any],
         language_code: str,
         volume_kms_key_id: str,
-        vpc_config: Dict[str, List[str]],
+        vpc_config: dict[str, list[str]],
         model_kms_key_id: str,
         model_policy: str,
     ) -> str:
@@ -193,19 +193,19 @@ class ComprehendBackend(BaseBackend):
         if recognizer.status == "TRAINING":
             recognizer.status = "STOP_REQUESTED"
 
-    def list_tags_for_resource(self, resource_arn: str) -> List[Dict[str, str]]:
+    def list_tags_for_resource(self, resource_arn: str) -> list[dict[str, str]]:
         return self.tagger.list_tags_for_resource(resource_arn)["Tags"]
 
     def delete_entity_recognizer(self, entity_recognizer_arn: str) -> None:
         self.recognizers.pop(entity_recognizer_arn, None)
 
-    def tag_resource(self, resource_arn: str, tags: List[Dict[str, str]]) -> None:
+    def tag_resource(self, resource_arn: str, tags: list[dict[str, str]]) -> None:
         self.tagger.tag_resource(resource_arn, tags)
 
-    def untag_resource(self, resource_arn: str, tag_keys: List[str]) -> None:
+    def untag_resource(self, resource_arn: str, tag_keys: list[str]) -> None:
         self.tagger.untag_resource_using_names(resource_arn, tag_keys)
 
-    def detect_pii_entities(self, text: str, language: str) -> List[Dict[str, Any]]:
+    def detect_pii_entities(self, text: str, language: str) -> list[dict[str, Any]]:
         if language not in self.detect_pii_entities_languages:
             raise DetectPIIValidationException(
                 language, self.detect_pii_entities_languages
@@ -215,7 +215,7 @@ class ComprehendBackend(BaseBackend):
             raise TextSizeLimitExceededException(text_size)
         return CANNED_DETECT_RESPONSE
 
-    def detect_key_phrases(self, text: str, language: str) -> List[Dict[str, Any]]:
+    def detect_key_phrases(self, text: str, language: str) -> list[dict[str, Any]]:
         if language not in self.detect_key_phrases_languages:
             raise DetectPIIValidationException(
                 language, self.detect_key_phrases_languages
@@ -225,7 +225,7 @@ class ComprehendBackend(BaseBackend):
             raise TextSizeLimitExceededException(text_size)
         return CANNED_PHRASES_RESPONSE
 
-    def detect_sentiment(self, text: str, language: str) -> Dict[str, Any]:
+    def detect_sentiment(self, text: str, language: str) -> dict[str, Any]:
         if language not in self.detect_key_phrases_languages:
             raise DetectPIIValidationException(
                 language, self.detect_key_phrases_languages

@@ -1,7 +1,7 @@
 import datetime
 import re
 from collections import OrderedDict
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Iterable, Optional
 
 from moto.core.base_backend import BackendDict, BaseBackend
 from moto.core.common_models import BaseModel, CloudFormationModel
@@ -54,13 +54,13 @@ class FakeListener(BaseModel):
         load_balancer_port: str,
         instance_port: str,
         protocol: str,
-        ssl_certificate_id: Optional[str],
+        ssl_certificate_id: str | None,
     ):
         self.load_balancer_port = load_balancer_port
         self.instance_port = instance_port
         self.protocol = protocol.upper()
         self.ssl_certificate_id = ssl_certificate_id
-        self.policy_names: List[str] = []
+        self.policy_names: list[str] = []
 
     def __repr__(self) -> str:
         return f"FakeListener(lbp: {self.load_balancer_port}, inp: {self.instance_port}, pro: {self.protocol}, cid: {self.ssl_certificate_id}, policies: {self.policy_names})"
@@ -69,7 +69,7 @@ class FakeListener(BaseModel):
 class FakeBackend(BaseModel):
     def __init__(self, instance_port: str):
         self.instance_port = instance_port
-        self.policy_names: List[str] = []
+        self.policy_names: list[str] = []
 
     def __repr__(self) -> str:
         return f"FakeBackend(inp: {self.instance_port}, policies: {self.policy_names})"
@@ -79,28 +79,28 @@ class FakeLoadBalancer(CloudFormationModel):
     def __init__(
         self,
         name: str,
-        zones: List[str],
-        ports: List[Dict[str, Any]],
-        scheme: Optional[str],
-        vpc_id: Optional[str],
-        subnets: Optional[List[str]],
-        security_groups: Optional[List[str]],
+        zones: list[str],
+        ports: list[dict[str, Any]],
+        scheme: str | None,
+        vpc_id: str | None,
+        subnets: Optional[list[str]],
+        security_groups: Optional[list[str]],
     ):
         self.name = name
         self.health_check: Optional[FakeHealthCheck] = None
-        self.instance_sparse_ids: List[str] = []
-        self.instance_autoscaling_ids: List[str] = []
+        self.instance_sparse_ids: list[str] = []
+        self.instance_autoscaling_ids: list[str] = []
         self.zones = zones
         self.listeners = []
         self.backends = []
         self.created_time = datetime.datetime.now(datetime.timezone.utc)
         self.scheme = scheme or "internet-facing"
         self.attributes = FakeLoadBalancer.get_default_attributes()
-        self.policies: List[Policy] = []
+        self.policies: list[Policy] = []
         self.security_groups = security_groups or []
         self.subnets = subnets or []
         self.vpc_id = vpc_id
-        self.tags: Dict[str, str] = {}
+        self.tags: dict[str, str] = {}
         self.dns_name = f"{name}.us-east-1.elb.amazonaws.com"
 
         for port in ports:
@@ -124,7 +124,7 @@ class FakeLoadBalancer(CloudFormationModel):
             self.backends.append(backend)
 
     @property
-    def instance_ids(self) -> List[str]:
+    def instance_ids(self) -> list[str]:
         """Return all the instances attached to the ELB"""
         return self.instance_sparse_ids + self.instance_autoscaling_ids
 
@@ -161,7 +161,7 @@ class FakeLoadBalancer(CloudFormationModel):
             elb_backend.register_instances(new_elb.name, [instance_id])
 
         policies = properties.get("Policies", [])
-        port_policies: Dict[str, Any] = {}
+        port_policies: dict[str, Any] = {}
         for policy in policies:
             policy_name = policy["PolicyName"]
             policy_type_name = policy["PolicyType"]
@@ -263,8 +263,8 @@ class FakeLoadBalancer(CloudFormationModel):
         raise UnformattedGetAttTemplateException()
 
     @classmethod
-    def get_default_attributes(cls) -> Dict[str, Any]:  # type: ignore[misc]
-        attributes: Dict[str, Any] = dict()
+    def get_default_attributes(cls) -> dict[str, Any]:  # type: ignore[misc]
+        attributes: dict[str, Any] = dict()
         attributes["cross_zone_load_balancing"] = {"enabled": False}
         attributes["connection_draining"] = {"enabled": False}
         attributes["access_log"] = {"enabled": False}
@@ -277,7 +277,7 @@ class FakeLoadBalancer(CloudFormationModel):
             raise TooManyTagsError()
         self.tags[key] = value
 
-    def list_tags(self) -> Dict[str, str]:
+    def list_tags(self) -> dict[str, str]:
         return self.tags
 
     def remove_tag(self, key: str) -> None:
@@ -292,16 +292,16 @@ class FakeLoadBalancer(CloudFormationModel):
 class ELBBackend(BaseBackend):
     def __init__(self, region_name: str, account_id: str):
         super().__init__(region_name, account_id)
-        self.load_balancers: Dict[str, FakeLoadBalancer] = OrderedDict()
+        self.load_balancers: dict[str, FakeLoadBalancer] = OrderedDict()
 
     def create_load_balancer(
         self,
         name: str,
-        zones: List[str],
-        ports: List[Dict[str, Any]],
+        zones: list[str],
+        ports: list[dict[str, Any]],
         scheme: str = "internet-facing",
-        subnets: Optional[List[str]] = None,
-        security_groups: Optional[List[str]] = None,
+        subnets: Optional[list[str]] = None,
+        security_groups: Optional[list[str]] = None,
     ) -> FakeLoadBalancer:
         vpc_id = None
         ec2_backend = ec2_backends[self.account_id][self.region_name]
@@ -352,7 +352,7 @@ class ELBBackend(BaseBackend):
         return new_load_balancer
 
     def create_load_balancer_listeners(
-        self, name: str, ports: List[Dict[str, Any]]
+        self, name: str, ports: list[dict[str, Any]]
     ) -> Optional[FakeLoadBalancer]:
         balancer = self.load_balancers.get(name, None)
         if balancer:
@@ -388,7 +388,7 @@ class ELBBackend(BaseBackend):
 
         return balancer
 
-    def describe_load_balancers(self, names: List[str]) -> List[FakeLoadBalancer]:
+    def describe_load_balancers(self, names: list[str]) -> list[FakeLoadBalancer]:
         balancers = list(self.load_balancers.values())
         if names:
             matched_balancers = [
@@ -402,8 +402,8 @@ class ELBBackend(BaseBackend):
             return balancers
 
     def describe_load_balancer_policies(
-        self, lb_name: str, policy_names: List[str]
-    ) -> List[Policy]:
+        self, lb_name: str, policy_names: list[str]
+    ) -> list[Policy]:
         lb = self.describe_load_balancers([lb_name])[0]
         policies = lb.policies
         if policy_names:
@@ -413,8 +413,8 @@ class ELBBackend(BaseBackend):
         return policies
 
     def describe_instance_health(
-        self, lb_name: str, instances: List[Dict[str, str]]
-    ) -> List[Dict[str, Any]]:
+        self, lb_name: str, instances: list[dict[str, str]]
+    ) -> list[dict[str, Any]]:
         elb = self.get_load_balancer(lb_name)
         if elb is None:
             raise NoActiveLoadBalancerFoundError(name=lb_name)
@@ -438,7 +438,7 @@ class ELBBackend(BaseBackend):
         return instances
 
     def delete_load_balancer_listeners(
-        self, name: str, ports: List[str]
+        self, name: str, ports: list[str]
     ) -> Optional[FakeLoadBalancer]:
         balancer = self.get_load_balancer(name)
         listeners = []
@@ -463,7 +463,7 @@ class ELBBackend(BaseBackend):
         return self.load_balancers.get(load_balancer_name)  # type: ignore[return-value]
 
     def apply_security_groups_to_load_balancer(
-        self, load_balancer_name: str, security_group_ids: List[str]
+        self, load_balancer_name: str, security_group_ids: list[str]
     ) -> None:
         load_balancer = self.get_load_balancer(load_balancer_name)
         ec2_backend = ec2_backends[self.account_id][self.region_name]
@@ -549,10 +549,10 @@ class ELBBackend(BaseBackend):
     def modify_load_balancer_attributes(
         self,
         load_balancer_name: str,
-        cross_zone: Optional[Dict[str, Any]] = None,
-        connection_settings: Optional[Dict[str, Any]] = None,
-        connection_draining: Optional[Dict[str, Any]] = None,
-        access_log: Optional[Dict[str, Any]] = None,
+        cross_zone: Optional[dict[str, Any]] = None,
+        connection_settings: Optional[dict[str, Any]] = None,
+        connection_draining: Optional[dict[str, Any]] = None,
+        access_log: Optional[dict[str, Any]] = None,
     ) -> None:
         load_balancer = self.get_load_balancer(load_balancer_name)
         if cross_zone:
@@ -573,7 +573,7 @@ class ELBBackend(BaseBackend):
         load_balancer_name: str,
         policy_name: str,
         policy_type_name: str,
-        policy_attrs: List[Dict[str, str]],
+        policy_attrs: list[dict[str, str]],
     ) -> FakeLoadBalancer:
         load_balancer = self.get_load_balancer(load_balancer_name)
         if policy_name not in [p.policy_name for p in load_balancer.policies]:
@@ -603,7 +603,7 @@ class ELBBackend(BaseBackend):
         return load_balancer
 
     def set_load_balancer_policies_for_backend_server(
-        self, load_balancer_name: str, instance_port: int, policies: List[str]
+        self, load_balancer_name: str, instance_port: int, policies: list[str]
     ) -> FakeLoadBalancer:
         load_balancer = self.get_load_balancer(load_balancer_name)
         backend = [
@@ -615,7 +615,7 @@ class ELBBackend(BaseBackend):
         return load_balancer
 
     def set_load_balancer_policies_of_listener(
-        self, load_balancer_name: str, load_balancer_port: int, policies: List[str]
+        self, load_balancer_name: str, load_balancer_port: int, policies: list[str]
     ) -> FakeLoadBalancer:
         load_balancer = self.get_load_balancer(load_balancer_name)
         listener = [
@@ -629,8 +629,8 @@ class ELBBackend(BaseBackend):
         return load_balancer
 
     def enable_availability_zones_for_load_balancer(
-        self, load_balancer_name: str, availability_zones: List[str]
-    ) -> List[str]:
+        self, load_balancer_name: str, availability_zones: list[str]
+    ) -> list[str]:
         load_balancer = self.get_load_balancer(load_balancer_name)
         load_balancer.zones = sorted(
             list(set(load_balancer.zones + availability_zones))
@@ -638,8 +638,8 @@ class ELBBackend(BaseBackend):
         return load_balancer.zones
 
     def disable_availability_zones_for_load_balancer(
-        self, load_balancer_name: str, availability_zones: List[str]
-    ) -> List[str]:
+        self, load_balancer_name: str, availability_zones: list[str]
+    ) -> list[str]:
         load_balancer = self.get_load_balancer(load_balancer_name)
         load_balancer.zones = sorted(
             list(
@@ -649,15 +649,15 @@ class ELBBackend(BaseBackend):
         return load_balancer.zones
 
     def attach_load_balancer_to_subnets(
-        self, load_balancer_name: str, subnets: List[str]
-    ) -> List[str]:
+        self, load_balancer_name: str, subnets: list[str]
+    ) -> list[str]:
         load_balancer = self.get_load_balancer(load_balancer_name)
         load_balancer.subnets = list(set(load_balancer.subnets + subnets))
         return load_balancer.subnets
 
     def detach_load_balancer_from_subnets(
-        self, load_balancer_name: str, subnets: List[str]
-    ) -> List[str]:
+        self, load_balancer_name: str, subnets: list[str]
+    ) -> list[str]:
         load_balancer = self.get_load_balancer(load_balancer_name)
         load_balancer.subnets = [s for s in load_balancer.subnets if s not in subnets]
         return load_balancer.subnets

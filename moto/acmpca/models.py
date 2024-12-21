@@ -2,7 +2,7 @@
 
 import base64
 import datetime
-from typing import Any, Dict, List, Optional, Tuple, cast
+from typing import Any, Optional, cast
 
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
@@ -29,10 +29,10 @@ class CertificateAuthority(BaseModel):
         self,
         region: str,
         account_id: str,
-        certificate_authority_configuration: Dict[str, Any],
+        certificate_authority_configuration: dict[str, Any],
         certificate_authority_type: str,
-        revocation_configuration: Dict[str, Any],
-        security_standard: Optional[str],
+        revocation_configuration: dict[str, Any],
+        security_standard: str | None,
     ):
         self.id = mock_random.uuid4()
         self.arn = f"arn:{get_partition(region)}:acm-pca:{region}:{account_id}:certificate-authority/{self.id}"
@@ -40,7 +40,7 @@ class CertificateAuthority(BaseModel):
         self.region_name = region
         self.certificate_authority_configuration = certificate_authority_configuration
         self.certificate_authority_type = certificate_authority_type
-        self.revocation_configuration: Dict[str, Any] = {
+        self.revocation_configuration: dict[str, Any] = {
             "CrlConfiguration": {"Enabled": False}
         }
         self.set_revocation_configuration(revocation_configuration)
@@ -61,7 +61,7 @@ class CertificateAuthority(BaseModel):
 
         self.certificate_bytes: bytes = b""
         self.certificate_chain: Optional[bytes] = None
-        self.issued_certificates: Dict[str, bytes] = dict()
+        self.issued_certificates: dict[str, bytes] = dict()
 
         self.subject = self.certificate_authority_configuration.get("Subject", {})
 
@@ -69,7 +69,7 @@ class CertificateAuthority(BaseModel):
         self,
         subject: x509.Name,
         public_key: rsa.RSAPublicKey,
-        extensions: List[Tuple[x509.ExtensionType, bool]],
+        extensions: list[tuple[x509.ExtensionType, bool]],
     ) -> bytes:
         builder = (
             x509.CertificateBuilder()
@@ -147,7 +147,7 @@ class CertificateAuthority(BaseModel):
         )
         return csr.public_bytes(serialization.Encoding.PEM)
 
-    def issue_certificate(self, csr_bytes: bytes, template_arn: Optional[str]) -> str:
+    def issue_certificate(self, csr_bytes: bytes, template_arn: str | None) -> str:
         csr = x509.load_pem_x509_csr(base64.b64decode(csr_bytes))
         extensions = self._x509_extensions(csr, template_arn)
         new_cert = self.generate_cert(
@@ -162,8 +162,8 @@ class CertificateAuthority(BaseModel):
         return cert_arn
 
     def _x509_extensions(
-        self, csr: x509.CertificateSigningRequest, template_arn: Optional[str]
-    ) -> List[Tuple[x509.ExtensionType, bool]]:
+        self, csr: x509.CertificateSigningRequest, template_arn: str | None
+    ) -> list[tuple[x509.ExtensionType, bool]]:
         """
         Uses a PCA certificate template ARN to return a list of X.509 extensions.
         These extensions are part of the constructed certificate.
@@ -261,7 +261,7 @@ class CertificateAuthority(BaseModel):
         return self.issued_certificates[certificate_arn]
 
     def set_revocation_configuration(
-        self, revocation_configuration: Optional[Dict[str, Any]]
+        self, revocation_configuration: Optional[dict[str, Any]]
     ) -> None:
         if revocation_configuration is not None:
             self.revocation_configuration = revocation_configuration
@@ -308,7 +308,7 @@ class CertificateAuthority(BaseModel):
         self.status = "ACTIVE"
         self.updated_at = unix_time()
 
-    def to_json(self) -> Dict[str, Any]:
+    def to_json(self) -> dict[str, Any]:
         dct = {
             "Arn": self.arn,
             "OwnerAccount": self.account_id,
@@ -337,16 +337,16 @@ class ACMPCABackend(BaseBackend):
 
     def __init__(self, region_name: str, account_id: str):
         super().__init__(region_name, account_id)
-        self.certificate_authorities: Dict[str, CertificateAuthority] = dict()
+        self.certificate_authorities: dict[str, CertificateAuthority] = dict()
         self.tagger = TaggingService()
 
     def create_certificate_authority(
         self,
-        certificate_authority_configuration: Dict[str, Any],
-        revocation_configuration: Dict[str, Any],
+        certificate_authority_configuration: dict[str, Any],
+        revocation_configuration: dict[str, Any],
         certificate_authority_type: str,
-        security_standard: Optional[str],
-        tags: List[Dict[str, str]],
+        security_standard: str | None,
+        tags: list[dict[str, str]],
     ) -> str:
         """
         The following parameters are not yet implemented: IdempotencyToken, KeyStorageSecurityStandard, UsageMode
@@ -373,7 +373,7 @@ class ACMPCABackend(BaseBackend):
 
     def get_certificate_authority_certificate(
         self, certificate_authority_arn: str
-    ) -> Tuple[bytes, Optional[bytes]]:
+    ) -> tuple[bytes, Optional[bytes]]:
         ca = self.describe_certificate_authority(certificate_authority_arn)
         if ca.status != "ACTIVE":
             raise InvalidStateException(certificate_authority_arn)
@@ -385,7 +385,7 @@ class ACMPCABackend(BaseBackend):
 
     def list_tags(
         self, certificate_authority_arn: str
-    ) -> Dict[str, List[Dict[str, str]]]:
+    ) -> dict[str, list[dict[str, str]]]:
         """
         Pagination is not yet implemented
         """
@@ -394,7 +394,7 @@ class ACMPCABackend(BaseBackend):
     def update_certificate_authority(
         self,
         certificate_authority_arn: str,
-        revocation_configuration: Dict[str, Any],
+        revocation_configuration: dict[str, Any],
         status: str,
     ) -> None:
         ca = self.describe_certificate_authority(certificate_authority_arn)
@@ -408,7 +408,7 @@ class ACMPCABackend(BaseBackend):
         ca.status = "DELETED"
 
     def issue_certificate(
-        self, certificate_authority_arn: str, csr: bytes, template_arn: Optional[str]
+        self, certificate_authority_arn: str, csr: bytes, template_arn: str | None
     ) -> str:
         """
         The following parameters are not yet implemented: ApiPassthrough, SigningAlgorithm, Validity, ValidityNotBefore, IdempotencyToken
@@ -420,7 +420,7 @@ class ACMPCABackend(BaseBackend):
 
     def get_certificate(
         self, certificate_authority_arn: str, certificate_arn: str
-    ) -> Tuple[bytes, Optional[str]]:
+    ) -> tuple[bytes, str | None]:
         """
         The CertificateChain will always return None for now
         """
@@ -449,12 +449,12 @@ class ACMPCABackend(BaseBackend):
         """
 
     def tag_certificate_authority(
-        self, certificate_authority_arn: str, tags: List[Dict[str, str]]
+        self, certificate_authority_arn: str, tags: list[dict[str, str]]
     ) -> None:
         self.tagger.tag_resource(certificate_authority_arn, tags)
 
     def untag_certificate_authority(
-        self, certificate_authority_arn: str, tags: List[Dict[str, str]]
+        self, certificate_authority_arn: str, tags: list[dict[str, str]]
     ) -> None:
         self.tagger.untag_resource_using_tags(certificate_authority_arn, tags)
 

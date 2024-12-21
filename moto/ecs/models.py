@@ -2,7 +2,7 @@ import re
 from copy import copy
 from datetime import datetime, timezone
 from os import getenv
-from typing import Any, Dict, Iterator, List, Optional, Tuple
+from typing import Any, Iterator, Optional
 
 from moto import settings
 from moto.core.base_backend import BackendDict, BaseBackend
@@ -40,7 +40,7 @@ class BaseObject(BaseModel):
                 words.append(word)
         return "".join(words)
 
-    def gen_response_object(self) -> Dict[str, Any]:
+    def gen_response_object(self) -> dict[str, Any]:
         response_object = copy(self.__dict__)
         for key, value in self.__dict__.items():
             if key.startswith("_"):
@@ -51,7 +51,7 @@ class BaseObject(BaseModel):
         return response_object
 
     @property
-    def response_object(self) -> Dict[str, Any]:  # type: ignore[misc]
+    def response_object(self) -> dict[str, Any]:  # type: ignore[misc]
         return self.gen_response_object()
 
 
@@ -67,12 +67,12 @@ class Cluster(BaseObject, CloudFormationModel):
         cluster_name: str,
         account_id: str,
         region_name: str,
-        cluster_settings: Optional[List[Dict[str, str]]] = None,
-        configuration: Optional[Dict[str, Any]] = None,
-        capacity_providers: Optional[List[str]] = None,
-        default_capacity_provider_strategy: Optional[List[Dict[str, Any]]] = None,
-        tags: Optional[List[Dict[str, str]]] = None,
-        service_connect_defaults: Optional[Dict[str, str]] = None,
+        cluster_settings: Optional[list[dict[str, str]]] = None,
+        configuration: Optional[dict[str, Any]] = None,
+        capacity_providers: Optional[list[str]] = None,
+        default_capacity_provider_strategy: Optional[list[dict[str, Any]]] = None,
+        tags: Optional[list[dict[str, str]]] = None,
+        service_connect_defaults: Optional[dict[str, str]] = None,
     ):
         self.active_services_count = 0
         self.arn = f"arn:{get_partition(region_name)}:ecs:{region_name}:{account_id}:cluster/{cluster_name}"
@@ -96,7 +96,7 @@ class Cluster(BaseObject, CloudFormationModel):
         return self.name
 
     @property
-    def response_object(self) -> Dict[str, Any]:  # type: ignore[misc]
+    def response_object(self) -> dict[str, Any]:  # type: ignore[misc]
         response_object = self.gen_response_object()
         response_object["clusterArn"] = self.arn
         response_object["clusterName"] = self.name
@@ -170,24 +170,24 @@ class TaskDefinition(BaseObject, CloudFormationModel):
         self,
         family: str,
         revision: int,
-        container_definitions: List[Dict[str, Any]],
+        container_definitions: list[dict[str, Any]],
         account_id: str,
         region_name: str,
-        network_mode: Optional[str] = None,
-        volumes: Optional[List[Dict[str, Any]]] = None,
-        tags: Optional[List[Dict[str, str]]] = None,
-        placement_constraints: Optional[List[Dict[str, str]]] = None,
-        requires_compatibilities: Optional[List[str]] = None,
-        cpu: Optional[str] = None,
-        memory: Optional[str] = None,
-        task_role_arn: Optional[str] = None,
-        execution_role_arn: Optional[str] = None,
-        proxy_configuration: Optional[Dict[str, Any]] = None,
-        inference_accelerators: Optional[List[Dict[str, str]]] = None,
-        runtime_platform: Optional[Dict[str, str]] = None,
-        ipc_mode: Optional[str] = None,
-        pid_mode: Optional[str] = None,
-        ephemeral_storage: Optional[Dict[str, int]] = None,
+        network_mode: str | None = None,
+        volumes: Optional[list[dict[str, Any]]] = None,
+        tags: Optional[list[dict[str, str]]] = None,
+        placement_constraints: Optional[list[dict[str, str]]] = None,
+        requires_compatibilities: Optional[list[str]] = None,
+        cpu: str | None = None,
+        memory: str | None = None,
+        task_role_arn: str | None = None,
+        execution_role_arn: str | None = None,
+        proxy_configuration: Optional[dict[str, Any]] = None,
+        inference_accelerators: Optional[list[dict[str, str]]] = None,
+        runtime_platform: Optional[dict[str, str]] = None,
+        ipc_mode: str | None = None,
+        pid_mode: str | None = None,
+        ephemeral_storage: Optional[dict[str, int]] = None,
     ):
         self.family = family
         self.revision = revision
@@ -226,9 +226,9 @@ class TaskDefinition(BaseObject, CloudFormationModel):
             self.compatibilities = ["EC2", "FARGATE"]
 
         if network_mode is None and "FARGATE" not in self.compatibilities:
-            self.network_mode: Optional[str] = "bridge"
+            self.network_mode: str | None = "bridge"
         elif "FARGATE" in self.compatibilities:
-            self.network_mode: Optional[str] = "awsvpc"  # type: ignore[no-redef]
+            self.network_mode: str | None = "awsvpc"  # type: ignore[no-redef]
         else:
             self.network_mode = network_mode
 
@@ -254,7 +254,7 @@ class TaskDefinition(BaseObject, CloudFormationModel):
         self.status = "ACTIVE"
 
     @property
-    def response_object(self) -> Dict[str, Any]:  # type: ignore[misc]
+    def response_object(self) -> dict[str, Any]:  # type: ignore[misc]
         response_object = self.gen_response_object()
         response_object["taskDefinitionArn"] = response_object.pop("arn")
 
@@ -352,14 +352,14 @@ class Task(BaseObject, ManagedState):
         self,
         cluster: Cluster,
         task_definition: TaskDefinition,
-        container_instance_arn: Optional[str],
-        resource_requirements: Optional[Dict[str, str]],
+        container_instance_arn: str | None,
+        resource_requirements: Optional[dict[str, str]],
         backend: "EC2ContainerServiceBackend",
         launch_type: str = "",
-        overrides: Optional[Dict[str, Any]] = None,
+        overrides: Optional[dict[str, Any]] = None,
         started_by: str = "",
-        tags: Optional[List[Dict[str, str]]] = None,
-        networking_configuration: Optional[Dict[str, Any]] = None,
+        tags: Optional[list[dict[str, str]]] = None,
+        networking_configuration: Optional[dict[str, Any]] = None,
     ):
         # Configure ManagedState
         # https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-lifecycle.html
@@ -386,7 +386,7 @@ class Task(BaseObject, ManagedState):
         self.desired_status = "RUNNING"
         self.task_definition_arn = task_definition.arn
         self.overrides = overrides or {}
-        self.containers: List[Dict[str, Any]] = []
+        self.containers: list[dict[str, Any]] = []
         self.started_by = started_by
         self.tags = tags or []
         self.launch_type = launch_type
@@ -432,11 +432,11 @@ class Task(BaseObject, ManagedState):
             )
 
     @property
-    def last_status(self) -> Optional[str]:
+    def last_status(self) -> str | None:
         return self.status  # managed state
 
     @last_status.setter
-    def last_status(self, value: Optional[str]) -> None:
+    def last_status(self, value: str | None) -> None:
         self.status = value
 
     @property
@@ -445,7 +445,7 @@ class Task(BaseObject, ManagedState):
             return f"arn:{get_partition(self.region_name)}:ecs:{self.region_name}:{self._account_id}:task/{self.cluster_name}/{self.id}"
         return f"arn:{get_partition(self.region_name)}:ecs:{self.region_name}:{self._account_id}:task/{self.id}"
 
-    def response_object(self, include_tags: bool = True) -> Dict[str, Any]:  # type: ignore
+    def response_object(self, include_tags: bool = True) -> dict[str, Any]:  # type: ignore
         response_object = self.gen_response_object()
         if not include_tags:
             response_object.pop("tags", None)
@@ -460,8 +460,8 @@ class CapacityProvider(BaseObject):
         account_id: str,
         region_name: str,
         name: str,
-        asg_details: Dict[str, Any],
-        tags: Optional[List[Dict[str, str]]],
+        asg_details: dict[str, Any],
+        tags: Optional[list[dict[str, str]]],
     ):
         self._id = str(mock_random.uuid4())
         self.capacity_provider_arn = f"arn:{get_partition(region_name)}:ecs:{region_name}:{account_id}:capacity-provider/{name}"
@@ -470,9 +470,9 @@ class CapacityProvider(BaseObject):
         self.auto_scaling_group_provider = self._prepare_asg_provider(asg_details)
         self.tags = tags
 
-        self.update_status: Optional[str] = None
+        self.update_status: str | None = None
 
-    def _prepare_asg_provider(self, asg_details: Dict[str, Any]) -> Dict[str, Any]:
+    def _prepare_asg_provider(self, asg_details: dict[str, Any]) -> dict[str, Any]:
         if "managedScaling" not in asg_details:
             asg_details["managedScaling"] = {}
         if asg_details["managedScaling"].get("instanceWarmupPeriod") is None:
@@ -489,7 +489,7 @@ class CapacityProvider(BaseObject):
             asg_details["managedTerminationProtection"] = "DISABLED"
         return asg_details
 
-    def update(self, asg_details: Dict[str, Any]) -> None:
+    def update(self, asg_details: dict[str, Any]) -> None:
         if "managedTerminationProtection" in asg_details:
             self.auto_scaling_group_provider["managedTerminationProtection"] = (
                 asg_details["managedTerminationProtection"]
@@ -519,7 +519,7 @@ class CapacityProviderFailure(BaseObject):
         self.arn = f"arn:{get_partition(region_name)}:ecs:{region_name}:{account_id}:capacity_provider/{name}"
 
     @property
-    def response_object(self) -> Dict[str, Any]:  # type: ignore[misc]
+    def response_object(self) -> dict[str, Any]:  # type: ignore[misc]
         response_object = self.gen_response_object()
         response_object["reason"] = self.reason
         response_object["arn"] = self.arn
@@ -542,14 +542,14 @@ class Service(BaseObject, CloudFormationModel):
         desired_count: int,
         backend: "EC2ContainerServiceBackend",
         task_definition: Optional[TaskDefinition] = None,
-        load_balancers: Optional[List[Dict[str, Any]]] = None,
-        scheduling_strategy: Optional[List[Dict[str, Any]]] = None,
-        tags: Optional[List[Dict[str, str]]] = None,
-        deployment_controller: Optional[Dict[str, str]] = None,
-        launch_type: Optional[str] = None,
-        service_registries: Optional[List[Dict[str, Any]]] = None,
-        platform_version: Optional[str] = None,
-        network_configuration: Optional[Dict[str, Dict[str, List[str]]]] = None,
+        load_balancers: Optional[list[dict[str, Any]]] = None,
+        scheduling_strategy: Optional[list[dict[str, Any]]] = None,
+        tags: Optional[list[dict[str, str]]] = None,
+        deployment_controller: Optional[dict[str, str]] = None,
+        launch_type: str | None = None,
+        service_registries: Optional[list[dict[str, Any]]] = None,
+        platform_version: str | None = None,
+        network_configuration: Optional[dict[str, dict[str, list[str]]]] = None,
         propagate_tags: str = "NONE",
     ):
         self.cluster_name = cluster.name
@@ -558,9 +558,9 @@ class Service(BaseObject, CloudFormationModel):
         self.status = "ACTIVE"
         self.task_definition = task_definition.arn if task_definition else None
         self.desired_count = desired_count
-        self.task_sets: List[TaskSet] = []
+        self.task_sets: list[TaskSet] = []
         self.deployment_controller = deployment_controller or {"type": "ECS"}
-        self.events: List[Dict[str, Any]] = []
+        self.events: list[dict[str, Any]] = []
         self.launch_type = launch_type
         self.service_registries = service_registries or []
         self.load_balancers = load_balancers if load_balancers is not None else []
@@ -606,8 +606,8 @@ class Service(BaseObject, CloudFormationModel):
             self.network_configuration = {}
 
     def _validate_network(
-        self, nc: Dict[str, Dict[str, List[str]]]
-    ) -> Dict[str, Dict[str, List[str]]]:
+        self, nc: dict[str, dict[str, list[str]]]
+    ) -> dict[str, dict[str, list[str]]]:
         c = nc["awsvpcConfiguration"]
         if len(c["subnets"]) == 0:
             raise InvalidParameterException("subnets can not be empty.")
@@ -642,7 +642,7 @@ class Service(BaseObject, CloudFormationModel):
         return self.arn
 
     @property
-    def response_object(self) -> Dict[str, Any]:  # type: ignore[misc]
+    def response_object(self) -> dict[str, Any]:  # type: ignore[misc]
         response_object = self.gen_response_object()
         del response_object["name"], response_object["tags"]
         response_object["serviceName"] = self.name
@@ -777,7 +777,7 @@ class ContainerInstance(BaseObject):
         self.ec2_instance_id = ec2_instance_id
         self.agent_connected = True
         self.status = "ACTIVE"
-        self.registered_resources: List[Dict[str, Any]] = [
+        self.registered_resources: list[dict[str, Any]] = [
             {
                 "doubleValue": 0.0,
                 "integerValue": 4096,
@@ -810,7 +810,7 @@ class ContainerInstance(BaseObject):
             },
         ]
         self.pending_tasks_count = 0
-        self.remaining_resources: List[Dict[str, Any]] = [
+        self.remaining_resources: list[dict[str, Any]] = [
             {
                 "doubleValue": 0.0,
                 "integerValue": 4096,
@@ -874,7 +874,7 @@ class ContainerInstance(BaseObject):
         return f"arn:{get_partition(self.region_name)}:ecs:{self.region_name}:{self._account_id}:container-instance/{self.id}"
 
     @property
-    def response_object(self) -> Dict[str, Any]:  # type: ignore[misc]
+    def response_object(self) -> dict[str, Any]:  # type: ignore[misc]
         response_object = self.gen_response_object()
         response_object["containerInstanceArn"] = self.container_instance_arn
         response_object["attributes"] = [
@@ -887,7 +887,7 @@ class ContainerInstance(BaseObject):
             )
         return response_object
 
-    def _format_attribute(self, name: str, value: Optional[str]) -> Dict[str, str]:
+    def _format_attribute(self, name: str, value: str | None) -> dict[str, str]:
         formatted_attr = {"name": name}
         if value is not None:
             formatted_attr["value"] = value
@@ -902,7 +902,7 @@ class ClusterFailure(BaseObject):
         self.arn = f"arn:{get_partition(region_name)}:ecs:{region_name}:{account_id}:cluster/{cluster_name}"
 
     @property
-    def response_object(self) -> Dict[str, Any]:  # type: ignore[misc]
+    def response_object(self) -> dict[str, Any]:  # type: ignore[misc]
         response_object = self.gen_response_object()
         response_object["reason"] = self.reason
         response_object["arn"] = self.arn
@@ -917,7 +917,7 @@ class ContainerInstanceFailure(BaseObject):
         self.arn = f"arn:{get_partition(region_name)}:ecs:{region_name}:{account_id}:container-instance/{container_instance_id}"
 
     @property
-    def response_object(self) -> Dict[str, Any]:  # type: ignore[misc]
+    def response_object(self) -> dict[str, Any]:  # type: ignore[misc]
         response_object = self.gen_response_object()
         response_object["reason"] = self.reason
         response_object["arn"] = self.arn
@@ -932,16 +932,16 @@ class TaskSet(BaseObject):
         task_definition: str,
         account_id: str,
         region_name: str,
-        external_id: Optional[str] = None,
-        network_configuration: Optional[Dict[str, Any]] = None,
-        load_balancers: Optional[List[Dict[str, Any]]] = None,
-        service_registries: Optional[List[Dict[str, Any]]] = None,
-        launch_type: Optional[str] = None,
-        capacity_provider_strategy: Optional[List[Dict[str, Any]]] = None,
-        platform_version: Optional[str] = None,
-        scale: Optional[Dict[str, Any]] = None,
-        client_token: Optional[str] = None,
-        tags: Optional[List[Dict[str, str]]] = None,
+        external_id: str | None = None,
+        network_configuration: Optional[dict[str, Any]] = None,
+        load_balancers: Optional[list[dict[str, Any]]] = None,
+        service_registries: Optional[list[dict[str, Any]]] = None,
+        launch_type: str | None = None,
+        capacity_provider_strategy: Optional[list[dict[str, Any]]] = None,
+        platform_version: str | None = None,
+        scale: Optional[dict[str, Any]] = None,
+        client_token: str | None = None,
+        tags: Optional[list[dict[str, str]]] = None,
     ):
         self.service = service
         self.cluster = cluster
@@ -971,7 +971,7 @@ class TaskSet(BaseObject):
         self.task_set_arn = f"arn:{get_partition(region_name)}:ecs:{region_name}:{account_id}:task-set/{cluster_name}/{service_name}/{self.id}"
 
     @property
-    def response_object(self) -> Dict[str, Any]:  # type: ignore[misc]
+    def response_object(self) -> dict[str, Any]:  # type: ignore[misc]
         response_object = self.gen_response_object()
         if isinstance(response_object["createdAt"], datetime):
             response_object["createdAt"] = unix_time(
@@ -1001,13 +1001,13 @@ class EC2ContainerServiceBackend(BaseBackend):
 
     def __init__(self, region_name: str, account_id: str):
         super().__init__(region_name, account_id)
-        self.account_settings: Dict[str, AccountSetting] = dict()
-        self.capacity_providers: Dict[str, CapacityProvider] = dict()
-        self.clusters: Dict[str, Cluster] = {}
-        self.task_definitions: Dict[str, Dict[int, TaskDefinition]] = {}
-        self.tasks: Dict[str, Dict[str, Task]] = {}
-        self.services: Dict[str, Service] = {}
-        self.container_instances: Dict[str, Dict[str, ContainerInstance]] = {}
+        self.account_settings: dict[str, AccountSetting] = dict()
+        self.capacity_providers: dict[str, CapacityProvider] = dict()
+        self.clusters: dict[str, Cluster] = {}
+        self.task_definitions: dict[str, dict[int, TaskDefinition]] = {}
+        self.tasks: dict[str, dict[str, Task]] = {}
+        self.services: dict[str, Service] = {}
+        self.container_instances: dict[str, dict[str, ContainerInstance]] = {}
 
     def _get_cluster(self, name: str) -> Cluster:
         # short name or full ARN of the cluster
@@ -1022,8 +1022,8 @@ class EC2ContainerServiceBackend(BaseBackend):
     def create_capacity_provider(
         self,
         name: str,
-        asg_details: Dict[str, Any],
-        tags: Optional[List[Dict[str, str]]],
+        asg_details: dict[str, Any],
+        tags: Optional[list[dict[str, str]]],
     ) -> CapacityProvider:
         capacity_provider = CapacityProvider(
             self.account_id, self.region_name, name, asg_details, tags
@@ -1053,10 +1053,10 @@ class EC2ContainerServiceBackend(BaseBackend):
         cluster_name: str,
         tags: Any = None,
         cluster_settings: Any = None,
-        configuration: Optional[Dict[str, Any]] = None,
-        capacity_providers: Optional[List[str]] = None,
-        default_capacity_provider_strategy: Optional[List[Dict[str, Any]]] = None,
-        service_connect_defaults: Optional[Dict[str, str]] = None,
+        configuration: Optional[dict[str, Any]] = None,
+        capacity_providers: Optional[list[str]] = None,
+        default_capacity_provider_strategy: Optional[list[dict[str, Any]]] = None,
+        service_connect_defaults: Optional[dict[str, str]] = None,
     ) -> Cluster:
         cluster = Cluster(
             cluster_name,
@@ -1075,9 +1075,9 @@ class EC2ContainerServiceBackend(BaseBackend):
     def update_cluster(
         self,
         cluster_name: str,
-        cluster_settings: Optional[List[Dict[str, str]]],
-        configuration: Optional[Dict[str, Any]],
-        service_connect_defaults: Optional[Dict[str, str]],
+        cluster_settings: Optional[list[dict[str, str]]],
+        configuration: Optional[dict[str, Any]],
+        service_connect_defaults: Optional[dict[str, str]],
     ) -> Cluster:
         """
         The serviceConnectDefaults-parameter is not yet implemented
@@ -1094,8 +1094,8 @@ class EC2ContainerServiceBackend(BaseBackend):
     def put_cluster_capacity_providers(
         self,
         cluster_name: str,
-        capacity_providers: Optional[List[str]],
-        default_capacity_provider_strategy: Optional[List[Dict[str, Any]]],
+        capacity_providers: Optional[list[str]],
+        default_capacity_provider_strategy: Optional[list[dict[str, Any]]],
     ) -> Cluster:
         cluster = self._get_cluster(cluster_name)
         if capacity_providers is not None:
@@ -1116,8 +1116,8 @@ class EC2ContainerServiceBackend(BaseBackend):
         return None
 
     def describe_capacity_providers(
-        self, names: List[str]
-    ) -> Tuple[List[CapacityProvider], List[CapacityProviderFailure]]:
+        self, names: list[str]
+    ) -> tuple[list[CapacityProvider], list[CapacityProviderFailure]]:
         providers = []
         failures = []
         for name in names:
@@ -1138,13 +1138,13 @@ class EC2ContainerServiceBackend(BaseBackend):
         return provider
 
     def update_capacity_provider(
-        self, name_or_arn: str, asg_provider: Dict[str, Any]
+        self, name_or_arn: str, asg_provider: dict[str, Any]
     ) -> CapacityProvider:
         provider: CapacityProvider = self._get_provider(name_or_arn)  # type: ignore[assignment]
         provider.update(asg_provider)
         return provider
 
-    def list_clusters(self) -> List[str]:
+    def list_clusters(self) -> list[str]:
         """
         maxSize and pagination not implemented
         """
@@ -1152,9 +1152,9 @@ class EC2ContainerServiceBackend(BaseBackend):
 
     def describe_clusters(
         self,
-        list_clusters_name: Optional[List[str]] = None,
-        include: Optional[List[str]] = None,
-    ) -> Tuple[List[Dict[str, Any]], List[ClusterFailure]]:
+        list_clusters_name: Optional[list[str]] = None,
+        include: Optional[list[str]] = None,
+    ) -> tuple[list[dict[str, Any]], list[ClusterFailure]]:
         """
         Only include=TAGS is currently supported.
         """
@@ -1194,22 +1194,22 @@ class EC2ContainerServiceBackend(BaseBackend):
     def register_task_definition(
         self,
         family: str,
-        container_definitions: List[Dict[str, Any]],
-        volumes: Optional[List[Dict[str, Any]]] = None,
-        network_mode: Optional[str] = None,
-        tags: Optional[List[Dict[str, str]]] = None,
-        placement_constraints: Optional[List[Dict[str, str]]] = None,
-        requires_compatibilities: Optional[List[str]] = None,
-        cpu: Optional[str] = None,
-        memory: Optional[str] = None,
-        task_role_arn: Optional[str] = None,
-        execution_role_arn: Optional[str] = None,
-        proxy_configuration: Optional[Dict[str, Any]] = None,
-        inference_accelerators: Optional[List[Dict[str, str]]] = None,
-        runtime_platform: Optional[Dict[str, str]] = None,
-        ipc_mode: Optional[str] = None,
-        pid_mode: Optional[str] = None,
-        ephemeral_storage: Optional[Dict[str, int]] = None,
+        container_definitions: list[dict[str, Any]],
+        volumes: Optional[list[dict[str, Any]]] = None,
+        network_mode: str | None = None,
+        tags: Optional[list[dict[str, str]]] = None,
+        placement_constraints: Optional[list[dict[str, str]]] = None,
+        requires_compatibilities: Optional[list[str]] = None,
+        cpu: str | None = None,
+        memory: str | None = None,
+        task_role_arn: str | None = None,
+        execution_role_arn: str | None = None,
+        proxy_configuration: Optional[dict[str, Any]] = None,
+        inference_accelerators: Optional[list[dict[str, str]]] = None,
+        runtime_platform: Optional[dict[str, str]] = None,
+        ipc_mode: str | None = None,
+        pid_mode: str | None = None,
+        ephemeral_storage: Optional[dict[str, int]] = None,
     ) -> TaskDefinition:
         if requires_compatibilities and "FARGATE" in requires_compatibilities:
             # TODO need more validation for Fargate
@@ -1255,9 +1255,9 @@ class EC2ContainerServiceBackend(BaseBackend):
 
     @staticmethod
     def _validate_container_defs(  # type: ignore[misc]
-        memory: Optional[str],
-        container_definitions: List[Dict[str, Any]],
-        requires_compatibilities: Optional[List[str]],
+        memory: str | None,
+        container_definitions: list[dict[str, Any]],
+        requires_compatibilities: Optional[list[str]],
     ) -> None:
         # The capitalised keys are passed by Cloudformation
         for cd in container_definitions:
@@ -1280,7 +1280,7 @@ class EC2ContainerServiceBackend(BaseBackend):
             ):
                 raise TaskDefinitionMemoryError(cd["name"])
 
-    def list_task_definitions(self, family_prefix: str) -> List[str]:
+    def list_task_definitions(self, family_prefix: str) -> list[str]:
         task_arns = []
         for task_definition_list in self.task_definitions.values():
             task_arns.extend(
@@ -1319,12 +1319,12 @@ class EC2ContainerServiceBackend(BaseBackend):
         cluster_str: str,
         task_definition_str: str,
         count: int,
-        overrides: Optional[Dict[str, Any]],
+        overrides: Optional[dict[str, Any]],
         started_by: str,
-        tags: Optional[List[Dict[str, str]]],
-        launch_type: Optional[str],
-        networking_configuration: Optional[Dict[str, Any]] = None,
-    ) -> List[Task]:
+        tags: Optional[list[dict[str, str]]],
+        launch_type: str | None,
+        networking_configuration: Optional[dict[str, Any]] = None,
+    ) -> list[Task]:
         if launch_type and launch_type not in ["EC2", "FARGATE", "EXTERNAL"]:
             raise InvalidParameterException(
                 "launch type should be one of [EC2,FARGATE,EXTERNAL]"
@@ -1405,8 +1405,8 @@ class EC2ContainerServiceBackend(BaseBackend):
     @staticmethod
     def _calculate_task_resource_requirements(  # type: ignore[misc]
         task_definition: TaskDefinition,
-    ) -> Dict[str, Any]:
-        resource_requirements: Dict[str, Any] = {
+    ) -> dict[str, Any]:
+        resource_requirements: dict[str, Any] = {
             "CPU": 0,
             "MEMORY": 0,
             "PORTS": [],
@@ -1449,7 +1449,7 @@ class EC2ContainerServiceBackend(BaseBackend):
     @staticmethod
     def _can_be_placed(  # type: ignore[misc]
         container_instance: ContainerInstance,
-        task_resource_requirements: Dict[str, Any],
+        task_resource_requirements: dict[str, Any],
     ) -> bool:
         """
 
@@ -1462,7 +1462,7 @@ class EC2ContainerServiceBackend(BaseBackend):
         # docs.aws.amazon.com/AmazonECS/latest/developerguide/task-placement.html
         remaining_cpu = 0
         remaining_memory = 0
-        reserved_ports: List[str] = []
+        reserved_ports: list[str] = []
         for resource in container_instance.remaining_resources:
             if resource.get("name") == "CPU":
                 remaining_cpu = resource.get("integerValue")  # type: ignore[assignment]
@@ -1484,11 +1484,11 @@ class EC2ContainerServiceBackend(BaseBackend):
         self,
         cluster_str: str,
         task_definition_str: str,
-        container_instances: List[str],
-        overrides: Dict[str, Any],
+        container_instances: list[str],
+        overrides: dict[str, Any],
         started_by: str,
-        tags: Optional[List[Dict[str, str]]] = None,
-    ) -> List[Task]:
+        tags: Optional[list[dict[str, str]]] = None,
+    ) -> list[Task]:
         cluster = self._get_cluster(cluster_str)
 
         task_definition = self.describe_task_definition(task_definition_str)
@@ -1523,7 +1523,7 @@ class EC2ContainerServiceBackend(BaseBackend):
             self.tasks[cluster.name][task.task_arn] = task
         return tasks
 
-    def describe_tasks(self, cluster_str: str, tasks: Optional[str]) -> List[Task]:
+    def describe_tasks(self, cluster_str: str, tasks: str | None) -> list[Task]:
         """
         Only include=TAGS is currently supported.
         """
@@ -1547,13 +1547,13 @@ class EC2ContainerServiceBackend(BaseBackend):
 
     def list_tasks(
         self,
-        cluster_str: Optional[str] = None,
-        container_instance: Optional[str] = None,
-        family: Optional[str] = None,
-        started_by: Optional[str] = None,
-        service_name: Optional[str] = None,
-        desiredStatus: Optional[str] = None,
-    ) -> List[Task]:
+        cluster_str: str | None = None,
+        container_instance: str | None = None,
+        family: str | None = None,
+        started_by: str | None = None,
+        service_name: str | None = None,
+        desiredStatus: str | None = None,
+    ) -> list[Task]:
         filtered_tasks = []
         for tasks in self.tasks.values():
             for task in tasks.values():
@@ -1638,16 +1638,16 @@ class EC2ContainerServiceBackend(BaseBackend):
         cluster_str: str,
         service_name: str,
         desired_count: int,
-        task_definition_str: Optional[str] = None,
-        load_balancers: Optional[List[Dict[str, Any]]] = None,
-        scheduling_strategy: Optional[List[Dict[str, Any]]] = None,
-        tags: Optional[List[Dict[str, str]]] = None,
-        deployment_controller: Optional[Dict[str, str]] = None,
-        launch_type: Optional[str] = None,
-        service_registries: Optional[List[Dict[str, Any]]] = None,
-        platform_version: Optional[str] = None,
+        task_definition_str: str | None = None,
+        load_balancers: Optional[list[dict[str, Any]]] = None,
+        scheduling_strategy: Optional[list[dict[str, Any]]] = None,
+        tags: Optional[list[dict[str, str]]] = None,
+        deployment_controller: Optional[dict[str, str]] = None,
+        launch_type: str | None = None,
+        service_registries: Optional[list[dict[str, Any]]] = None,
+        platform_version: str | None = None,
         propagate_tags: str = "NONE",
-        network_configuration: Optional[Dict[str, Dict[str, List[str]]]] = None,
+        network_configuration: Optional[dict[str, dict[str, list[str]]]] = None,
     ) -> Service:
         cluster = self._get_cluster(cluster_str)
 
@@ -1685,9 +1685,9 @@ class EC2ContainerServiceBackend(BaseBackend):
     def list_services(
         self,
         cluster_str: str,
-        scheduling_strategy: Optional[str] = None,
-        launch_type: Optional[str] = None,
-    ) -> List[str]:
+        scheduling_strategy: str | None = None,
+        launch_type: str | None = None,
+    ) -> list[str]:
         cluster = self._get_cluster(cluster_str)
         service_arns = []
         for key, service in self.services.items():
@@ -1708,8 +1708,8 @@ class EC2ContainerServiceBackend(BaseBackend):
         return sorted(service_arns)
 
     def describe_services(
-        self, cluster_str: str, service_names_or_arns: List[str]
-    ) -> Tuple[List[Service], List[Dict[str, str]]]:
+        self, cluster_str: str, service_names_or_arns: list[str]
+    ) -> tuple[list[Service], list[dict[str, str]]]:
         cluster = self._get_cluster(cluster_str)
 
         result = []
@@ -1728,7 +1728,7 @@ class EC2ContainerServiceBackend(BaseBackend):
 
         return result, failures
 
-    def update_service(self, service_properties: Dict[str, Any]) -> Service:
+    def update_service(self, service_properties: dict[str, Any]) -> Service:
         cluster_str = service_properties.pop("cluster", "default")
         task_definition_str = service_properties.pop("task_definition", None)
         cluster = self._get_cluster(cluster_str)
@@ -1800,7 +1800,7 @@ class EC2ContainerServiceBackend(BaseBackend):
         self.clusters[cluster_name].registered_container_instances_count += 1
         return container_instance
 
-    def list_container_instances(self, cluster_str: str) -> List[str]:
+    def list_container_instances(self, cluster_str: str) -> list[str]:
         cluster_name = cluster_str.split("/")[-1]
         container_instances_values = self.container_instances.get(
             cluster_name, {}
@@ -1811,8 +1811,8 @@ class EC2ContainerServiceBackend(BaseBackend):
         return sorted(container_instances)
 
     def describe_container_instances(
-        self, cluster_str: str, list_container_instance_ids: List[str]
-    ) -> Tuple[List[ContainerInstance], List[ContainerInstanceFailure]]:
+        self, cluster_str: str, list_container_instance_ids: list[str]
+    ) -> tuple[list[ContainerInstance], list[ContainerInstanceFailure]]:
         cluster = self._get_cluster(cluster_str)
 
         if not list_container_instance_ids:
@@ -1839,8 +1839,8 @@ class EC2ContainerServiceBackend(BaseBackend):
         return container_instance_objects, failures
 
     def update_container_instances_state(
-        self, cluster_str: str, list_container_instance_ids: List[str], status: str
-    ) -> Tuple[List[ContainerInstance], List[ContainerInstanceFailure]]:
+        self, cluster_str: str, list_container_instance_ids: list[str], status: str
+    ) -> tuple[list[ContainerInstance], list[ContainerInstanceFailure]]:
         cluster = self._get_cluster(cluster_str)
 
         status = status.upper()
@@ -1875,7 +1875,7 @@ class EC2ContainerServiceBackend(BaseBackend):
     def update_container_instance_resources(
         self,
         container_instance: ContainerInstance,
-        task_resources: Dict[str, Any],
+        task_resources: dict[str, Any],
         removing: bool = False,
     ) -> None:
         resource_multiplier = 1
@@ -1932,7 +1932,7 @@ class EC2ContainerServiceBackend(BaseBackend):
         pass
 
     def put_attributes(
-        self, cluster_name: str, attributes: Optional[List[Dict[str, Any]]] = None
+        self, cluster_name: str, attributes: Optional[list[dict[str, Any]]] = None
     ) -> None:
         cluster = self._get_cluster(cluster_name)
 
@@ -1952,9 +1952,9 @@ class EC2ContainerServiceBackend(BaseBackend):
         self,
         cluster_name: str,
         name: str,
-        value: Optional[str] = None,
-        target_id: Optional[str] = None,
-        target_type: Optional[str] = None,
+        value: str | None = None,
+        target_id: str | None = None,
+        target_type: str | None = None,
     ) -> None:
         if target_id is None and target_type is None:
             for instance in self.container_instances[cluster_name].values():
@@ -1987,9 +1987,9 @@ class EC2ContainerServiceBackend(BaseBackend):
     def list_attributes(
         self,
         target_type: str,
-        cluster_name: Optional[str] = None,
-        attr_name: Optional[str] = None,
-        attr_value: Optional[str] = None,
+        cluster_name: str | None = None,
+        attr_name: str | None = None,
+        attr_value: str | None = None,
     ) -> Any:
         """
         Pagination is not yet implemented
@@ -2025,7 +2025,7 @@ class EC2ContainerServiceBackend(BaseBackend):
         return filter(lambda x: all(f(x) for f in filters), all_attrs)  # type: ignore
 
     def delete_attributes(
-        self, cluster_name: str, attributes: Optional[List[Dict[str, Any]]] = None
+        self, cluster_name: str, attributes: Optional[list[dict[str, Any]]] = None
     ) -> None:
         cluster = self._get_cluster(cluster_name)
 
@@ -2047,9 +2047,9 @@ class EC2ContainerServiceBackend(BaseBackend):
         self,
         cluster_name: str,
         name: str,
-        value: Optional[str] = None,
-        target_id: Optional[str] = None,
-        target_type: Optional[str] = None,
+        value: str | None = None,
+        target_id: str | None = None,
+        target_type: str | None = None,
     ) -> None:
         if target_id is None and target_type is None:
             for instance in self.container_instances[cluster_name].values():
@@ -2083,7 +2083,7 @@ class EC2ContainerServiceBackend(BaseBackend):
                 )
 
     def list_task_definition_families(
-        self, family_prefix: Optional[str] = None
+        self, family_prefix: str | None = None
     ) -> Iterator[str]:
         """
         The Status and pagination parameters are not yet implemented
@@ -2095,7 +2095,7 @@ class EC2ContainerServiceBackend(BaseBackend):
             yield task_fam
 
     @staticmethod
-    def _parse_resource_arn(resource_arn: str) -> Dict[str, str]:
+    def _parse_resource_arn(resource_arn: str) -> dict[str, str]:
         regexes = [
             ARN_PARTITION_REGEX
             + ":ecs:(?P<region>[^:]+):(?P<account_id>[^:]+):(?P<service>[^:]+)/(?P<cluster_id>[^:]+)/(?P<service_id>[^:]+)/ecs-svc/(?P<id>.*)$",
@@ -2110,7 +2110,7 @@ class EC2ContainerServiceBackend(BaseBackend):
                 return match.groupdict()
         raise JsonRESTError("InvalidParameterException", "The ARN provided is invalid.")
 
-    def _get_resource(self, resource_arn: str, parsed_arn: Dict[str, str]) -> Any:
+    def _get_resource(self, resource_arn: str, parsed_arn: dict[str, str]) -> Any:
         if parsed_arn["service"] == "cluster":
             return self._get_cluster(parsed_arn["id"])
         if parsed_arn["service"] == "service":
@@ -2142,7 +2142,7 @@ class EC2ContainerServiceBackend(BaseBackend):
                     return task
         raise NotImplementedError()
 
-    def list_tags_for_resource(self, resource_arn: str) -> List[Dict[str, str]]:
+    def list_tags_for_resource(self, resource_arn: str) -> list[dict[str, str]]:
         """Currently implemented only for task definitions and services"""
         parsed_arn = self._parse_resource_arn(resource_arn)
         resource = self._get_resource(resource_arn, parsed_arn)
@@ -2153,14 +2153,14 @@ class EC2ContainerServiceBackend(BaseBackend):
         if definitions:
             return max(definitions.keys())
 
-    def tag_resource(self, resource_arn: str, tags: List[Dict[str, str]]) -> None:
+    def tag_resource(self, resource_arn: str, tags: list[dict[str, str]]) -> None:
         parsed_arn = self._parse_resource_arn(resource_arn)
         resource = self._get_resource(resource_arn, parsed_arn)
         resource.tags = self._merge_tags(resource.tags or [], tags)
 
     def _merge_tags(
-        self, existing_tags: List[Dict[str, str]], new_tags: List[Dict[str, str]]
-    ) -> List[Dict[str, str]]:
+        self, existing_tags: list[dict[str, str]], new_tags: list[dict[str, str]]
+    ) -> list[dict[str, str]]:
         merged_tags = new_tags
         new_keys = self._get_keys(new_tags)
         for existing_tag in existing_tags:
@@ -2169,10 +2169,10 @@ class EC2ContainerServiceBackend(BaseBackend):
         return merged_tags
 
     @staticmethod
-    def _get_keys(tags: List[Dict[str, str]]) -> List[str]:
+    def _get_keys(tags: list[dict[str, str]]) -> list[str]:
         return [tag["key"] for tag in tags]
 
-    def untag_resource(self, resource_arn: str, tag_keys: List[str]) -> None:
+    def untag_resource(self, resource_arn: str, tag_keys: list[str]) -> None:
         parsed_arn = self._parse_resource_arn(resource_arn)
         resource = self._get_resource(resource_arn, parsed_arn)
         resource.tags = [tag for tag in resource.tags if tag["key"] not in tag_keys]
@@ -2182,16 +2182,16 @@ class EC2ContainerServiceBackend(BaseBackend):
         service: str,
         cluster_str: str,
         task_definition: str,
-        external_id: Optional[str] = None,
-        network_configuration: Optional[Dict[str, Any]] = None,
-        load_balancers: Optional[List[Dict[str, Any]]] = None,
-        service_registries: Optional[List[Dict[str, Any]]] = None,
-        launch_type: Optional[str] = None,
-        capacity_provider_strategy: Optional[List[Dict[str, Any]]] = None,
-        platform_version: Optional[str] = None,
-        scale: Optional[Dict[str, Any]] = None,
-        client_token: Optional[str] = None,
-        tags: Optional[List[Dict[str, str]]] = None,
+        external_id: str | None = None,
+        network_configuration: Optional[dict[str, Any]] = None,
+        load_balancers: Optional[list[dict[str, Any]]] = None,
+        service_registries: Optional[list[dict[str, Any]]] = None,
+        launch_type: str | None = None,
+        capacity_provider_strategy: Optional[list[dict[str, Any]]] = None,
+        platform_version: str | None = None,
+        scale: Optional[dict[str, Any]] = None,
+        client_token: str | None = None,
+        tags: Optional[list[dict[str, str]]] = None,
     ) -> TaskSet:
         launch_type = launch_type if launch_type is not None else "EC2"
         if launch_type not in ["EC2", "FARGATE"]:
@@ -2254,8 +2254,8 @@ class EC2ContainerServiceBackend(BaseBackend):
         return task_set
 
     def describe_task_sets(
-        self, cluster_str: str, service: str, task_sets: Optional[List[str]] = None
-    ) -> List[TaskSet]:
+        self, cluster_str: str, service: str, task_sets: Optional[list[str]] = None
+    ) -> list[TaskSet]:
         task_sets = task_sets or []
 
         cluster_obj = self._get_cluster(cluster_str)
@@ -2308,7 +2308,7 @@ class EC2ContainerServiceBackend(BaseBackend):
         return deleted_task_set
 
     def update_task_set(
-        self, cluster: str, service: str, task_set: str, scale: Dict[str, Any]
+        self, cluster: str, service: str, task_set: str, scale: dict[str, Any]
     ) -> TaskSet:
         cluster_name = cluster.split("/")[-1]
         service_name = service.split("/")[-1]
@@ -2341,8 +2341,8 @@ class EC2ContainerServiceBackend(BaseBackend):
         return task_set_obj
 
     def list_account_settings(
-        self, name: Optional[str] = None, value: Optional[str] = None
-    ) -> List[AccountSetting]:
+        self, name: str | None = None, value: str | None = None
+    ) -> list[AccountSetting]:
         expected_names = [
             "serviceLongArnFormat",
             "taskLongArnFormat",

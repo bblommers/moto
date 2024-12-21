@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any
 
 from moto.core.exceptions import JsonRESTError
 
@@ -11,7 +11,7 @@ class SWFClientError(JsonRESTError):
 
 
 class SWFUnknownResourceFault(SWFClientError):
-    def __init__(self, resource_type: str, resource_name: Optional[str] = None):
+    def __init__(self, resource_type: str, resource_name: str | None = None):
         if resource_name:
             message = f"Unknown {resource_type}: {resource_name}"
         else:
@@ -83,7 +83,7 @@ class SWFValidationException(SWFClientError):
 
 
 class SWFDecisionValidationException(SWFClientError):
-    def __init__(self, problems: List[Dict[str, Any]]):
+    def __init__(self, problems: list[dict[str, Any]]):
         # messages
         messages = []
         for pb in problems:

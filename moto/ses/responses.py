@@ -1,5 +1,5 @@
 import base64
-from typing import Any, Dict, List
+from typing import Any
 
 from moto.core.responses import BaseResponse
 from moto.core.utils import utcnow
@@ -68,7 +68,7 @@ class EmailResponse(BaseResponse):
         body = self.querystring.get(bodydatakey)[0]  # type: ignore
         source = self.querystring.get("Source")[0]  # type: ignore
         subject = self.querystring.get("Message.Subject.Data")[0]  # type: ignore
-        destinations: Dict[str, List[str]] = {
+        destinations: dict[str, list[str]] = {
             "ToAddresses": [],
             "CcAddresses": [],
             "BccAddresses": [],
@@ -88,10 +88,10 @@ class EmailResponse(BaseResponse):
 
     def send_templated_email(self) -> str:
         source = self.querystring.get("Source")[0]  # type: ignore
-        template: List[str] = self.querystring.get("Template")  # type: ignore
-        template_data: List[str] = self.querystring.get("TemplateData")  # type: ignore
+        template: list[str] = self.querystring.get("Template")  # type: ignore
+        template_data: list[str] = self.querystring.get("TemplateData")  # type: ignore
 
-        destinations: Dict[str, List[str]] = {
+        destinations: dict[str, list[str]] = {
             "ToAddresses": [],
             "CcAddresses": [],
             "BccAddresses": [],
@@ -124,7 +124,7 @@ class EmailResponse(BaseResponse):
             )
             if self.querystring.get(destination_field) is None:
                 break
-            destination: Dict[str, List[str]] = {
+            destination: dict[str, list[str]] = {
                 "ToAddresses": [],
                 "CcAddresses": [],
                 "BccAddresses": [],
@@ -313,7 +313,7 @@ class EmailResponse(BaseResponse):
         rule_set = self.backend.describe_receipt_rule_set(rule_set_name)
 
         for i, rule in enumerate(rule_set):
-            formatted_rule: Dict[str, Any] = {}
+            formatted_rule: dict[str, Any] = {}
 
             for k, v in rule.items():
                 self._parse_param(k, v, formatted_rule)
@@ -330,7 +330,7 @@ class EmailResponse(BaseResponse):
 
         receipt_rule = self.backend.describe_receipt_rule(rule_set_name, rule_name)
 
-        rule: Dict[str, Any] = {}
+        rule: dict[str, Any] = {}
 
         for k, v in receipt_rule.items():
             self._parse_param(k, v, rule)

@@ -1,6 +1,6 @@
 import json
 import re
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Optional
 
 import yaml
 from yaml.parser import ParserError  # pylint:disable=c-extension-no-member
@@ -14,8 +14,8 @@ from .models import CloudFormationBackend, FakeStack, cloudformation_backends
 from .utils import get_stack_from_s3_url, yaml_tag_constructor
 
 
-def get_template_summary_response_from_template(template_body: str) -> Dict[str, Any]:
-    def get_resource_types(template_dict: Dict[str, Any]) -> List[Any]:
+def get_template_summary_response_from_template(template_body: str) -> dict[str, Any]:
+    def get_resource_types(template_dict: dict[str, Any]) -> list[Any]:
         resources = {}
         for key, value in template_dict.items():
             if key == "Resources":
@@ -58,8 +58,8 @@ class CloudFormationResponse(BaseResponse):
         )
 
     def _get_params_from_list(
-        self, parameters_list: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
+        self, parameters_list: list[dict[str, Any]]
+    ) -> dict[str, Any]:
         # Hack dict-comprehension
         return dict(
             [
@@ -69,8 +69,8 @@ class CloudFormationResponse(BaseResponse):
         )
 
     def _get_param_values(
-        self, parameters_list: List[Dict[str, str]], existing_params: Dict[str, str]
-    ) -> Dict[str, Any]:
+        self, parameters_list: list[dict[str, str]], existing_params: dict[str, str]
+    ) -> dict[str, Any]:
         result = {}
         for parameter in parameters_list:
             if parameter.keys() >= {"parameter_key", "parameter_value"}:
@@ -86,7 +86,7 @@ class CloudFormationResponse(BaseResponse):
                 raise MissingParameterError(parameter["parameter_key"])
         return result
 
-    def process_cfn_response(self) -> Tuple[int, Dict[str, int], str]:
+    def process_cfn_response(self) -> tuple[int, dict[str, int], str]:
         status = self._get_param("Status")
         if status == "SUCCESS":
             stack_id = self._get_param("StackId")
@@ -99,7 +99,7 @@ class CloudFormationResponse(BaseResponse):
 
         return 200, {"status": 200}, json.dumps("{}")
 
-    def create_stack(self) -> Union[str, Tuple[int, Dict[str, int], str]]:
+    def create_stack(self) -> str | tuple[int, dict[str, int], str]:
         stack_name = self._get_param("StackName")
         stack_body = self._get_param("TemplateBody")
         template_url = self._get_param("TemplateURL")
@@ -368,7 +368,7 @@ class CloudFormationResponse(BaseResponse):
 
     def _validate_different_update(
         self,
-        incoming_params: Optional[List[Dict[str, Any]]],
+        incoming_params: Optional[list[dict[str, Any]]],
         stack_body: str,
         old_stack: FakeStack,
     ) -> None:
@@ -408,7 +408,7 @@ class CloudFormationResponse(BaseResponse):
         # boto3 is supposed to let you clear the tags by passing an empty value, but the request body doesn't
         # end up containing anything we can use to differentiate between passing an empty value versus not
         # passing anything. so until that changes, moto won't be able to clear tags, only update them.
-        tags: Optional[Dict[str, str]] = dict(
+        tags: Optional[dict[str, str]] = dict(
             (item["key"], item["value"])
             for item in self._get_list_prefix("Tags.member")
         )

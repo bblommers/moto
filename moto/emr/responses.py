@@ -2,7 +2,7 @@ import json
 import re
 from datetime import datetime, timezone
 from functools import wraps
-from typing import Any, Callable, Dict, List, Pattern
+from typing import Any, Callable, Pattern
 
 from moto.core.responses import AWSServiceSpec, BaseResponse, xml_to_json_response
 from moto.core.utils import tags_from_query_string
@@ -51,7 +51,7 @@ def generate_boto3_response(
 class ElasticMapReduceResponse(BaseResponse):
     # EMR end points are inconsistent in the placement of region name
     # in the URL, so parsing it out needs to be handled differently
-    emr_region_regex: List[Pattern[str]] = [
+    emr_region_regex: list[Pattern[str]] = [
         re.compile(r"elasticmapreduce\.(.+?)\.amazonaws\.com"),
         re.compile(r"(.+?)\.elasticmapreduce\.amazonaws\.com"),
     ]
@@ -350,7 +350,7 @@ class ElasticMapReduceResponse(BaseResponse):
         if security_configuration:
             kwargs["security_configuration"] = security_configuration
 
-        kerberos_attributes: Dict[str, Any] = {}
+        kerberos_attributes: dict[str, Any] = {}
         kwargs["kerberos_attributes"] = kerberos_attributes
 
         realm = self._get_param("KerberosAttributes.Realm")
@@ -414,13 +414,13 @@ class ElasticMapReduceResponse(BaseResponse):
         template = self.response_template(RUN_JOB_FLOW_TEMPLATE)
         return template.render(cluster=cluster)
 
-    def _has_key_prefix(self, key_prefix: str, value: Dict[str, Any]) -> bool:
+    def _has_key_prefix(self, key_prefix: str, value: dict[str, Any]) -> bool:
         for key in value:  # iter on both keys and values
             if key.startswith(key_prefix):
                 return True
         return False
 
-    def _parse_ebs_configuration(self, instance_group: Dict[str, Any]) -> None:
+    def _parse_ebs_configuration(self, instance_group: dict[str, Any]) -> None:
         key_ebs_config = "ebs_configuration"
         ebs_configuration = dict()
         # Filter only EBS config keys
@@ -457,7 +457,7 @@ class ElasticMapReduceResponse(BaseResponse):
                 vol_iops = vlespc_keyfmt.format(iops)
                 vol_type = vlespc_keyfmt.format(volume_type)
 
-                ebs_block: Dict[str, Any] = dict()
+                ebs_block: dict[str, Any] = dict()
                 ebs_block[volume_specification] = dict()
                 if vol_size in ebs_configuration:
                     instance_group.pop(vol_size)

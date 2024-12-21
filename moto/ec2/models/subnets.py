@@ -1,7 +1,7 @@
 import ipaddress
 import itertools
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple
+from typing import TYPE_CHECKING, Any, Optional
 
 from moto.core.common_models import CloudFormationModel
 
@@ -36,7 +36,7 @@ class Subnet(TaggedEC2Resource, CloudFormationModel):
         subnet_id: str,
         vpc_id: str,
         cidr_block: str,
-        ipv6_cidr_block: Optional[str],
+        ipv6_cidr_block: str | None,
         availability_zone: Zone,
         default_for_az: str,
         map_public_ip_on_launch: str,
@@ -52,7 +52,7 @@ class Subnet(TaggedEC2Resource, CloudFormationModel):
         self.default_for_az = default_for_az
         self.map_public_ip_on_launch = map_public_ip_on_launch
         self.assign_ipv6_address_on_creation = assign_ipv6_address_on_creation
-        self.ipv6_cidr_block_associations: Dict[str, Dict[str, Any]] = {}
+        self.ipv6_cidr_block_associations: dict[str, dict[str, Any]] = {}
         if ipv6_cidr_block:
             self.attach_ipv6_cidr_block_associations(ipv6_cidr_block)
 
@@ -61,10 +61,10 @@ class Subnet(TaggedEC2Resource, CloudFormationModel):
         self.reserved_ips = [
             next(self._subnet_ip_generator) for _ in range(0, 3)
         ]  # Reserved by AWS
-        self._unused_ips: Set[str] = (
+        self._unused_ips: set[str] = (
             set()
         )  # if instance is destroyed hold IP here for reuse
-        self._subnet_ips: Dict[str, "Instance"] = {}
+        self._subnet_ips: dict[str, "Instance"] = {}
         self.state = "available"
 
         # Placeholder for response templates until Ipv6 support implemented.
@@ -114,7 +114,7 @@ class Subnet(TaggedEC2Resource, CloudFormationModel):
     def delete_from_cloudformation_json(  # type: ignore[misc]
         cls,
         resource_name: str,
-        cloudformation_json: Dict[str, Any],
+        cloudformation_json: dict[str, Any],
         account_id: str,
         region_name: str,
     ) -> None:
@@ -147,9 +147,7 @@ class Subnet(TaggedEC2Resource, CloudFormationModel):
     def physical_resource_id(self) -> str:
         return self.id
 
-    def get_filter_value(
-        self, filter_name: str, method_name: Optional[str] = None
-    ) -> Any:
+    def get_filter_value(self, filter_name: str, method_name: str | None = None) -> Any:
         """
         API Version 2014-10-01 defines the following filters for DescribeSubnets:
 
@@ -235,7 +233,7 @@ class Subnet(TaggedEC2Resource, CloudFormationModel):
 
     def attach_ipv6_cidr_block_associations(
         self, ipv6_cidr_block: str
-    ) -> Dict[str, str]:
+    ) -> dict[str, str]:
         association = {
             "associationId": random_subnet_ipv6_cidr_block_association_id(),
             "ipv6CidrBlock": ipv6_cidr_block,
@@ -244,7 +242,7 @@ class Subnet(TaggedEC2Resource, CloudFormationModel):
         self.ipv6_cidr_block_associations[association["associationId"]] = association
         return association
 
-    def detach_subnet_cidr_block(self, association_id: str) -> Dict[str, Any]:
+    def detach_subnet_cidr_block(self, association_id: str) -> dict[str, Any]:
         association = self.ipv6_cidr_block_associations.get(association_id)
         association["ipv6CidrBlockState"] = "disassociated"  # type: ignore[index]
         return association  # type: ignore[return-value]
@@ -294,8 +292,8 @@ class SubnetRouteTableAssociation(CloudFormationModel):
 class SubnetBackend:
     def __init__(self) -> None:
         # maps availability zone to dict of (subnet_id, subnet)
-        self.subnets: Dict[str, Dict[str, Subnet]] = defaultdict(dict)
-        self.subnet_associations: Dict[str, SubnetRouteTableAssociation] = {}
+        self.subnets: dict[str, dict[str, Subnet]] = defaultdict(dict)
+        self.subnet_associations: dict[str, SubnetRouteTableAssociation] = {}
 
     def get_subnet(self, subnet_id: str) -> Subnet:
         for subnets_per_zone in self.subnets.values():
@@ -316,10 +314,10 @@ class SubnetBackend:
         self,
         vpc_id: str,
         cidr_block: str,
-        ipv6_cidr_block: Optional[str] = None,
-        availability_zone: Optional[str] = None,
-        availability_zone_id: Optional[str] = None,
-        tags: Optional[Dict[str, Dict[str, str]]] = None,
+        ipv6_cidr_block: str | None = None,
+        availability_zone: str | None = None,
+        availability_zone_id: str | None = None,
+        tags: Optional[dict[str, dict[str, str]]] = None,
     ) -> Subnet:
         subnet_id = random_subnet_id()
         # Validate VPC exists and the supplied CIDR block is a subnet of the VPC's
@@ -411,8 +409,8 @@ class SubnetBackend:
         return subnet
 
     def describe_subnets(
-        self, subnet_ids: Optional[List[str]] = None, filters: Optional[Any] = None
-    ) -> List[Subnet]:
+        self, subnet_ids: Optional[list[str]] = None, filters: Optional[Any] = None
+    ) -> list[Subnet]:
         # Extract a list of all subnets
         matches = list(
             itertools.chain(*[x.copy().values() for x in self.subnets.copy().values()])
@@ -451,7 +449,7 @@ class SubnetBackend:
 
     def associate_subnet_cidr_block(
         self, subnet_id: str, ipv6_cidr_block: str
-    ) -> Dict[str, str]:
+    ) -> dict[str, str]:
         subnet = self.get_subnet(subnet_id)
         if not subnet:
             raise InvalidSubnetIdError(subnet_id)
@@ -460,7 +458,7 @@ class SubnetBackend:
 
     def disassociate_subnet_cidr_block(
         self, association_id: str
-    ) -> Tuple[str, Dict[str, str]]:
+    ) -> tuple[str, dict[str, str]]:
         subnet = self.get_subnet_from_ipv6_association(association_id)
         if not subnet:
             raise InvalidSubnetCidrBlockAssociationID(association_id)

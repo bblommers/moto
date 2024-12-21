@@ -17,7 +17,7 @@ from collections import defaultdict
 from datetime import datetime
 from gzip import GzipFile
 from sys import platform
-from typing import Any, Dict, Iterable, List, Optional, Tuple, TypedDict, Union
+from typing import Any, Iterable, Optional, TypedDict
 
 import requests.exceptions
 
@@ -115,7 +115,7 @@ class _VolumeRefCount:
 
 class _DockerDataVolumeContext:
     # {sha256: _VolumeRefCount}
-    _data_vol_map: Dict[str, _VolumeRefCount] = defaultdict(
+    _data_vol_map: dict[str, _VolumeRefCount] = defaultdict(
         lambda: _VolumeRefCount(0, None)
     )
     _lock = threading.Lock()
@@ -180,14 +180,14 @@ class _DockerDataVolumeContext:
 
 
 class _DockerDataVolumeLayerContext:
-    _data_vol_map: Dict[str, _VolumeRefCount] = defaultdict(
+    _data_vol_map: dict[str, _VolumeRefCount] = defaultdict(
         lambda: _VolumeRefCount(0, None)
     )
     _lock = threading.Lock()
 
     def __init__(self, lambda_func: "LambdaFunction"):
         self._lambda_func = lambda_func
-        self._layers: List[LayerDataType] = self._lambda_func.layers
+        self._layers: list[LayerDataType] = self._lambda_func.layers
         self._vol_ref: Optional[_VolumeRefCount] = None
 
     @property
@@ -264,7 +264,7 @@ class _DockerDataVolumeLayerContext:
                     raise  # multiple processes trying to use same volume?
 
 
-def _zipfile_content(zipfile_content: Union[str, bytes]) -> Tuple[bytes, int, str, str]:
+def _zipfile_content(zipfile_content: str | bytes) -> tuple[bytes, int, str, str]:
     try:
         to_unzip_code = base64.b64decode(bytes(zipfile_content, "utf-8"))  # type: ignore[arg-type]
     except Exception:
@@ -276,7 +276,7 @@ def _zipfile_content(zipfile_content: Union[str, bytes]) -> Tuple[bytes, int, st
     return to_unzip_code, len(to_unzip_code), base64ed_sha, sha_hex_digest
 
 
-def _s3_content(key: Any) -> Tuple[bytes, int, str, str]:
+def _s3_content(key: Any) -> tuple[bytes, int, str, str]:
     sha_code = hashlib.sha256(key.value)
     base64ed_sha = base64.b64encode(sha_code.digest()).decode("utf-8")
     sha_hex_digest = sha_code.hexdigest()
@@ -284,7 +284,7 @@ def _s3_content(key: Any) -> Tuple[bytes, int, str, str]:
 
 
 def _validate_s3_bucket_and_key(
-    account_id: str, partition: str, data: Dict[str, Any]
+    account_id: str, partition: str, data: dict[str, Any]
 ) -> Optional[FakeKey]:
     key = None
     try:
@@ -307,7 +307,7 @@ def _validate_s3_bucket_and_key(
 
 
 class EventInvokeConfig:
-    def __init__(self, arn: str, last_modified: str, config: Dict[str, Any]) -> None:
+    def __init__(self, arn: str, last_modified: str, config: dict[str, Any]) -> None:
         self.config = config
         self.validate_max()
         self.validate()
@@ -366,19 +366,19 @@ class EventInvokeConfig:
                         f"Member must satisfy regular expression pattern: {regex}",
                     )
 
-    def response(self) -> Dict[str, Any]:
+    def response(self) -> dict[str, Any]:
         response = {"FunctionArn": self.arn, "LastModified": self.last_modified}
         response.update(self.config)
         return response
 
 
 class ImageConfig:
-    def __init__(self, config: Dict[str, Any]) -> None:
+    def __init__(self, config: dict[str, Any]) -> None:
         self.cmd = config.get("Command", [])
         self.entry_point = config.get("EntryPoint", [])
         self.working_directory = config.get("WorkingDirectory", None)
 
-    def response(self) -> Dict[str, Any]:
+    def response(self) -> dict[str, Any]:
         content = {
             "Command": self.cmd,
             "EntryPoint": self.entry_point,
@@ -404,7 +404,7 @@ class Permission(CloudFormationModel):
     def create_from_cloudformation_json(  # type: ignore[misc]
         cls,
         resource_name: str,
-        cloudformation_json: Dict[str, Any],
+        cloudformation_json: dict[str, Any],
         account_id: str,
         region_name: str,
         **kwargs: Any,
@@ -417,7 +417,7 @@ class Permission(CloudFormationModel):
 
 
 class LayerVersion(CloudFormationModel):
-    def __init__(self, spec: Dict[str, Any], account_id: str, region: str):
+    def __init__(self, spec: dict[str, Any], account_id: str, region: str):
         # required
         self.account_id = account_id
         self.region = region
@@ -474,7 +474,7 @@ class LayerVersion(CloudFormationModel):
         self._layer = layer
         self.version = version
 
-    def get_layer_version(self) -> Dict[str, Any]:
+    def get_layer_version(self) -> dict[str, Any]:
         return {
             "Content": {
                 "Location": "s3://",
@@ -503,7 +503,7 @@ class LayerVersion(CloudFormationModel):
     def create_from_cloudformation_json(  # type: ignore[misc]
         cls,
         resource_name: str,
-        cloudformation_json: Dict[str, Any],
+        cloudformation_json: dict[str, Any],
         account_id: str,
         region_name: str,
         **kwargs: Any,
@@ -545,9 +545,9 @@ class LambdaAlias(BaseModel):
 
     def update(
         self,
-        description: Optional[str],
-        function_version: Optional[str],
-        routing_config: Optional[str],
+        description: str | None,
+        function_version: str | None,
+        routing_config: str | None,
     ) -> None:
         if description is not None:
             self.description = description
@@ -556,7 +556,7 @@ class LambdaAlias(BaseModel):
         if routing_config is not None:
             self.routing_config = routing_config
 
-    def to_json(self) -> Dict[str, Any]:
+    def to_json(self) -> dict[str, Any]:
         return {
             "AliasArn": self.arn,
             "Description": self.description,
@@ -576,7 +576,7 @@ class Layer(object):
             self.region, layer_version.account_id, self.name
         )
         self._latest_version = 0
-        self.layer_versions: Dict[str, LayerVersion] = {}
+        self.layer_versions: dict[str, LayerVersion] = {}
 
     def attach_version(self, layer_version: LayerVersion) -> None:
         self._latest_version += 1
@@ -586,7 +586,7 @@ class Layer(object):
     def delete_version(self, layer_version: str) -> None:
         self.layer_versions.pop(str(layer_version), None)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         if not self.layer_versions:
             return {}
 
@@ -604,9 +604,9 @@ class LambdaFunction(CloudFormationModel, DockerModel):
     def __init__(
         self,
         account_id: str,
-        spec: Dict[str, Any],
+        spec: dict[str, Any],
         region: str,
-        version: Union[str, int] = 1,
+        version: str | int = 1,
     ):
         DockerModel.__init__(self)
         # required
@@ -629,19 +629,19 @@ class LambdaFunction(CloudFormationModel, DockerModel):
         self.ephemeral_storage: str
         self.code_digest: str
         self.code_bytes: bytes
-        self.event_invoke_config: List[EventInvokeConfig] = []
+        self.event_invoke_config: list[EventInvokeConfig] = []
 
         self.description = spec.get("Description", "")
         self.memory_size = spec.get("MemorySize", 128)
         self.package_type = spec.get("PackageType", "Zip")
         self.publish = spec.get("Publish", False)  # this is ignored currently
         self.timeout = spec.get("Timeout", 3)
-        self.layers: List[LayerDataType] = self._get_layers_data(spec.get("Layers", []))
+        self.layers: list[LayerDataType] = self._get_layers_data(spec.get("Layers", []))
         self.signing_profile_version_arn = spec.get("SigningProfileVersionArn")
         self.signing_job_arn = spec.get("SigningJobArn")
         self.code_signing_config_arn = spec.get("CodeSigningConfigArn")
         self.tracing_config = spec.get("TracingConfig") or {"Mode": "PassThrough"}
-        self.architectures: List[str] = spec.get("Architectures", ["x86_64"])
+        self.architectures: list[str] = spec.get("Architectures", ["x86_64"])
         self.image_config: ImageConfig = ImageConfig(spec.get("ImageConfig", {}))
         _es = spec.get("EphemeralStorage")
         if _es:
@@ -667,7 +667,7 @@ class LambdaFunction(CloudFormationModel, DockerModel):
 
         self.tags = spec.get("Tags") or dict()
 
-    def __getstate__(self) -> Dict[str, Any]:
+    def __getstate__(self) -> dict[str, Any]:
         return {
             k: v
             for (k, v) in self.__dict__.items()
@@ -682,11 +682,11 @@ class LambdaFunction(CloudFormationModel, DockerModel):
         self.last_modified = iso_8601_datetime_with_nanoseconds()
 
     @property
-    def architectures(self) -> List[str]:
+    def architectures(self) -> list[str]:
         return self._architectures
 
     @architectures.setter
-    def architectures(self, architectures: List[str]) -> None:
+    def architectures(self, architectures: list[str]) -> None:
         if (
             len(architectures) > 1
             or not architectures
@@ -717,7 +717,7 @@ class LambdaFunction(CloudFormationModel, DockerModel):
         self._ephemeral_storage = ephemeral_storage
 
     @property
-    def vpc_config(self) -> Optional[Dict[str, Any]]:  # type: ignore[misc]
+    def vpc_config(self) -> Optional[dict[str, Any]]:  # type: ignore[misc]
         if not self._vpc_config:
             return None
         config = self._vpc_config.copy()
@@ -732,7 +732,7 @@ class LambdaFunction(CloudFormationModel, DockerModel):
     def __repr__(self) -> str:
         return json.dumps(self.get_configuration())
 
-    def _get_layers_data(self, layers_versions_arns: List[str]) -> List[LayerDataType]:
+    def _get_layers_data(self, layers_versions_arns: list[str]) -> list[LayerDataType]:
         backend = lambda_backends[self.account_id][self.region]
         layer_versions = [
             backend.layers_versions_by_arn(layer_version)
@@ -746,13 +746,13 @@ class LambdaFunction(CloudFormationModel, DockerModel):
             {"Arn": lv.arn, "CodeSize": lv.code_size} for lv in layer_versions if lv
         ]
 
-    def get_function_code_signing_config(self) -> Dict[str, Any]:
+    def get_function_code_signing_config(self) -> dict[str, Any]:
         return {
             "CodeSigningConfigArn": self.code_signing_config_arn,
             "FunctionName": self.function_name,
         }
 
-    def get_configuration(self, on_create: bool = False) -> Dict[str, Any]:
+    def get_configuration(self, on_create: bool = False) -> dict[str, Any]:
         config = {
             "CodeSha256": self.code_sha_256,
             "CodeSize": self.code_size,
@@ -791,7 +791,7 @@ class LambdaFunction(CloudFormationModel, DockerModel):
 
         return config
 
-    def get_code(self) -> Dict[str, Any]:
+    def get_code(self) -> dict[str, Any]:
         resp = {"Configuration": self.get_configuration()}
         if "S3Key" in self.code:
             resp["Code"] = {
@@ -818,7 +818,7 @@ class LambdaFunction(CloudFormationModel, DockerModel):
             )
         return resp
 
-    def update_configuration(self, config_updates: Dict[str, Any]) -> Dict[str, Any]:
+    def update_configuration(self, config_updates: dict[str, Any]) -> dict[str, Any]:
         for key, value in config_updates.items():
             if key == "Description":
                 self.description = value
@@ -843,7 +843,7 @@ class LambdaFunction(CloudFormationModel, DockerModel):
 
         return self.get_configuration()
 
-    def _set_function_code(self, updated_spec: Dict[str, Any]) -> None:
+    def _set_function_code(self, updated_spec: dict[str, Any]) -> None:
         from_update = updated_spec is not self.code
 
         # "DryRun" is only used for UpdateFunctionCode
@@ -936,7 +936,7 @@ class LambdaFunction(CloudFormationModel, DockerModel):
             if from_update:
                 self.code["ImageUri"] = updated_spec["ImageUri"]
 
-    def update_function_code(self, updated_spec: Dict[str, Any]) -> Dict[str, Any]:
+    def update_function_code(self, updated_spec: dict[str, Any]) -> dict[str, Any]:
         self._set_function_code(updated_spec)
         self.code_or_config_updated = True
         return self.get_configuration()
@@ -948,7 +948,7 @@ class LambdaFunction(CloudFormationModel, DockerModel):
         except Exception:
             return s
 
-    def _invoke_lambda(self, event: Optional[str] = None) -> Tuple[str, bool, str]:
+    def _invoke_lambda(self, event: str | None = None) -> tuple[str, bool, str]:
         import docker
         import docker.errors
 
@@ -993,7 +993,7 @@ class LambdaFunction(CloudFormationModel, DockerModel):
                 self
             ) as data_vol, _DockerDataVolumeLayerContext(self) as layer_context:
                 try:
-                    run_kwargs: Dict[str, Any] = dict()
+                    run_kwargs: dict[str, Any] = dict()
                     network_name = settings.moto_network_name()
                     network_mode = settings.moto_network_mode()
                     if network_name:
@@ -1106,7 +1106,7 @@ class LambdaFunction(CloudFormationModel, DockerModel):
 
     def invoke(
         self, body: str, request_headers: Any, response_headers: Any
-    ) -> Union[str, bytes]:
+    ) -> str | bytes:
         if body:
             body = json.loads(body)
         else:
@@ -1138,7 +1138,7 @@ class LambdaFunction(CloudFormationModel, DockerModel):
     def create_from_cloudformation_json(  # type: ignore[misc]
         cls,
         resource_name: str,
-        cloudformation_json: Dict[str, Any],
+        cloudformation_json: dict[str, Any],
         account_id: str,
         region_name: str,
         **kwargs: Any,
@@ -1197,7 +1197,7 @@ class LambdaFunction(CloudFormationModel, DockerModel):
         cls,
         original_resource: "LambdaFunction",
         new_resource_name: str,
-        cloudformation_json: Dict[str, Any],
+        cloudformation_json: dict[str, Any],
         account_id: str,
         region_name: str,
     ) -> "LambdaFunction":
@@ -1223,7 +1223,7 @@ class LambdaFunction(CloudFormationModel, DockerModel):
     def delete(self, account_id: str, region: str) -> None:
         lambda_backends[account_id][region].delete_function(self.function_name)
 
-    def create_url_config(self, config: Dict[str, Any]) -> "FunctionUrlConfig":
+    def create_url_config(self, config: dict[str, Any]) -> "FunctionUrlConfig":
         self.url_config = FunctionUrlConfig(function=self, config=config)
         return self.url_config
 
@@ -1235,20 +1235,20 @@ class LambdaFunction(CloudFormationModel, DockerModel):
             raise GenericResourcNotFound()
         return self.url_config
 
-    def update_url_config(self, config: Dict[str, Any]) -> "FunctionUrlConfig":
+    def update_url_config(self, config: dict[str, Any]) -> "FunctionUrlConfig":
         self.url_config.update(config)  # type: ignore[union-attr]
         return self.url_config  # type: ignore[return-value]
 
 
 class FunctionUrlConfig:
-    def __init__(self, function: LambdaFunction, config: Dict[str, Any]):
+    def __init__(self, function: LambdaFunction, config: dict[str, Any]):
         self.function = function
         self.config = config
         self.url = f"https://{random.uuid4().hex}.lambda-url.{function.region}.on.aws"
         self.created = utcnow().strftime("%Y-%m-%dT%H:%M:%S.000+0000")
         self.last_modified = self.created
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "FunctionUrl": self.url,
             "FunctionArn": self.function.function_arn,
@@ -1259,7 +1259,7 @@ class FunctionUrlConfig:
             "InvokeMode": self.config.get("InvokeMode") or "Buffered",
         }
 
-    def update(self, new_config: Dict[str, Any]) -> None:
+    def update(self, new_config: dict[str, Any]) -> None:
         if new_config.get("Cors"):
             self.config["Cors"] = new_config["Cors"]
         if new_config.get("AuthType"):
@@ -1268,7 +1268,7 @@ class FunctionUrlConfig:
 
 
 class EventSourceMapping(CloudFormationModel):
-    def __init__(self, spec: Dict[str, Any]):
+    def __init__(self, spec: dict[str, Any]):
         # required
         self.function_name = spec["FunctionName"]
         self.event_source_arn = spec["EventSourceArn"]
@@ -1328,7 +1328,7 @@ class EventSourceMapping(CloudFormationModel):
         else:
             self._batch_size = int(batch_size)
 
-    def get_configuration(self) -> Dict[str, Any]:
+    def get_configuration(self) -> dict[str, Any]:
         return {
             "UUID": self.uuid,
             "BatchSize": self.batch_size,
@@ -1354,7 +1354,7 @@ class EventSourceMapping(CloudFormationModel):
     def create_from_cloudformation_json(  # type: ignore[misc]
         cls,
         resource_name: str,
-        cloudformation_json: Dict[str, Any],
+        cloudformation_json: dict[str, Any],
         account_id: str,
         region_name: str,
         **kwargs: Any,
@@ -1368,7 +1368,7 @@ class EventSourceMapping(CloudFormationModel):
         cls,
         original_resource: Any,
         new_resource_name: str,
-        cloudformation_json: Dict[str, Any],
+        cloudformation_json: dict[str, Any],
         account_id: str,
         region_name: str,
     ) -> "EventSourceMapping":
@@ -1381,7 +1381,7 @@ class EventSourceMapping(CloudFormationModel):
     def delete_from_cloudformation_json(  # type: ignore[misc]
         cls,
         resource_name: str,
-        cloudformation_json: Dict[str, Any],
+        cloudformation_json: dict[str, Any],
         account_id: str,
         region_name: str,
     ) -> None:
@@ -1402,7 +1402,7 @@ class EventSourceMapping(CloudFormationModel):
 
 
 class LambdaVersion(CloudFormationModel):
-    def __init__(self, spec: Dict[str, Any]):
+    def __init__(self, spec: dict[str, Any]):
         self.version = spec["Version"]
 
     def __repr__(self) -> str:
@@ -1417,7 +1417,7 @@ class LambdaVersion(CloudFormationModel):
     def create_from_cloudformation_json(  # type: ignore[misc]
         cls,
         resource_name: str,
-        cloudformation_json: Dict[str, Any],
+        cloudformation_json: dict[str, Any],
         account_id: str,
         region_name: str,
         **kwargs: Any,
@@ -1432,7 +1432,7 @@ class LambdaVersion(CloudFormationModel):
 class LambdaStorage(object):
     def __init__(self, region_name: str, account_id: str):
         # Format 'func_name' {'versions': []}
-        self._functions: Dict[str, Any] = {}
+        self._functions: dict[str, Any] = {}
         self._arns: weakref.WeakValueDictionary[str, LambdaFunction] = (
             weakref.WeakValueDictionary()
         )
@@ -1441,7 +1441,7 @@ class LambdaStorage(object):
         self.partition = get_partition(region_name)
 
         # function-arn -> alias -> LambdaAlias
-        self._aliases: Dict[str, Dict[str, LambdaAlias]] = defaultdict(lambda: {})
+        self._aliases: dict[str, dict[str, LambdaAlias]] = defaultdict(lambda: {})
 
     def _get_latest(self, name: str) -> LambdaFunction:
         return self._functions[name]["latest"]
@@ -1453,7 +1453,7 @@ class LambdaStorage(object):
 
         return None
 
-    def _get_function_aliases(self, function_name: str) -> Dict[str, LambdaAlias]:
+    def _get_function_aliases(self, function_name: str) -> dict[str, LambdaAlias]:
         fn = self.get_function_by_name_or_arn_with_qualifier(function_name)
         # Split ARN to retrieve an ARN without a qualifier present
         [arn, _, _] = self.split_function_arn(fn.function_arn)
@@ -1531,7 +1531,7 @@ class LambdaStorage(object):
         return self._get_latest(name)
 
     def get_function_by_name_with_qualifier(
-        self, name: str, qualifier: Optional[str] = None
+        self, name: str, qualifier: str | None = None
     ) -> LambdaFunction:
         """
         Get function by name with an optional qualifier
@@ -1592,7 +1592,7 @@ class LambdaStorage(object):
         [arn_without_qualifier, _, _] = self.split_function_arn(arn)
         return self._arns.get(arn_without_qualifier, None)
 
-    def split_function_arn(self, arn: str) -> Tuple[str, str, Optional[str]]:
+    def split_function_arn(self, arn: str) -> tuple[str, str, str | None]:
         """
         Handy utility to parse an ARN into:
         - ARN without qualifier
@@ -1630,7 +1630,7 @@ class LambdaStorage(object):
             return self.get_function_by_name_forbid_qualifier(name_or_arn)
 
     def get_function_by_name_or_arn_with_qualifier(
-        self, name_or_arn: str, qualifier: Optional[str] = None
+        self, name_or_arn: str, qualifier: str | None = None
     ) -> LambdaFunction:
         """
         Get function by name or arn with an optional qualifier
@@ -1646,7 +1646,7 @@ class LambdaStorage(object):
             return self.get_function_by_name_with_qualifier(name_or_arn, qualifier)
 
     def construct_unknown_function_exception(
-        self, name_or_arn: str, qualifier: Optional[str] = None
+        self, name_or_arn: str, qualifier: str | None = None
     ) -> UnknownFunctionException:
         if re.match(ARN_PARTITION_REGEX, name_or_arn):
             arn = name_or_arn
@@ -1708,7 +1708,7 @@ class LambdaStorage(object):
         self._arns[fn.function_arn] = fn
         return fn
 
-    def del_function(self, name_or_arn: str, qualifier: Optional[str] = None) -> None:
+    def del_function(self, name_or_arn: str, qualifier: str | None = None) -> None:
         # Qualifier may be explicitly passed or part of function name or ARN, extract it here
         if re.match(ARN_PARTITION_REGEX, name_or_arn):
             # Extract from ARN
@@ -1775,7 +1775,7 @@ class LambdaStorage(object):
 
 class LayerStorage(object):
     def __init__(self) -> None:
-        self._layers: Dict[str, Layer] = {}
+        self._layers: dict[str, Layer] = {}
         self._arns: weakref.WeakValueDictionary[str, LambdaFunction] = (
             weakref.WeakValueDictionary()
         )
@@ -1796,7 +1796,7 @@ class LayerStorage(object):
             self._layers[layer_version.name] = Layer(layer_version)
         self._layers[layer_version.name].attach_version(layer_version)
 
-    def list_layers(self) -> Iterable[Dict[str, Any]]:
+    def list_layers(self) -> Iterable[dict[str, Any]]:
         return [
             layer.to_dict() for layer in self._layers.values() if layer.layer_versions
         ]
@@ -1812,7 +1812,7 @@ class LayerStorage(object):
                 return lv
         raise UnknownLayerException()
 
-    def get_layer_versions(self, layer_name: str) -> List[LayerVersion]:
+    def get_layer_versions(self, layer_name: str) -> list[LayerVersion]:
         if layer_name in self._layers:
             return list(iter(self._layers[layer_name].layer_versions.values()))
         return []
@@ -1909,7 +1909,7 @@ class LambdaBackend(BaseBackend):
     def __init__(self, region_name: str, account_id: str):
         super().__init__(region_name, account_id)
         self._lambdas = LambdaStorage(region_name=region_name, account_id=account_id)
-        self._event_source_mappings: Dict[str, EventSourceMapping] = {}
+        self._event_source_mappings: dict[str, EventSourceMapping] = {}
         self._layers = LayerStorage()
 
     def create_alias(
@@ -1945,7 +1945,7 @@ class LambdaBackend(BaseBackend):
             name, function_name, function_version, description, routing_config
         )
 
-    def create_function(self, spec: Dict[str, Any]) -> LambdaFunction:
+    def create_function(self, spec: dict[str, Any]) -> LambdaFunction:
         """
         The Code.ImageUri is not validated by default. Set environment variable MOTO_LAMBDA_STUB_ECR=false if you want to validate the image exists in our mocked ECR.
         """
@@ -1971,7 +1971,7 @@ class LambdaBackend(BaseBackend):
         return fn
 
     def create_function_url_config(
-        self, name_or_arn: str, config: Dict[str, Any]
+        self, name_or_arn: str, config: dict[str, Any]
     ) -> FunctionUrlConfig:
         """
         The Qualifier-parameter is not yet implemented.
@@ -2003,7 +2003,7 @@ class LambdaBackend(BaseBackend):
         return function.get_url_config()
 
     def update_function_url_config(
-        self, name_or_arn: str, config: Dict[str, Any]
+        self, name_or_arn: str, config: dict[str, Any]
     ) -> FunctionUrlConfig:
         """
         The Qualifier-parameter is not yet implemented
@@ -2013,7 +2013,7 @@ class LambdaBackend(BaseBackend):
         )
         return function.update_url_config(config)
 
-    def create_event_source_mapping(self, spec: Dict[str, Any]) -> EventSourceMapping:
+    def create_event_source_mapping(self, spec: dict[str, Any]) -> EventSourceMapping:
         required = ["EventSourceArn", "FunctionName"]
         for param in required:
             if not spec.get(param):
@@ -2067,7 +2067,7 @@ class LambdaBackend(BaseBackend):
 
         raise RESTError("ResourceNotFoundException", "Invalid EventSourceArn")
 
-    def publish_layer_version(self, spec: Dict[str, Any]) -> LayerVersion:
+    def publish_layer_version(self, spec: dict[str, Any]) -> LayerVersion:
         required = ["LayerName", "Content"]
         for param in required:
             if not spec.get(param):
@@ -2078,7 +2078,7 @@ class LambdaBackend(BaseBackend):
         self._layers.put_layer_version(layer_version)
         return layer_version
 
-    def list_layers(self) -> Iterable[Dict[str, Any]]:
+    def list_layers(self) -> Iterable[dict[str, Any]]:
         return self._layers.list_layers()
 
     def delete_layer_version(self, layer_name: str, layer_version: str) -> None:
@@ -2099,7 +2099,7 @@ class LambdaBackend(BaseBackend):
         return self._lambdas.publish_version(function_name, description)
 
     def get_function(
-        self, function_name_or_arn: str, qualifier: Optional[str] = None
+        self, function_name_or_arn: str, qualifier: str | None = None
     ) -> LambdaFunction:
         return self._lambdas.get_function_by_name_or_arn_with_qualifier(
             function_name_or_arn, qualifier
@@ -2118,7 +2118,7 @@ class LambdaBackend(BaseBackend):
         return self._event_source_mappings.pop(uuid, None)
 
     def update_event_source_mapping(
-        self, uuid: str, spec: Dict[str, Any]
+        self, uuid: str, spec: dict[str, Any]
     ) -> Optional[EventSourceMapping]:
         esm = self.get_event_source_mapping(uuid)
         if not esm:
@@ -2151,13 +2151,11 @@ class LambdaBackend(BaseBackend):
     def get_function_by_arn(self, function_arn: str) -> Optional[LambdaFunction]:
         return self._lambdas.get_arn(function_arn)
 
-    def delete_function(
-        self, function_name: str, qualifier: Optional[str] = None
-    ) -> None:
+    def delete_function(self, function_name: str, qualifier: str | None = None) -> None:
         self._lambdas.del_function(function_name, qualifier)
 
     def list_functions(
-        self, func_version: Optional[str] = None
+        self, func_version: str | None = None
     ) -> Iterable[LambdaFunction]:
         if func_version == "ALL":
             return self._lambdas.all()
@@ -2203,8 +2201,8 @@ class LambdaBackend(BaseBackend):
                 }
             )
 
-        request_headers: Dict[str, Any] = {}
-        response_headers: Dict[str, Any] = {}
+        request_headers: dict[str, Any] = {}
+        response_headers: dict[str, Any] = {}
         self.invoke(
             function_name=function_arn,
             qualifier=None,
@@ -2252,8 +2250,8 @@ class LambdaBackend(BaseBackend):
         self,
         function_name: str,
         message: str,
-        subject: Optional[str] = None,
-        qualifier: Optional[str] = None,
+        subject: str | None = None,
+        qualifier: str | None = None,
     ) -> None:
         event = {
             "Records": [
@@ -2286,8 +2284,8 @@ class LambdaBackend(BaseBackend):
         func.invoke(json.dumps(event), {}, {})
 
     def send_dynamodb_items(
-        self, function_arn: str, items: List[Any], source: str
-    ) -> Union[str, bytes]:
+        self, function_arn: str, items: list[Any], source: str
+    ) -> str | bytes:
         event = {
             "Records": [
                 {
@@ -2332,21 +2330,21 @@ class LambdaBackend(BaseBackend):
         func = self._lambdas.get_arn(function_arn)
         func.invoke(json.dumps(event), {}, {})  # type: ignore[union-attr]
 
-    def list_tags(self, resource: str) -> Dict[str, str]:
+    def list_tags(self, resource: str) -> dict[str, str]:
         return self._lambdas.get_function_by_name_or_arn_with_qualifier(resource).tags
 
-    def tag_resource(self, resource: str, tags: Dict[str, str]) -> None:
+    def tag_resource(self, resource: str, tags: dict[str, str]) -> None:
         fn = self._lambdas.get_function_by_name_or_arn_with_qualifier(resource)
         fn.tags.update(tags)
 
-    def untag_resource(self, resource: str, tagKeys: List[str]) -> None:
+    def untag_resource(self, resource: str, tagKeys: list[str]) -> None:
         fn = self._lambdas.get_function_by_name_or_arn_with_qualifier(resource)
         for key in tagKeys:
             fn.tags.pop(key, None)
 
     def add_permission(
         self, function_name: str, qualifier: str, raw: str
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         fn = self.get_function(function_name, qualifier)
         return fn.policy.add_statement(raw, qualifier)
 
@@ -2356,19 +2354,19 @@ class LambdaBackend(BaseBackend):
         fn = self.get_function(function_name)
         fn.policy.del_statement(sid, revision)
 
-    def get_function_code_signing_config(self, function_name: str) -> Dict[str, Any]:
+    def get_function_code_signing_config(self, function_name: str) -> dict[str, Any]:
         fn = self.get_function(function_name)
         return fn.get_function_code_signing_config()
 
-    def get_policy(self, function_name: str, qualifier: Optional[str] = None) -> str:
+    def get_policy(self, function_name: str, qualifier: str | None = None) -> str:
         fn = self._lambdas.get_function_by_name_or_arn_with_qualifier(
             function_name, qualifier
         )
         return fn.policy.wire_format()
 
     def update_function_code(
-        self, function_name: str, qualifier: str, body: Dict[str, Any]
-    ) -> Optional[Dict[str, Any]]:
+        self, function_name: str, qualifier: str, body: dict[str, Any]
+    ) -> Optional[dict[str, Any]]:
         fn: LambdaFunction = self.get_function(function_name, qualifier)
         fn.update_function_code(body)
 
@@ -2378,8 +2376,8 @@ class LambdaBackend(BaseBackend):
         return fn.update_function_code(body)
 
     def update_function_configuration(
-        self, function_name: str, qualifier: str, body: Dict[str, Any]
-    ) -> Optional[Dict[str, Any]]:
+        self, function_name: str, qualifier: str, body: dict[str, Any]
+    ) -> Optional[dict[str, Any]]:
         fn = self.get_function(function_name, qualifier)
 
         return fn.update_configuration(body)
@@ -2387,11 +2385,11 @@ class LambdaBackend(BaseBackend):
     def invoke(
         self,
         function_name: str,
-        qualifier: Optional[str],
+        qualifier: str | None,
         body: Any,
         headers: Any,
         response_headers: Any,
-    ) -> Optional[Union[str, bytes]]:
+    ) -> Optional[str | bytes]:
         """
         Invoking a Function with PackageType=Image is not yet supported.
 
@@ -2436,7 +2434,7 @@ class LambdaBackend(BaseBackend):
         variable prior to testing.
         """
 
-        quota: Optional[str] = os.environ.get("MOTO_LAMBDA_CONCURRENCY_QUOTA")
+        quota: str | None = os.environ.get("MOTO_LAMBDA_CONCURRENCY_QUOTA")
         if quota is not None:
             # Enforce concurrency limits as described above
             available = int(quota) - int(reserved_concurrency)
@@ -2452,7 +2450,7 @@ class LambdaBackend(BaseBackend):
         fn.reserved_concurrency = reserved_concurrency
         return fn.reserved_concurrency
 
-    def delete_function_concurrency(self, function_name: str) -> Optional[str]:
+    def delete_function_concurrency(self, function_name: str) -> str | None:
         fn = self.get_function(function_name)
         fn.reserved_concurrency = None
         return fn.reserved_concurrency
@@ -2462,21 +2460,21 @@ class LambdaBackend(BaseBackend):
         return fn.reserved_concurrency
 
     def put_function_event_invoke_config(
-        self, function_name: str, config: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, function_name: str, config: dict[str, Any]
+    ) -> dict[str, Any]:
         fn = self.get_function(function_name)
         event_config = EventInvokeConfig(fn.function_arn, fn.last_modified, config)
         fn.event_invoke_config.append(event_config)
         return event_config.response()
 
     def update_function_event_invoke_config(
-        self, function_name: str, config: Dict[str, Any]
-    ) -> Dict[str, Any]:
+        self, function_name: str, config: dict[str, Any]
+    ) -> dict[str, Any]:
         # partial functionality, the update function just does a put
         # instead of partial update
         return self.put_function_event_invoke_config(function_name, config)
 
-    def get_function_event_invoke_config(self, function_name: str) -> Dict[str, Any]:
+    def get_function_event_invoke_config(self, function_name: str) -> dict[str, Any]:
         fn = self.get_function(function_name)
         if fn.event_invoke_config:
             response = fn.event_invoke_config[0]
@@ -2489,8 +2487,8 @@ class LambdaBackend(BaseBackend):
             fn = self.get_function(function_name)
             fn.event_invoke_config = []
 
-    def list_function_event_invoke_configs(self, function_name: str) -> Dict[str, Any]:
-        response: Dict[str, List[Dict[str, Any]]] = {"FunctionEventInvokeConfigs": []}
+    def list_function_event_invoke_configs(self, function_name: str) -> dict[str, Any]:
+        response: dict[str, list[dict[str, Any]]] = {"FunctionEventInvokeConfigs": []}
         try:
             response["FunctionEventInvokeConfigs"] = [
                 self.get_function_event_invoke_config(function_name)

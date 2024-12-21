@@ -1,5 +1,3 @@
-from typing import Dict, List
-
 from moto.core.base_backend import BackendDict, BaseBackend
 from moto.utilities.paginator import paginate
 
@@ -23,8 +21,8 @@ class QuickSightBackend(BaseBackend):
 
     def __init__(self, region_name: str, account_id: str):
         super().__init__(region_name, account_id)
-        self.groups: Dict[str, QuicksightGroup] = dict()
-        self.users: Dict[str, QuicksightUser] = dict()
+        self.groups: dict[str, QuicksightGroup] = dict()
+        self.users: dict[str, QuicksightUser] = dict()
 
     def create_data_set(self, data_set_id: str, name: str) -> QuicksightDataSet:
         return QuicksightDataSet(
@@ -98,7 +96,7 @@ class QuickSightBackend(BaseBackend):
         return self.users[_id]
 
     @paginate(pagination_model=PAGINATION_MODEL)
-    def list_groups(self, aws_account_id: str, namespace: str) -> List[QuicksightGroup]:
+    def list_groups(self, aws_account_id: str, namespace: str) -> list[QuicksightGroup]:
         id_for_ns = _create_id(aws_account_id, namespace, _id="")
         return [
             group for _id, group in self.groups.items() if _id.startswith(id_for_ns)
@@ -106,8 +104,8 @@ class QuickSightBackend(BaseBackend):
 
     @paginate(pagination_model=PAGINATION_MODEL)
     def search_groups(
-        self, aws_account_id: str, namespace: str, filters: List[Dict[str, str]]
-    ) -> List[QuicksightGroup]:
+        self, aws_account_id: str, namespace: str, filters: list[dict[str, str]]
+    ) -> list[QuicksightGroup]:
         id_for_ns = _create_id(aws_account_id, namespace, _id="")
         filter_list = QuicksightSearchFilterFactory.validate_and_create_filter(
             model_type=QuicksightGroup, input=filters
@@ -121,21 +119,21 @@ class QuickSightBackend(BaseBackend):
     @paginate(pagination_model=PAGINATION_MODEL)
     def list_group_memberships(
         self, aws_account_id: str, namespace: str, group_name: str
-    ) -> List[QuicksightMembership]:
+    ) -> list[QuicksightMembership]:
         group = self.describe_group(aws_account_id, namespace, group_name)
         return group.list_members()
 
     @paginate(pagination_model=PAGINATION_MODEL)
-    def list_users(self, aws_account_id: str, namespace: str) -> List[QuicksightUser]:
+    def list_users(self, aws_account_id: str, namespace: str) -> list[QuicksightUser]:
         id_for_ns = _create_id(aws_account_id, namespace, _id="")
         return [user for _id, user in self.users.items() if _id.startswith(id_for_ns)]
 
     @paginate(pagination_model=PAGINATION_MODEL)
     def list_user_groups(
         self, aws_account_id: str, namespace: str, user_name: str
-    ) -> List[QuicksightGroup]:
+    ) -> list[QuicksightGroup]:
         id_for_ns = _create_id(aws_account_id, namespace, _id="")
-        group_list: Dict[str, QuicksightGroup] = {}
+        group_list: dict[str, QuicksightGroup] = {}
         # Loop through all groups and check if the user is member.
         for id, group in self.groups.items():
             if group.get_member(user_name):

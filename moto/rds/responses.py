@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Iterable
 
 from moto.core.responses import BaseResponse
 from moto.ec2.models import ec2_backends
@@ -18,7 +18,7 @@ class RDSResponse(BaseResponse):
         """Return backend instance of the region that stores Global Clusters"""
         return rds_backends[self.current_account]["us-east-1"]
 
-    def _get_db_kwargs(self) -> Dict[str, Any]:
+    def _get_db_kwargs(self) -> dict[str, Any]:
         args = {
             "auto_minor_version_upgrade": self._get_param("AutoMinorVersionUpgrade"),
             "allocated_storage": self._get_int_param("AllocatedStorage"),
@@ -80,7 +80,7 @@ class RDSResponse(BaseResponse):
         args["tags"] = self.unpack_list_params("Tags", "Tag")
         return args
 
-    def _get_modify_db_cluster_kwargs(self) -> Dict[str, Any]:
+    def _get_modify_db_cluster_kwargs(self) -> dict[str, Any]:
         args = {
             "auto_minor_version_upgrade": self._get_param("AutoMinorVersionUpgrade"),
             "allocated_storage": self._get_int_param("AllocatedStorage"),
@@ -143,7 +143,7 @@ class RDSResponse(BaseResponse):
         args["tags"] = self.unpack_list_params("Tags", "Tag")
         return args
 
-    def _get_db_replica_kwargs(self) -> Dict[str, Any]:
+    def _get_db_replica_kwargs(self) -> dict[str, Any]:
         return {
             "auto_minor_version_upgrade": self._get_param("AutoMinorVersionUpgrade"),
             "availability_zone": self._get_param("AvailabilityZone"),
@@ -158,7 +158,7 @@ class RDSResponse(BaseResponse):
             "storage_type": self._get_param("StorageType"),
         }
 
-    def _get_option_group_kwargs(self) -> Dict[str, Any]:
+    def _get_option_group_kwargs(self) -> dict[str, Any]:
         return {
             "major_engine_version": self._get_param("MajorEngineVersion"),
             "description": self._get_param("OptionGroupDescription"),
@@ -166,7 +166,7 @@ class RDSResponse(BaseResponse):
             "name": self._get_param("OptionGroupName"),
         }
 
-    def _get_db_parameter_group_kwargs(self) -> Dict[str, Any]:
+    def _get_db_parameter_group_kwargs(self) -> dict[str, Any]:
         return {
             "description": self._get_param("Description"),
             "family": self._get_param("DBParameterGroupFamily"),
@@ -174,7 +174,7 @@ class RDSResponse(BaseResponse):
             "tags": self.unpack_list_params("Tags", "Tag"),
         }
 
-    def _get_db_cluster_kwargs(self) -> Dict[str, Any]:
+    def _get_db_cluster_kwargs(self) -> dict[str, Any]:
         params = self._get_params()
         return {
             "availability_zones": self._get_multi_param(
@@ -230,7 +230,7 @@ class RDSResponse(BaseResponse):
             "backup_retention_period": self._get_param("BackupRetentionPeriod"),
         }
 
-    def _get_export_task_kwargs(self) -> Dict[str, Any]:
+    def _get_export_task_kwargs(self) -> dict[str, Any]:
         return {
             "export_task_identifier": self._get_param("ExportTaskIdentifier"),
             "source_arn": self._get_param("SourceArn"),
@@ -241,7 +241,7 @@ class RDSResponse(BaseResponse):
             "export_only": self.unpack_list_params("ExportOnly", "member"),
         }
 
-    def _get_event_subscription_kwargs(self) -> Dict[str, Any]:
+    def _get_event_subscription_kwargs(self) -> dict[str, Any]:
         return {
             "subscription_name": self._get_param("SubscriptionName"),
             "sns_topic_arn": self._get_param("SnsTopicArn"),
@@ -254,7 +254,7 @@ class RDSResponse(BaseResponse):
             "tags": self.unpack_list_params("Tags", "Tag"),
         }
 
-    def unpack_list_params(self, label: str, child_label: str) -> List[Dict[str, Any]]:
+    def unpack_list_params(self, label: str, child_label: str) -> list[dict[str, Any]]:
         root = self._get_multi_param_dict(label) or {}
         return root.get(child_label, [])
 
@@ -564,8 +564,8 @@ class RDSResponse(BaseResponse):
         template = self.response_template(MODIFY_DB_PARAMETER_GROUP_TEMPLATE)
         return template.render(db_parameter_group=db_parameter_group)
 
-    def _get_db_parameter_group_parameters(self) -> Iterable[Dict[str, Any]]:
-        parameter_group_parameters: Dict[str, Any] = defaultdict(dict)
+    def _get_db_parameter_group_parameters(self) -> Iterable[dict[str, Any]]:
+        parameter_group_parameters: dict[str, Any] = defaultdict(dict)
         for param_name, value in self.querystring.items():
             if not param_name.startswith("Parameters.Parameter"):
                 continue
@@ -968,7 +968,7 @@ class RDSResponse(BaseResponse):
         template = self.response_template(MODIFY_DB_PROXY_TARGET_GROUP)
         return template.render(group=group)
 
-    def _paginate(self, resources: List[Any]) -> Tuple[List[Any], Optional[str]]:
+    def _paginate(self, resources: list[Any]) -> tuple[list[Any], str | None]:
         from moto.rds.exceptions import InvalidParameterValue
 
         marker = self._get_param("Marker")

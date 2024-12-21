@@ -1,5 +1,5 @@
 import string
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Iterable, Optional
 
 from moto.core.base_backend import BackendDict, BaseBackend
 from moto.core.common_models import BaseModel
@@ -34,9 +34,9 @@ class Namespace(BaseModel):
         ns_type: str,
         creator_request_id: str,
         description: str,
-        dns_properties: Dict[str, Any],
-        http_properties: Dict[str, Any],
-        vpc: Optional[str] = None,
+        dns_properties: dict[str, Any],
+        http_properties: dict[str, Any],
+        vpc: str | None = None,
     ):
         self.id = f"ns-{random_id(20)}"
         self.arn = f"arn:{get_partition(region)}:servicediscovery:{region}:{account_id}:namespace/{self.id}"
@@ -50,7 +50,7 @@ class Namespace(BaseModel):
         self.created = unix_time()
         self.updated = unix_time()
 
-    def to_json(self) -> Dict[str, Any]:
+    def to_json(self) -> dict[str, Any]:
         return {
             "Arn": self.arn,
             "Id": self.id,
@@ -76,9 +76,9 @@ class Service(BaseModel):
         namespace_id: str,
         description: str,
         creator_request_id: str,
-        dns_config: Dict[str, Any],
-        health_check_config: Dict[str, Any],
-        health_check_custom_config: Dict[str, int],
+        dns_config: dict[str, Any],
+        health_check_config: dict[str, Any],
+        health_check_custom_config: dict[str, int],
         service_type: str,
     ):
         self.id = f"srv-{random_id(8)}"
@@ -87,15 +87,15 @@ class Service(BaseModel):
         self.namespace_id = namespace_id
         self.description = description
         self.creator_request_id = creator_request_id
-        self.dns_config: Optional[Dict[str, Any]] = dns_config
+        self.dns_config: Optional[dict[str, Any]] = dns_config
         self.health_check_config = health_check_config
         self.health_check_custom_config = health_check_custom_config
         self.service_type = service_type
         self.created = unix_time()
-        self.instances: List[ServiceInstance] = []
-        self.instances_revision: Dict[str, int] = {}
+        self.instances: list[ServiceInstance] = []
+        self.instances_revision: dict[str, int] = {}
 
-    def update(self, details: Dict[str, Any]) -> None:
+    def update(self, details: dict[str, Any]) -> None:
         if "Description" in details:
             self.description = details["Description"]
         if "DnsConfig" in details:
@@ -110,7 +110,7 @@ class Service(BaseModel):
         if "HealthCheckConfig" in details:
             self.health_check_config = details["HealthCheckConfig"]
 
-    def to_json(self) -> Dict[str, Any]:
+    def to_json(self) -> dict[str, Any]:
         return {
             "Arn": self.arn,
             "Id": self.id,
@@ -131,8 +131,8 @@ class ServiceInstance(BaseModel):
         self,
         service_id: str,
         instance_id: str,
-        creator_request_id: Optional[str] = None,
-        attributes: Optional[Dict[str, str]] = None,
+        creator_request_id: str | None = None,
+        attributes: Optional[dict[str, str]] = None,
     ):
         self.service_id = service_id
         self.instance_id = instance_id
@@ -142,7 +142,7 @@ class ServiceInstance(BaseModel):
         )
         self.health_status = "HEALTHY"
 
-    def to_json(self) -> Dict[str, Any]:
+    def to_json(self) -> dict[str, Any]:
         return {
             "Id": self.instance_id,
             "CreatorRequestId": self.creator_request_id,
@@ -151,7 +151,7 @@ class ServiceInstance(BaseModel):
 
 
 class Operation(BaseModel):
-    def __init__(self, operation_type: str, targets: Dict[str, str]):
+    def __init__(self, operation_type: str, targets: dict[str, str]):
         super().__init__()
         self.id = f"{random_id(32)}-{random_id(8)}"
         self.status = "SUCCESS"
@@ -160,7 +160,7 @@ class Operation(BaseModel):
         self.updated = unix_time()
         self.targets = targets
 
-    def to_json(self, short: bool = False) -> Dict[str, Any]:
+    def to_json(self, short: bool = False) -> dict[str, Any]:
         if short:
             return {"Id": self.id, "Status": self.status}
         else:
@@ -179,9 +179,9 @@ class ServiceDiscoveryBackend(BaseBackend):
 
     def __init__(self, region_name: str, account_id: str):
         super().__init__(region_name, account_id)
-        self.operations: Dict[str, Operation] = dict()
-        self.namespaces: Dict[str, Namespace] = dict()
-        self.services: Dict[str, Service] = dict()
+        self.operations: dict[str, Operation] = dict()
+        self.namespaces: dict[str, Namespace] = dict()
+        self.services: dict[str, Service] = dict()
         self.tagger = TaggingService()
 
     def list_namespaces(self) -> Iterable[Namespace]:
@@ -195,7 +195,7 @@ class ServiceDiscoveryBackend(BaseBackend):
         name: str,
         creator_request_id: str,
         description: str,
-        tags: List[Dict[str, str]],
+        tags: list[dict[str, str]],
     ) -> str:
         namespace = Namespace(
             account_id=self.account_id,
@@ -215,7 +215,7 @@ class ServiceDiscoveryBackend(BaseBackend):
         )
         return operation_id
 
-    def _create_operation(self, op_type: str, targets: Dict[str, str]) -> str:
+    def _create_operation(self, op_type: str, targets: dict[str, str]) -> str:
         operation = Operation(operation_type=op_type, targets=targets)
         self.operations[operation.id] = operation
         return operation.id
@@ -251,15 +251,15 @@ class ServiceDiscoveryBackend(BaseBackend):
             raise OperationNotFound()
         return self.operations[operation_id]
 
-    def tag_resource(self, resource_arn: str, tags: List[Dict[str, str]]) -> None:
+    def tag_resource(self, resource_arn: str, tags: list[dict[str, str]]) -> None:
         self.tagger.tag_resource(resource_arn, tags)
 
-    def untag_resource(self, resource_arn: str, tag_keys: List[str]) -> None:
+    def untag_resource(self, resource_arn: str, tag_keys: list[str]) -> None:
         self.tagger.untag_resource_using_names(resource_arn, tag_keys)
 
     def list_tags_for_resource(
         self, resource_arn: str
-    ) -> Dict[str, List[Dict[str, str]]]:
+    ) -> dict[str, list[dict[str, str]]]:
         return self.tagger.list_tags_for_resource(resource_arn)
 
     def create_private_dns_namespace(
@@ -268,8 +268,8 @@ class ServiceDiscoveryBackend(BaseBackend):
         creator_request_id: str,
         description: str,
         vpc: str,
-        tags: List[Dict[str, str]],
-        properties: Dict[str, Any],
+        tags: list[dict[str, str]],
+        properties: dict[str, Any],
     ) -> str:
         for namespace in self.namespaces.values():
             if namespace.vpc == vpc:
@@ -300,8 +300,8 @@ class ServiceDiscoveryBackend(BaseBackend):
         name: str,
         creator_request_id: str,
         description: str,
-        tags: List[Dict[str, str]],
-        properties: Dict[str, Any],
+        tags: list[dict[str, str]],
+        properties: dict[str, Any],
     ) -> str:
         dns_properties = (properties or {}).get("DnsProperties", {})
         dns_properties["HostedZoneId"] = "hzi"
@@ -329,10 +329,10 @@ class ServiceDiscoveryBackend(BaseBackend):
         namespace_id: str,
         creator_request_id: str,
         description: str,
-        dns_config: Dict[str, Any],
-        health_check_config: Dict[str, Any],
-        health_check_custom_config: Dict[str, Any],
-        tags: List[Dict[str, str]],
+        dns_config: dict[str, Any],
+        health_check_config: dict[str, Any],
+        health_check_custom_config: dict[str, Any],
+        tags: list[dict[str, str]],
         service_type: str,
     ) -> Service:
         service = Service(
@@ -366,7 +366,7 @@ class ServiceDiscoveryBackend(BaseBackend):
         """
         return self.services.values()
 
-    def update_service(self, service_id: str, details: Dict[str, Any]) -> str:
+    def update_service(self, service_id: str, details: dict[str, Any]) -> str:
         service = self.get_service(service_id)
         service.update(details=details)
         operation_id = self._create_operation(
@@ -377,8 +377,8 @@ class ServiceDiscoveryBackend(BaseBackend):
     def update_http_namespace(
         self,
         _id: str,
-        namespace_dict: Dict[str, Any],
-        updater_request_id: Optional[str] = None,
+        namespace_dict: dict[str, Any],
+        updater_request_id: str | None = None,
     ) -> str:
         if "Description" not in namespace_dict:
             raise InvalidInput("Description is required")
@@ -399,7 +399,7 @@ class ServiceDiscoveryBackend(BaseBackend):
         return operation_id
 
     def update_private_dns_namespace(
-        self, _id: str, description: str, properties: Dict[str, Any]
+        self, _id: str, description: str, properties: dict[str, Any]
     ) -> str:
         namespace = self.get_namespace(namespace_id=_id)
         if description is not None:
@@ -412,7 +412,7 @@ class ServiceDiscoveryBackend(BaseBackend):
         return operation_id
 
     def update_public_dns_namespace(
-        self, _id: str, description: str, properties: Dict[str, Any]
+        self, _id: str, description: str, properties: dict[str, Any]
     ) -> str:
         namespace = self.get_namespace(namespace_id=_id)
         if description is not None:
@@ -429,7 +429,7 @@ class ServiceDiscoveryBackend(BaseBackend):
         service_id: str,
         instance_id: str,
         creator_request_id: str,
-        attributes: Dict[str, str],
+        attributes: dict[str, str],
     ) -> str:
         service = self.get_service(service_id)
         instance = ServiceInstance(
@@ -464,7 +464,7 @@ class ServiceDiscoveryBackend(BaseBackend):
             i += 1
         raise InstanceNotFound(instance_id)
 
-    def list_instances(self, service_id: str) -> List[ServiceInstance]:
+    def list_instances(self, service_id: str) -> list[ServiceInstance]:
         service = self.get_service(service_id)
         return service.instances
 
@@ -477,8 +477,8 @@ class ServiceDiscoveryBackend(BaseBackend):
     def get_instances_health_status(
         self,
         service_id: str,
-        instances: Optional[List[str]] = None,
-    ) -> List[Tuple[str, str]]:
+        instances: Optional[list[str]] = None,
+    ) -> list[tuple[str, str]]:
         service = self.get_service(service_id)
         status = []
         if instances is None:
@@ -504,11 +504,11 @@ class ServiceDiscoveryBackend(BaseBackend):
 
     def _filter_instances(
         self,
-        instances: List[ServiceInstance],
-        query_parameters: Optional[Dict[str, str]] = None,
-        optional_parameters: Optional[Dict[str, str]] = None,
-        health_status: Optional[str] = None,
-    ) -> List[ServiceInstance]:
+        instances: list[ServiceInstance],
+        query_parameters: Optional[dict[str, str]] = None,
+        optional_parameters: Optional[dict[str, str]] = None,
+        health_status: str | None = None,
+    ) -> list[ServiceInstance]:
         if query_parameters is None:
             query_parameters = {}
         if optional_parameters is None:
@@ -562,10 +562,10 @@ class ServiceDiscoveryBackend(BaseBackend):
         self,
         namespace_name: str,
         service_name: str,
-        query_parameters: Optional[Dict[str, str]] = None,
-        optional_parameters: Optional[Dict[str, str]] = None,
-        health_status: Optional[str] = None,
-    ) -> Tuple[List[ServiceInstance], Dict[str, int]]:
+        query_parameters: Optional[dict[str, str]] = None,
+        optional_parameters: Optional[dict[str, str]] = None,
+        health_status: str | None = None,
+    ) -> tuple[list[ServiceInstance], dict[str, int]]:
         if query_parameters is None:
             query_parameters = {}
         if optional_parameters is None:
@@ -609,10 +609,10 @@ class ServiceDiscoveryBackend(BaseBackend):
 
     def paginate(
         self,
-        items: List[Any],
+        items: list[Any],
         max_results: Optional[int] = None,
-        next_token: Optional[str] = None,
-    ) -> Tuple[List[Any], Optional[str]]:
+        next_token: str | None = None,
+    ) -> tuple[list[Any], str | None]:
         """
         Paginates a list of items. If called without optional parameters, the entire list is returned as-is.
         """

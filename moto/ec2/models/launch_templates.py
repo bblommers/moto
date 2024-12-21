@@ -1,5 +1,5 @@
 from collections import OrderedDict
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from moto.core.common_models import CloudFormationModel
 
@@ -24,7 +24,7 @@ class LaunchTemplateVersion:
         self,
         template: "LaunchTemplate",
         number: int,
-        data: Dict[str, Any],
+        data: dict[str, Any],
         description: str,
     ):
         self.template = template
@@ -45,7 +45,7 @@ class LaunchTemplateVersion:
         return self.data.get("InstanceType", "")
 
     @property
-    def security_groups(self) -> List[str]:
+    def security_groups(self) -> list[str]:
         return self.data.get("SecurityGroups", [])
 
     @property
@@ -58,24 +58,24 @@ class LaunchTemplate(TaggedEC2Resource, CloudFormationModel):
         self,
         backend: Any,
         name: str,
-        template_data: Dict[str, Any],
+        template_data: dict[str, Any],
         version_description: str,
-        tag_spec: Dict[str, Dict[str, str]],
+        tag_spec: dict[str, dict[str, str]],
     ):
         self.ec2_backend = backend
         self.name = name
         self.id = random_launch_template_id()
         self.create_time = utc_date_and_time()
-        tag_map: Dict[str, str] = tag_spec.get("launch-template", {})
+        tag_map: dict[str, str] = tag_spec.get("launch-template", {})
         self.add_tags(tag_map)
         self.tags = self.get_tags()
 
-        self.versions: List[LaunchTemplateVersion] = []
+        self.versions: list[LaunchTemplateVersion] = []
         self.create_version(template_data, version_description)
         self.default_version_number = 1
 
     def create_version(
-        self, data: Dict[str, Any], description: str
+        self, data: dict[str, Any], description: str
     ) -> LaunchTemplateVersion:
         num = len(self.versions) + 1
         version = LaunchTemplateVersion(self, num, data, description)
@@ -106,9 +106,7 @@ class LaunchTemplate(TaggedEC2Resource, CloudFormationModel):
     def physical_resource_id(self) -> str:
         return self.id
 
-    def get_filter_value(
-        self, filter_name: str, method_name: Optional[str] = None
-    ) -> Any:
+    def get_filter_value(self, filter_name: str, method_name: str | None = None) -> Any:
         if filter_name == "launch-template-name":
             return self.name
         else:
@@ -209,16 +207,16 @@ class LaunchTemplate(TaggedEC2Resource, CloudFormationModel):
 
 class LaunchTemplateBackend:
     def __init__(self) -> None:
-        self.launch_template_name_to_ids: Dict[str, str] = {}
-        self.launch_templates: Dict[str, LaunchTemplate] = OrderedDict()
-        self.launch_template_insert_order: List[str] = []
+        self.launch_template_name_to_ids: dict[str, str] = {}
+        self.launch_templates: dict[str, LaunchTemplate] = OrderedDict()
+        self.launch_template_insert_order: list[str] = []
 
     def create_launch_template(
         self,
         name: str,
         description: str,
-        template_data: Dict[str, Any],
-        tag_spec: Dict[str, Any],
+        template_data: dict[str, Any],
+        tag_spec: dict[str, Any],
     ) -> LaunchTemplate:
         if name in self.launch_template_name_to_ids:
             raise InvalidLaunchTemplateNameAlreadyExistsError()
@@ -236,7 +234,7 @@ class LaunchTemplateBackend:
             raise InvalidLaunchTemplateNameNotFoundWithNameError(name)
         return self.get_launch_template(self.launch_template_name_to_ids[name])
 
-    def delete_launch_template(self, name: str, tid: Optional[str]) -> LaunchTemplate:
+    def delete_launch_template(self, name: str, tid: str | None) -> LaunchTemplate:
         if name:
             tid = self.launch_template_name_to_ids.get(name)
         if tid is None:
@@ -249,10 +247,10 @@ class LaunchTemplateBackend:
 
     def describe_launch_templates(
         self,
-        template_names: Optional[List[str]] = None,
-        template_ids: Optional[List[str]] = None,
+        template_names: Optional[list[str]] = None,
+        template_ids: Optional[list[str]] = None,
         filters: Any = None,
-    ) -> List[LaunchTemplate]:
+    ) -> list[LaunchTemplate]:
         if template_names and not template_ids:
             template_ids = []
             for name in template_names:

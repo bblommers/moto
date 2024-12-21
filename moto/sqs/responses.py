@@ -1,7 +1,7 @@
 import json
 import re
 from functools import wraps
-from typing import Any, Callable, Dict, Optional, Union
+from typing import Any, Callable
 from urllib.parse import urlparse
 
 from moto.core.common_types import TYPE_RESPONSE
@@ -35,14 +35,14 @@ from .utils import (
 
 
 def jsonify_error(
-    method: Callable[["SQSResponse"], Union[str, TYPE_RESPONSE]],
-) -> Callable[["SQSResponse"], Union[str, TYPE_RESPONSE]]:
+    method: Callable[["SQSResponse"], str | TYPE_RESPONSE],
+) -> Callable[["SQSResponse"], str | TYPE_RESPONSE]:
     """
     The decorator to convert an RESTError to JSON, if necessary
     """
 
     @wraps(method)
-    def f(self: "SQSResponse") -> Union[str, TYPE_RESPONSE]:
+    def f(self: "SQSResponse") -> str | TYPE_RESPONSE:
         try:
             return method(self)
         except RESTError as e:
@@ -89,7 +89,7 @@ class SQSResponse(BaseResponse):
             return self._attribute
 
     @property
-    def tags(self) -> Dict[str, str]:
+    def tags(self) -> dict[str, str]:
         if not hasattr(self, "_tags"):
             if self.is_json():
                 self._tags = self._get_param("tags")
@@ -114,7 +114,7 @@ class SQSResponse(BaseResponse):
             # Fallback to reading from the URL for botocore
             return self.path.split("/")[-1]
 
-    def _get_validated_visibility_timeout(self, timeout: Optional[str] = None) -> int:
+    def _get_validated_visibility_timeout(self, timeout: str | None = None) -> int:
         """
         :raises ValueError: If specified visibility timeout exceeds MAXIMUM_VISIBILITY_TIMEOUT
         :raises TypeError: If visibility timeout was not specified
@@ -202,7 +202,7 @@ class SQSResponse(BaseResponse):
         return template.render(queues=queues, request_url=request_url)
 
     @jsonify_error
-    def change_message_visibility(self) -> Union[str, TYPE_RESPONSE]:
+    def change_message_visibility(self) -> str | TYPE_RESPONSE:
         queue_name = self._get_queue_name()
         receipt_handle = self._get_param("ReceiptHandle")
 
@@ -313,7 +313,7 @@ class SQSResponse(BaseResponse):
         return self._empty_response(DELETE_QUEUE_RESPONSE)
 
     @jsonify_error
-    def send_message(self) -> Union[str, TYPE_RESPONSE]:
+    def send_message(self) -> str | TYPE_RESPONSE:
         message = self._get_param("MessageBody")
         delay_seconds = self._get_param("DelaySeconds")
         message_group_id = self._get_param("MessageGroupId")
@@ -366,7 +366,7 @@ class SQSResponse(BaseResponse):
         template = self.response_template(SEND_MESSAGE_RESPONSE)
         return template.render(message=message, message_attributes=message_attributes)
 
-    def normalize_json_msg_attributes(self, message_attributes: Dict[str, Any]) -> None:
+    def normalize_json_msg_attributes(self, message_attributes: dict[str, Any]) -> None:
         for key, value in (message_attributes or {}).items():
             if "BinaryValue" in value:
                 message_attributes[key]["binary_value"] = value.pop("BinaryValue")
@@ -441,7 +441,7 @@ class SQSResponse(BaseResponse):
             )
 
         if self.is_json():
-            resp: Dict[str, Any] = {"Successful": [], "Failed": errors}
+            resp: dict[str, Any] = {"Successful": [], "Failed": errors}
             for msg in messages:
                 msg_dict = {
                     "Id": msg.user_id,  # type: ignore
@@ -523,7 +523,7 @@ class SQSResponse(BaseResponse):
         return self._empty_response(PURGE_QUEUE_RESPONSE)
 
     @jsonify_error
-    def receive_message(self) -> Union[str, TYPE_RESPONSE]:
+    def receive_message(self) -> str | TYPE_RESPONSE:
         queue_name = self._get_queue_name()
         if self.is_json():
             message_attributes = self._get_param("MessageAttributeNames")
@@ -604,7 +604,7 @@ class SQSResponse(BaseResponse):
         if self.is_json():
             msgs = []
             for message in messages:
-                msg: Dict[str, Any] = {
+                msg: dict[str, Any] = {
                     "MessageId": message.id,
                     "ReceiptHandle": message.receipt_handle,
                     "MD5OfBody": message.body_md5,

@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional
 
 from moto.core.base_backend import BackendDict, BaseBackend
 from moto.core.common_models import BaseModel
@@ -24,13 +24,13 @@ from .exceptions import (
 
 @dataclass
 class MacSecKey(BaseModel):
-    secret_arn: Optional[str]
-    ckn: Optional[str]
+    secret_arn: str | None
+    ckn: str | None
     state: MacSecKeyStateType
     start_on: str
-    cak: Optional[str] = None
+    cak: str | None = None
 
-    def to_dict(self) -> Dict[str, str]:
+    def to_dict(self) -> dict[str, str]:
         return {
             "secretARN": self.secret_arn or "",
             "ckn": self.ckn or "",
@@ -50,17 +50,17 @@ class Connection(BaseModel):
     encryption_mode: EncryptionModeType
     has_logical_redundancy: bool
     jumbo_frame_capable: bool
-    lag_id: Optional[str]
+    lag_id: str | None
     loa_issue_time: str
     location: str
     mac_sec_capable: Optional[bool]
-    mac_sec_keys: List[MacSecKey]
+    mac_sec_keys: list[MacSecKey]
     owner_account: str
     partner_name: str
     port_encryption_status: PortEncryptionStatusType
-    provider_name: Optional[str]
+    provider_name: str | None
     region: str
-    tags: Optional[List[Dict[str, str]]]
+    tags: Optional[list[dict[str, str]]]
     vlan: int
     connection_id: str = field(default="", init=False)
 
@@ -70,7 +70,7 @@ class Connection(BaseModel):
 
     def to_dict(
         self,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         return {
             "awsDevice": self.aws_device,
             "awsDeviceV2": self.aws_device_v2,
@@ -104,7 +104,7 @@ class LAG(BaseModel):
     connections_bandwidth: str
     number_of_connections: int
     minimum_links: int
-    connections: List[Connection]
+    connections: list[Connection]
     lag_name: str
     lag_state: LagStateType
     encryption_mode: EncryptionModeType
@@ -112,11 +112,11 @@ class LAG(BaseModel):
     jumbo_frame_capable: bool
     location: str
     mac_sec_capable: Optional[bool]
-    mac_sec_keys: List[MacSecKey]
+    mac_sec_keys: list[MacSecKey]
     owner_account: str
-    provider_name: Optional[str]
+    provider_name: str | None
     region: str
-    tags: Optional[List[Dict[str, str]]]
+    tags: Optional[list[dict[str, str]]]
     lag_id: str = field(default="", init=False)
 
     def __post_init__(self) -> None:
@@ -127,7 +127,7 @@ class LAG(BaseModel):
 
     def to_dict(
         self,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         return {
             "awsDevice": self.aws_device,
             "awsDeviceV2": self.aws_device_v2,
@@ -156,10 +156,10 @@ class DirectConnectBackend(BaseBackend):
 
     def __init__(self, region_name: str, account_id: str) -> None:
         super().__init__(region_name, account_id)
-        self.connections: Dict[str, Connection] = {}
-        self.lags: Dict[str, LAG] = {}
+        self.connections: dict[str, Connection] = {}
+        self.lags: dict[str, LAG] = {}
 
-    def describe_connections(self, connection_id: Optional[str]) -> List[Connection]:
+    def describe_connections(self, connection_id: str | None) -> list[Connection]:
         if connection_id and connection_id not in self.connections:
             raise ConnectionNotFound(connection_id, self.region_name)
         if connection_id:
@@ -172,9 +172,9 @@ class DirectConnectBackend(BaseBackend):
         location: str,
         bandwidth: str,
         connection_name: str,
-        lag_id: Optional[str],
-        tags: Optional[List[Dict[str, str]]],
-        provider_name: Optional[str],
+        lag_id: str | None,
+        tags: Optional[list[dict[str, str]]],
+        provider_name: str | None,
         request_mac_sec: Optional[bool],
     ) -> Connection:
         encryption_mode = EncryptionModeType.NO
@@ -229,7 +229,7 @@ class DirectConnectBackend(BaseBackend):
     def update_connection(
         self,
         connection_id: str,
-        new_connection_name: Optional[str],
+        new_connection_name: str | None,
         new_encryption_mode: Optional[EncryptionModeType],
     ) -> Connection:
         if not connection_id:
@@ -246,10 +246,10 @@ class DirectConnectBackend(BaseBackend):
     def associate_mac_sec_key(
         self,
         connection_id: str,
-        secret_arn: Optional[str],
-        ckn: Optional[str],
-        cak: Optional[str],
-    ) -> Tuple[str, List[MacSecKey]]:
+        secret_arn: str | None,
+        ckn: str | None,
+        cak: str | None,
+    ) -> tuple[str, list[MacSecKey]]:
         mac_sec_key = MacSecKey(
             secret_arn=secret_arn or "mock_secret_arn",
             ckn=ckn,
@@ -269,7 +269,7 @@ class DirectConnectBackend(BaseBackend):
 
     def _associate_mac_sec_key_with_lag(
         self, lag_id: str, mac_sec_key: MacSecKey
-    ) -> Tuple[str, List[MacSecKey]]:
+    ) -> tuple[str, list[MacSecKey]]:
         lag = self.lags.get(lag_id) or None
         if not lag:
             raise LAGNotFound(lag_id, self.region_name)
@@ -282,7 +282,7 @@ class DirectConnectBackend(BaseBackend):
 
     def _associate_mac_sec_key_with_connection(
         self, connection_id: str, mac_sec_key: MacSecKey
-    ) -> Tuple[str, List[MacSecKey]]:
+    ) -> tuple[str, list[MacSecKey]]:
         connection = self.connections.get(connection_id) or None
         if not connection:
             raise ConnectionNotFound(connection_id, self.region_name)
@@ -296,10 +296,10 @@ class DirectConnectBackend(BaseBackend):
         location: str,
         connections_bandwidth: str,
         lag_name: str,
-        connection_id: Optional[str],
-        tags: Optional[List[Dict[str, str]]],
-        child_connection_tags: Optional[List[Dict[str, str]]],
-        provider_name: Optional[str],
+        connection_id: str | None,
+        tags: Optional[list[dict[str, str]]],
+        child_connection_tags: Optional[list[dict[str, str]]],
+        provider_name: str | None,
         request_mac_sec: Optional[bool],
     ) -> LAG:
         if connection_id:
@@ -358,7 +358,7 @@ class DirectConnectBackend(BaseBackend):
         self.lags[lag.lag_id] = lag
         return lag
 
-    def describe_lags(self, lag_id: Optional[str]) -> List[LAG]:
+    def describe_lags(self, lag_id: str | None) -> list[LAG]:
         if lag_id and lag_id not in self.lags:
             raise LAGNotFound(lag_id, self.region_name)
         if lag_id:
@@ -368,8 +368,8 @@ class DirectConnectBackend(BaseBackend):
 
     def disassociate_mac_sec_key(
         self, connection_id: str, secret_arn: str
-    ) -> Tuple[str, MacSecKey]:
-        mac_sec_keys: List[MacSecKey] = []
+    ) -> tuple[str, MacSecKey]:
+        mac_sec_keys: list[MacSecKey] = []
         if connection_id.startswith("dxlag-"):
             if connection_id in self.lags:
                 mac_sec_keys = self.lags[connection_id].mac_sec_keys

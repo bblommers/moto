@@ -1,7 +1,7 @@
 import datetime
 import re
 from base64 import b64decode
-from typing import Any, List, Optional, Tuple
+from typing import Any, Optional
 
 import xmltodict
 
@@ -18,7 +18,7 @@ from moto.utilities.utils import ARN_PARTITION_REGEX, PARTITION_NAMES, get_parti
 
 
 class Token(BaseModel):
-    def __init__(self, duration: int, name: Optional[str] = None):
+    def __init__(self, duration: int, name: str | None = None):
         now = utcnow()
         self.expiration = now + datetime.timedelta(seconds=duration)
         self.name = name
@@ -77,12 +77,12 @@ class AssumedRole(BaseModel):
 class STSBackend(BaseBackend):
     def __init__(self, region_name: str, account_id: str):
         super().__init__(region_name, account_id)
-        self.assumed_roles: List[AssumedRole] = []
+        self.assumed_roles: list[AssumedRole] = []
 
     def get_session_token(self, duration: int) -> Token:
         return Token(duration=duration)
 
-    def get_federation_token(self, name: Optional[str], duration: int) -> Token:
+    def get_federation_token(self, name: str | None, duration: int) -> Token:
         return Token(duration=duration, name=name)
 
     def assume_role(
@@ -175,7 +175,7 @@ class STSBackend(BaseBackend):
 
     def get_caller_identity(
         self, access_key_id: str, region: str
-    ) -> Tuple[str, str, str]:
+    ) -> tuple[str, str, str]:
         assumed_role = self.get_assumed_role_from_access_key(access_key_id)
         if assumed_role:
             return assumed_role.user_id, assumed_role.arn, assumed_role.account_id
@@ -191,7 +191,7 @@ class STSBackend(BaseBackend):
         arn = f"arn:{partition}:sts::{self.account_id}:user/moto"
         return user_id, arn, self.account_id
 
-    def _create_access_key(self, role: str) -> Tuple[str, AccessKey]:
+    def _create_access_key(self, role: str) -> tuple[str, AccessKey]:
         account_id_match = re.search(ARN_PARTITION_REGEX + r":iam::([0-9]+).+", role)
         if account_id_match:
             account_id = account_id_match.group(2)

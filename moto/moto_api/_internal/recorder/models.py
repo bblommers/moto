@@ -2,7 +2,7 @@ import base64
 import io
 import json
 import os
-from typing import Any, Optional, Tuple, Union
+from typing import Any, Optional
 from urllib.parse import urlparse
 
 import requests
@@ -57,7 +57,7 @@ class Recorder:
             file.write(json.dumps(entry))
             file.write("\n")
 
-    def _encode_body(self, body: Any) -> Tuple[str, bool]:
+    def _encode_body(self, body: Any) -> tuple[str, bool]:
         body_encoded = False
         try:
             if isinstance(body, io.BytesIO):
@@ -86,7 +86,7 @@ class Recorder:
     def stop_recording(self) -> None:
         self._user_enabled = False
 
-    def upload_recording(self, data: Union[str, bytes]) -> None:
+    def upload_recording(self, data: str | bytes) -> None:
         """
         Replaces the current log. Remember to replay the recording afterwards.
         """
@@ -104,7 +104,7 @@ class Recorder:
         with open(filepath, "r") as file:
             return file.read()
 
-    def replay_recording(self, target_host: Optional[str] = None) -> None:
+    def replay_recording(self, target_host: str | None = None) -> None:
         """
         Replays the current log, i.e. replay all requests that were made after the recorder was started.
         Download the recording if you want to manually verify the correct requests will be replayed.

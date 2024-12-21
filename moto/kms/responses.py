@@ -2,7 +2,7 @@ import base64
 import json
 import os
 import re
-from typing import Any, Dict
+from typing import Any
 
 from moto.core.responses import BaseResponse
 from moto.kms.utils import RESERVED_ALIASE_TARGET_KEY_IDS, RESERVED_ALIASES
@@ -176,7 +176,7 @@ class KmsResponse(BaseResponse):
         key_id = self._get_param("KeyId")
         self._validate_cmk_id(key_id)
 
-        tags: Dict[str, Any] = self.kms_backend.list_resource_tags(key_id)
+        tags: dict[str, Any] = self.kms_backend.list_resource_tags(key_id)
         tags.update({"NextMarker": None, "Truncated": False})
         return json.dumps(tags)
 

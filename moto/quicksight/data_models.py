@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Union
+from typing import Any
 
 from moto.core.common_models import BaseModel
 from moto.moto_api._internal import mock_random as random
@@ -13,7 +13,7 @@ class QuicksightDataSet(BaseModel):
         self.region = region
         self.account_id = account_id
 
-    def to_json(self) -> Dict[str, Any]:
+    def to_json(self) -> dict[str, Any]:
         return {
             "Arn": self.arn,
             "DataSetId": self._id,
@@ -28,7 +28,7 @@ class QuicksightIngestion(BaseModel):
         self.arn = f"arn:{get_partition(region)}:quicksight:{region}:{account_id}:data-set/{data_set_id}/ingestions/{ingestion_id}"
         self.ingestion_id = ingestion_id
 
-    def to_json(self) -> Dict[str, Any]:
+    def to_json(self) -> dict[str, Any]:
         return {
             "Arn": self.arn,
             "IngestionId": self.ingestion_id,
@@ -42,7 +42,7 @@ class QuicksightMembership(BaseModel):
         self.user = user
         self.arn = f"arn:{get_partition(region)}:quicksight:{region}:{account_id}:group/default/{group}/{user}"
 
-    def to_json(self) -> Dict[str, str]:
+    def to_json(self) -> dict[str, str]:
         return {"Arn": self.arn, "MemberName": self.user}
 
 
@@ -62,7 +62,7 @@ class QuicksightGroup(BaseModel):
         self.namespace = namespace
         self.region = region
 
-        self.members: Dict[str, QuicksightMembership] = dict()
+        self.members: dict[str, QuicksightMembership] = dict()
 
     def add_member(self, member_name: str) -> QuicksightMembership:
         membership = QuicksightMembership(
@@ -74,13 +74,13 @@ class QuicksightGroup(BaseModel):
     def delete_member(self, user_name: str) -> None:
         self.members.pop(user_name, None)
 
-    def get_member(self, user_name: str) -> Union[QuicksightMembership, None]:
+    def get_member(self, user_name: str) -> QuicksightMembership | None:
         return self.members.get(user_name, None)
 
-    def list_members(self) -> List[QuicksightMembership]:
+    def list_members(self) -> list[QuicksightMembership]:
         return list(self.members.values())
 
-    def to_json(self) -> Dict[str, Any]:
+    def to_json(self) -> dict[str, Any]:
         return {
             "Arn": self.arn,
             "GroupName": self.group_name,
@@ -108,7 +108,7 @@ class QuicksightUser(BaseModel):
         self.active = False
         self.principal_id = random.get_random_hex(10)
 
-    def to_json(self) -> Dict[str, Any]:
+    def to_json(self) -> dict[str, Any]:
         return {
             "Arn": self.arn,
             "Email": self.email,

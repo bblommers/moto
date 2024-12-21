@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from moto.core.common_models import BaseModel
 from moto.core.utils import unix_time, utcnow
@@ -19,7 +19,7 @@ class ActivityTask(BaseModel):
         activity_type: "ActivityType",
         scheduled_event_id: int,
         workflow_execution: "WorkflowExecution",
-        timeouts: Dict[str, Any],
+        timeouts: dict[str, Any],
         workflow_input: Any = None,
     ):
         self.activity_id = activity_id
@@ -32,7 +32,7 @@ class ActivityTask(BaseModel):
         self.state = "SCHEDULED"
         self.task_token = str(mock_random.uuid4())
         self.timeouts = timeouts
-        self.timeout_type: Optional[str] = None
+        self.timeout_type: str | None = None
         self.workflow_execution = workflow_execution
         # this is *not* necessarily coherent with workflow execution history,
         # but that shouldn't be a problem for tests
@@ -46,8 +46,8 @@ class ActivityTask(BaseModel):
     def open(self) -> bool:
         return self.state in ["SCHEDULED", "STARTED"]
 
-    def to_full_dict(self) -> Dict[str, Any]:
-        hsh: Dict[str, Any] = {
+    def to_full_dict(self) -> dict[str, Any]:
+        hsh: dict[str, Any] = {
             "activityId": self.activity_id,
             "activityType": self.activity_type.to_short_dict(),
             "taskToken": self.task_token,

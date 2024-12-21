@@ -1,7 +1,7 @@
 import base64
 import json
 import os
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from moto.core.base_backend import BackendDict, BaseBackend
 from moto.core.common_models import BaseModel
@@ -37,10 +37,10 @@ class ShardIterator(BaseModel):
     def arn(self) -> str:
         return f"{self.stream_shard.table.table_arn}/stream/{self.stream_shard.table.latest_stream_label}|1|{self.id}"
 
-    def to_json(self) -> Dict[str, str]:
+    def to_json(self) -> dict[str, str]:
         return {"ShardIterator": self.arn}
 
-    def get(self, limit: int = 1000) -> Dict[str, Any]:
+    def get(self, limit: int = 1000) -> dict[str, Any]:
         items = self.stream_shard.get(self.sequence_number, limit)
         try:
             last_sequence_number = max(
@@ -69,7 +69,7 @@ class ShardIterator(BaseModel):
 class DynamoDBStreamsBackend(BaseBackend):
     def __init__(self, region_name: str, account_id: str):
         super().__init__(region_name, account_id)
-        self.shard_iterators: Dict[str, ShardIterator] = {}
+        self.shard_iterators: dict[str, ShardIterator] = {}
 
     @property
     def dynamodb(self) -> DynamoDBBackend:
@@ -100,7 +100,7 @@ class DynamoDBStreamsBackend(BaseBackend):
 
         return json.dumps(resp)
 
-    def list_streams(self, table_name: Optional[str] = None) -> str:
+    def list_streams(self, table_name: str | None = None) -> str:
         streams = []
         for table in self.dynamodb.tables.values():
             if table_name is not None and table.name != table_name:
@@ -122,7 +122,7 @@ class DynamoDBStreamsBackend(BaseBackend):
         arn: str,
         shard_id: str,
         shard_iterator_type: str,
-        sequence_number: Optional[str] = None,
+        sequence_number: str | None = None,
     ) -> str:
         table = self._get_table_from_arn(arn)
         assert table.stream_shard.id == shard_id  # type: ignore[union-attr]

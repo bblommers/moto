@@ -2,7 +2,7 @@ import json
 import os
 import re
 from os import environ
-from typing import Any, Dict, List, Optional, Set, cast
+from typing import Any, Optional, cast
 
 from moto import settings
 from moto.utilities.utils import load_resource
@@ -24,7 +24,7 @@ from .instances import Instance
 
 if "MOTO_AMIS_PATH" in environ:
     with open(environ["MOTO_AMIS_PATH"], "r", encoding="utf-8") as f:
-        AMIS: List[Dict[str, Any]] = json.load(f)
+        AMIS: list[dict[str, Any]] = json.load(f)
 else:
     AMIS = load_resource(__name__, "../resources/amis.json")
 
@@ -36,25 +36,25 @@ class Ami(TaggedEC2Resource):
         ami_id: str,
         instance: Optional[Instance] = None,
         source_ami: Optional["Ami"] = None,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
-        owner_id: Optional[str] = None,
-        owner_alias: Optional[str] = None,
+        name: str | None = None,
+        description: str | None = None,
+        owner_id: str | None = None,
+        owner_alias: str | None = None,
         public: bool = False,
-        virtualization_type: Optional[str] = None,
-        architecture: Optional[str] = None,
+        virtualization_type: str | None = None,
+        architecture: str | None = None,
         state: str = "available",
-        creation_date: Optional[str] = None,
-        platform: Optional[str] = None,
+        creation_date: str | None = None,
+        platform: str | None = None,
         image_type: str = "machine",
-        image_location: Optional[str] = None,
-        hypervisor: Optional[str] = None,
+        image_location: str | None = None,
+        hypervisor: str | None = None,
         root_device_type: str = "standard",
         root_device_name: str = "/dev/sda1",
         sriov: str = "simple",
         region_name: str = "us-east-1a",
-        snapshot_description: Optional[str] = None,
-        product_codes: Set[str] = set(),
+        snapshot_description: str | None = None,
+        product_codes: set[str] = set(),
         boot_mode: str = "uefi",
     ):
         self.ec2_backend = ec2_backend
@@ -101,7 +101,7 @@ class Ami(TaggedEC2Resource):
             if not description:
                 self.description = source_ami.description
 
-        self.launch_permissions: List[Dict[str, str]] = []
+        self.launch_permissions: list[dict[str, str]] = []
 
         if public:
             self.launch_permissions.append({"Group": "all"})
@@ -124,9 +124,7 @@ class Ami(TaggedEC2Resource):
     def is_public_string(self) -> str:
         return str(self.is_public).lower()
 
-    def get_filter_value(
-        self, filter_name: str, method_name: Optional[str] = None
-    ) -> Any:
+    def get_filter_value(self, filter_name: str, method_name: str | None = None) -> Any:
         if filter_name == "virtualization-type":
             return self.virtualization_type
         elif filter_name == "kernel-id":
@@ -157,8 +155,8 @@ class AmiBackend:
     AMI_REGEX = re.compile("ami-[a-z0-9]+")
 
     def __init__(self) -> None:
-        self.amis: Dict[str, Ami] = {}
-        self.deleted_amis: List[str] = list()
+        self.amis: dict[str, Ami] = {}
+        self.deleted_amis: list[str] = list()
         self._load_amis()
 
     def _load_amis(self) -> None:
@@ -174,7 +172,7 @@ class AmiBackend:
             for path in ["latest_amis", "ecs/optimized_amis"]:
                 try:
                     latest_amis = cast(
-                        List[Dict[str, Any]],
+                        list[dict[str, Any]],
                         load_resource(
                             __name__,
                             f"../resources/{path}/{self.region_name}.json",  # type: ignore[attr-defined]
@@ -193,7 +191,7 @@ class AmiBackend:
         instance_id: str,
         name: str,
         description: str,
-        tag_specifications: List[Dict[str, Any]],
+        tag_specifications: list[dict[str, Any]],
     ) -> Ami:
         # TODO: check that instance exists and pull info from it.
         ami_id = random_ami_id()
@@ -227,8 +225,8 @@ class AmiBackend:
         self,
         source_image_id: str,
         source_region: str,
-        name: Optional[str] = None,
-        description: Optional[str] = None,
+        name: str | None = None,
+        description: str | None = None,
     ) -> Ami:
         from ..models import ec2_backends
 
@@ -248,11 +246,11 @@ class AmiBackend:
 
     def describe_images(
         self,
-        ami_ids: Optional[List[str]] = None,
-        filters: Optional[Dict[str, Any]] = None,
-        exec_users: Optional[List[str]] = None,
-        owners: Optional[List[str]] = None,
-    ) -> List[Ami]:
+        ami_ids: Optional[list[str]] = None,
+        filters: Optional[dict[str, Any]] = None,
+        exec_users: Optional[list[str]] = None,
+        owners: Optional[list[str]] = None,
+    ) -> list[Ami]:
         images = list(self.amis.copy().values())
 
         if ami_ids and len(ami_ids):
@@ -319,7 +317,7 @@ class AmiBackend:
         else:
             raise InvalidAMIIdError(ami_id)
 
-    def validate_permission_targets(self, permissions: List[Dict[str, str]]) -> None:
+    def validate_permission_targets(self, permissions: list[dict[str, str]]) -> None:
         for perm in permissions:
             # If anything is invalid, nothing is added. (No partial success.)
             # AWS docs:
@@ -337,8 +335,8 @@ class AmiBackend:
     def modify_image_attribute(
         self,
         ami_id: str,
-        launch_permissions_to_add: List[Dict[str, str]],
-        launch_permissions_to_remove: List[Dict[str, str]],
+        launch_permissions_to_add: list[dict[str, str]],
+        launch_permissions_to_remove: list[dict[str, str]],
     ) -> None:
         ami = self.describe_images(ami_ids=[ami_id])[0]
         self.validate_permission_targets(launch_permissions_to_add)
@@ -354,7 +352,7 @@ class AmiBackend:
                 pass
 
     def register_image(
-        self, name: Optional[str] = None, description: Optional[str] = None
+        self, name: str | None = None, description: str | None = None
     ) -> Ami:
         ami_id = random_ami_id()
         ami = Ami(

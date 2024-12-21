@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from ..exceptions import InvalidVpnConnectionIdError
 from ..utils import generic_filter, random_vpn_connection_id
@@ -12,14 +12,14 @@ class VPNConnection(TaggedEC2Resource):
         vpn_connection_id: str,
         vpn_conn_type: str,
         customer_gateway_id: str,
-        vpn_gateway_id: Optional[str] = None,
-        transit_gateway_id: Optional[str] = None,
-        tags: Optional[Dict[str, str]] = None,
+        vpn_gateway_id: str | None = None,
+        transit_gateway_id: str | None = None,
+        tags: Optional[dict[str, str]] = None,
     ):
         self.ec2_backend = ec2_backend
         self.id = vpn_connection_id
         self.state = "available"
-        self.customer_gateway_configuration: Dict[str, str] = {}
+        self.customer_gateway_configuration: dict[str, str] = {}
         self.type = vpn_conn_type
         self.customer_gateway_id = customer_gateway_id
         self.vpn_gateway_id = vpn_gateway_id
@@ -29,24 +29,22 @@ class VPNConnection(TaggedEC2Resource):
         self.static_routes = None
         self.add_tags(tags or {})
 
-    def get_filter_value(
-        self, filter_name: str, method_name: Optional[str] = None
-    ) -> Any:
+    def get_filter_value(self, filter_name: str, method_name: str | None = None) -> Any:
         return super().get_filter_value(filter_name, "DescribeVpnConnections")
 
 
 class VPNConnectionBackend:
     def __init__(self) -> None:
-        self.vpn_connections: Dict[str, VPNConnection] = {}
+        self.vpn_connections: dict[str, VPNConnection] = {}
 
     def create_vpn_connection(
         self,
         vpn_conn_type: str,
         customer_gateway_id: str,
-        vpn_gateway_id: Optional[str] = None,
-        transit_gateway_id: Optional[str] = None,
+        vpn_gateway_id: str | None = None,
+        transit_gateway_id: str | None = None,
         static_routes_only: Optional[bool] = None,
-        tags: Optional[Dict[str, str]] = None,
+        tags: Optional[dict[str, str]] = None,
     ) -> VPNConnection:
         vpn_connection_id = random_vpn_connection_id()
         if static_routes_only:
@@ -71,8 +69,8 @@ class VPNConnectionBackend:
         return self.vpn_connections[vpn_connection_id]
 
     def describe_vpn_connections(
-        self, vpn_connection_ids: Optional[List[str]] = None, filters: Any = None
-    ) -> List[VPNConnection]:
+        self, vpn_connection_ids: Optional[list[str]] = None, filters: Any = None
+    ) -> list[VPNConnection]:
         vpn_connections = list(self.vpn_connections.values())
 
         if vpn_connection_ids:

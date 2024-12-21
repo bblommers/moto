@@ -1,5 +1,5 @@
 from re import compile as re_compile
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from moto.core.base_backend import BackendDict, BaseBackend
 from moto.core.common_models import BaseModel
@@ -28,7 +28,7 @@ class User(BaseModel):
         access_string: str,
         engine: str,
         no_password_required: bool,
-        passwords: Optional[List[str]] = None,
+        passwords: Optional[list[str]] = None,
     ):
         self.id = user_id
         self.name = user_name
@@ -38,7 +38,7 @@ class User(BaseModel):
         self.no_password_required = no_password_required
         self.status = "active"
         self.minimum_engine_version = "6.0"
-        self.usergroupids: List[str] = []
+        self.usergroupids: list[str] = []
         self.region = region
         self.arn = f"arn:{get_partition(self.region)}:elasticache:{self.region}:{account_id}:user:{self.id}"
 
@@ -49,37 +49,37 @@ class CacheCluster(BaseModel):
         account_id: str,
         region_name: str,
         cache_cluster_id: str,
-        replication_group_id: Optional[str],
-        az_mode: Optional[str],
-        preferred_availability_zone: Optional[str],
+        replication_group_id: str | None,
+        az_mode: str | None,
+        preferred_availability_zone: str | None,
         num_cache_nodes: Optional[int],
-        cache_node_type: Optional[str],
-        engine: Optional[str],
-        engine_version: Optional[str],
-        cache_parameter_group_name: Optional[str],
-        cache_subnet_group_name: Optional[str],
+        cache_node_type: str | None,
+        engine: str | None,
+        engine_version: str | None,
+        cache_parameter_group_name: str | None,
+        cache_subnet_group_name: str | None,
         transit_encryption_enabled: Optional[bool],
-        network_type: Optional[str],
-        ip_discovery: Optional[str],
-        snapshot_name: Optional[str],
-        preferred_maintenance_window: Optional[str],
+        network_type: str | None,
+        ip_discovery: str | None,
+        snapshot_name: str | None,
+        preferred_maintenance_window: str | None,
         port: Optional[int],
-        notification_topic_arn: Optional[str],
+        notification_topic_arn: str | None,
         auto_minor_version_upgrade: Optional[bool],
         snapshot_retention_limit: Optional[int],
-        snapshot_window: Optional[str],
-        auth_token: Optional[str],
-        outpost_mode: Optional[str],
-        preferred_outpost_arn: Optional[str],
-        preferred_availability_zones: Optional[List[str]],
-        cache_security_group_names: Optional[List[str]],
-        security_group_ids: Optional[List[str]],
-        tags: Optional[List[Dict[str, str]]],
-        snapshot_arns: Optional[List[str]],
-        preferred_outpost_arns: Optional[List[str]],
-        log_delivery_configurations: List[Dict[str, Any]],
-        cache_node_ids_to_remove: Optional[List[str]],
-        cache_node_ids_to_reboot: Optional[List[str]],
+        snapshot_window: str | None,
+        auth_token: str | None,
+        outpost_mode: str | None,
+        preferred_outpost_arn: str | None,
+        preferred_availability_zones: Optional[list[str]],
+        cache_security_group_names: Optional[list[str]],
+        security_group_ids: Optional[list[str]],
+        tags: Optional[list[dict[str, str]]],
+        snapshot_arns: Optional[list[str]],
+        preferred_outpost_arns: Optional[list[str]],
+        log_delivery_configurations: list[dict[str, Any]],
+        cache_node_ids_to_remove: Optional[list[str]],
+        cache_node_ids_to_reboot: Optional[list[str]],
     ):
         if tags is None:
             tags = []
@@ -128,7 +128,7 @@ class CacheCluster(BaseModel):
         self.arn = f"arn:{get_partition(region_name)}:elasticache:{region_name}:{account_id}:cluster:{cache_cluster_id}"
         self.cache_node_id = str(mock_random.uuid4())
 
-    def get_tags(self) -> List[Dict[str, str]]:
+    def get_tags(self) -> list[dict[str, str]]:
         return self.tags
 
 
@@ -151,14 +151,14 @@ class ElastiCacheBackend(BaseBackend):
             no_password_required=True,
         )
 
-        self.cache_clusters: Dict[str, Any] = dict()
+        self.cache_clusters: dict[str, Any] = dict()
 
     def create_user(
         self,
         user_id: str,
         user_name: str,
         engine: str,
-        passwords: List[str],
+        passwords: list[str],
         access_string: str,
         no_password_required: bool,
     ) -> User:
@@ -185,7 +185,7 @@ class ElastiCacheBackend(BaseBackend):
             return user
         raise UserNotFound(user_id)
 
-    def describe_users(self, user_id: Optional[str]) -> List[User]:
+    def describe_users(self, user_id: str | None) -> list[User]:
         """
         Only the `user_id` parameter is currently supported.
         Pagination is not yet implemented.
@@ -225,15 +225,15 @@ class ElastiCacheBackend(BaseBackend):
         auth_token: str,
         outpost_mode: str,
         preferred_outpost_arn: str,
-        preferred_availability_zones: List[str],
-        cache_security_group_names: List[str],
-        security_group_ids: List[str],
-        tags: List[Dict[str, str]],
-        snapshot_arns: List[str],
-        preferred_outpost_arns: List[str],
-        log_delivery_configurations: List[Dict[str, Any]],
-        cache_node_ids_to_remove: List[str],
-        cache_node_ids_to_reboot: List[str],
+        preferred_availability_zones: list[str],
+        cache_security_group_names: list[str],
+        security_group_ids: list[str],
+        tags: list[dict[str, str]],
+        snapshot_arns: list[str],
+        preferred_outpost_arns: list[str],
+        log_delivery_configurations: list[dict[str, Any]],
+        cache_node_ids_to_remove: list[str],
+        cache_node_ids_to_reboot: list[str],
     ) -> CacheCluster:
         if cache_cluster_id in self.cache_clusters:
             raise CacheClusterAlreadyExists(cache_cluster_id)
@@ -282,7 +282,7 @@ class ElastiCacheBackend(BaseBackend):
         cache_cluster_id: str,
         max_records: int,
         marker: str,
-    ) -> List[CacheCluster]:
+    ) -> list[CacheCluster]:
         if max_records is None:
             max_records = 100
         if cache_cluster_id:
@@ -303,7 +303,7 @@ class ElastiCacheBackend(BaseBackend):
                 return cache_cluster
         raise CacheClusterNotFound(cache_cluster_id)
 
-    def list_tags_for_resource(self, arn: str) -> List[Dict[str, str]]:
+    def list_tags_for_resource(self, arn: str) -> list[dict[str, str]]:
         if self.arn_regex.match(arn):
             arn_breakdown = arn.split(":")
             resource_type = arn_breakdown[len(arn_breakdown) - 2]

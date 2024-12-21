@@ -1,5 +1,5 @@
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from moto.core.exceptions import JsonRESTError
 from moto.dynamodb.limits import HASH_KEY_MAX_LENGTH, RANGE_KEY_MAX_LENGTH
@@ -202,9 +202,7 @@ class IncorrectDataType(MockValidationException):
 class ConditionalCheckFailed(DynamodbException):
     error_type = ERROR_TYPE_PREFIX + "ConditionalCheckFailedException"
 
-    def __init__(
-        self, msg: Optional[str] = None, item: Optional[Dict[str, Any]] = None
-    ):
+    def __init__(self, msg: str | None = None, item: Optional[dict[str, Any]] = None):
         _msg = msg or "The conditional request failed"
         super().__init__(ConditionalCheckFailed.error_type, _msg)
         if item:
@@ -233,7 +231,7 @@ class TransactionCanceledException(DynamodbException):
     cancel_reason_msg = "Transaction cancelled, please refer cancellation reasons for specific reasons [{}]"
     error_type = "com.amazonaws.dynamodb.v20120810#TransactionCanceledException"
 
-    def __init__(self, errors: List[Any]):
+    def __init__(self, errors: list[Any]):
         msg = self.cancel_reason_msg.format(
             ", ".join([str(code) for code, _, _ in errors])
         )
@@ -292,14 +290,12 @@ class UpdateHashRangeKeyException(MockValidationException):
 class InvalidAttributeTypeError(MockValidationException):
     msg = "One or more parameter values were invalid: Type mismatch for key {} expected: {} actual: {}"
 
-    def __init__(
-        self, name: Optional[str], expected_type: Optional[str], actual_type: str
-    ):
+    def __init__(self, name: str | None, expected_type: str | None, actual_type: str):
         super().__init__(self.msg.format(name, expected_type, actual_type))
 
 
 class DuplicateUpdateExpression(InvalidUpdateExpression):
-    def __init__(self, names: List[str]):
+    def __init__(self, names: list[str]):
         super().__init__(
             f"Two document paths overlap with each other; must remove or rewrite one of these paths; path one: [{names[0]}], path two: [{names[1]}]"
         )
@@ -312,7 +308,7 @@ class InvalidProjectionExpression(MockValidationException):
         "path one: [{paths[0]}], path two: [{paths[1]}]"
     )
 
-    def __init__(self, paths: List[str]):
+    def __init__(self, paths: list[str]):
         super().__init__(self.msg.format(paths=paths))
 
 
@@ -324,7 +320,7 @@ class TooManyClauses(InvalidUpdateExpression):
 
 
 class ResourceNotFoundException(JsonRESTError):
-    def __init__(self, msg: Optional[str] = None, table_name: Optional[str] = None):
+    def __init__(self, msg: str | None = None, table_name: str | None = None):
         err = ERROR_TYPE_PREFIX + "ResourceNotFoundException"
         default_msg = "Requested resource not found"
         if table_name is not None:
@@ -365,7 +361,7 @@ class TableAlreadyExistsException(JsonRESTError):
 
 
 class ResourceInUseException(JsonRESTError):
-    def __init__(self, msg: Optional[str] = None) -> None:
+    def __init__(self, msg: str | None = None) -> None:
         er = ERROR_TYPE_PREFIX + "ResourceInUseException"
         super().__init__(er, msg or "Resource in use")
 

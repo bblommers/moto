@@ -6,7 +6,7 @@ import string
 from collections import OrderedDict, defaultdict
 from functools import lru_cache
 from re import compile as re_compile
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Iterable, Optional
 
 from jinja2 import Template
 
@@ -72,26 +72,26 @@ def find_cluster(cluster_arn: str) -> "DBCluster":
 
 
 class TaggingMixin:
-    _tags: List[Dict[str, str]] = []
+    _tags: list[dict[str, str]] = []
 
     @property
-    def tags(self) -> List[Dict[str, str]]:
+    def tags(self) -> list[dict[str, str]]:
         return self._tags
 
     @tags.setter
-    def tags(self, value: List[Dict[str, str]]) -> None:
+    def tags(self, value: list[dict[str, str]]) -> None:
         self._tags = value
 
-    def get_tags(self) -> List[Dict[str, str]]:
+    def get_tags(self) -> list[dict[str, str]]:
         return self.tags
 
-    def add_tags(self, tags: List[Dict[str, str]]) -> List[Dict[str, str]]:
+    def add_tags(self, tags: list[dict[str, str]]) -> list[dict[str, str]]:
         new_keys = [tag_set["Key"] for tag_set in tags]
         self.tags = [tag_set for tag_set in self.tags if tag_set["Key"] not in new_keys]
         self.tags.extend(tags)
         return self.tags
 
-    def remove_tags(self, tag_keys: List[str]) -> None:
+    def remove_tags(self, tag_keys: list[str]) -> None:
         self.tags = [tag_set for tag_set in self.tags if tag_set["Key"] not in tag_keys]
 
 
@@ -130,7 +130,7 @@ class ProxyTarget(RDSBaseModel):
         self,
         backend: "RDSBackend",
         resource_id: str,
-        endpoint: Optional[str],
+        endpoint: str | None,
         type: str,
     ):
         super().__init__(backend)
@@ -153,12 +153,12 @@ class ProxyTargetGroup(RDSBaseModel):
         self._name = f"prx-tg-{random.get_random_string(length=17, lower_case=True)}"
         self.group_name = name
         self.proxy_name = proxy_name
-        self.targets: List[ProxyTarget] = []
+        self.targets: list[ProxyTarget] = []
 
         self.max_connections = 100
         self.max_idle_connections = 50
         self.borrow_timeout = 120
-        self.session_pinning_filters: List[str] = []
+        self.session_pinning_filters: list[str] = []
 
         self.created_date = iso_8601_datetime_with_milliseconds()
         self.updated_date = iso_8601_datetime_with_milliseconds()
@@ -196,9 +196,9 @@ class GlobalCluster(RDSBaseModel):
         backend: "RDSBackend",
         global_cluster_identifier: str,
         engine: str,
-        engine_version: Optional[str],
-        storage_encrypted: Optional[str],
-        deletion_protection: Optional[str],
+        engine_version: str | None,
+        storage_encrypted: str | None,
+        deletion_protection: str | None,
     ):
         super().__init__(backend)
         self.global_cluster_identifier = global_cluster_identifier
@@ -217,7 +217,7 @@ class GlobalCluster(RDSBaseModel):
         )
         if self.deletion_protection is None:
             self.deletion_protection = False
-        self.members: List[DBCluster] = []
+        self.members: list[DBCluster] = []
 
     @property
     def name(self) -> str:
@@ -364,7 +364,7 @@ class DBCluster(RDSBaseModel):
         )
         self.preferred_maintenance_window = "wed:02:40-wed:03:10"
         # This should default to the default security group
-        self.vpc_security_group_ids: List[str] = kwargs["vpc_security_group_ids"]
+        self.vpc_security_group_ids: list[str] = kwargs["vpc_security_group_ids"]
         self.hosted_zone_id = "".join(
             random.choice(string.ascii_uppercase + string.digits) for _ in range(14)
         )
@@ -391,9 +391,9 @@ class DBCluster(RDSBaseModel):
         self.serverless_v2_scaling_configuration = kwargs.get(
             "serverless_v2_scaling_configuration"
         )
-        self.cluster_members: List[str] = list()
+        self.cluster_members: list[str] = list()
         self.replication_source_identifier = kwargs.get("replication_source_identifier")
-        self.read_replica_identifiers: List[str] = list()
+        self.read_replica_identifiers: list[str] = list()
         self.is_writer: bool = False
         self.storage_encrypted = kwargs.get("storage_encrypted", False)
         if self.storage_encrypted is None:
@@ -500,7 +500,7 @@ class DBCluster(RDSBaseModel):
                 ]:
                     self._enable_http_endpoint = val
 
-    def master_user_secret(self) -> Dict[str, Any]:
+    def master_user_secret(self) -> dict[str, Any]:
         return {
             "secret_arn": f"arn:{self.partition}:secretsmanager:{self.region}:{self.account_id}:secret:rds!{self.name}",
             "secret_status": self.master_user_secret_status,
@@ -509,7 +509,7 @@ class DBCluster(RDSBaseModel):
             else f"arn:{self.partition}:kms:{self.region}:{self.account_id}:key/{self.name}",
         }
 
-    def get_cfg(self) -> Dict[str, Any]:
+    def get_cfg(self) -> dict[str, Any]:
         cfg = self.__dict__.copy()
         cfg.pop("backend")
         cfg["master_user_password"] = cfg.pop("_master_user_password")
@@ -695,7 +695,7 @@ class DBClusterSnapshot(RDSBaseModel):
         cluster: DBCluster,
         snapshot_id: str,
         snapshot_type: str,
-        tags: List[Dict[str, str]],
+        tags: list[dict[str, str]],
     ):
         super().__init__(backend)
         self.cluster = cluster
@@ -704,7 +704,7 @@ class DBClusterSnapshot(RDSBaseModel):
         self.tags = tags
         self.status = "available"
         self.created_at = iso_8601_datetime_with_milliseconds()
-        self.attributes: List[Dict[str, Any]] = []
+        self.attributes: list[dict[str, Any]] = []
 
     @property
     def name(self) -> str:
@@ -782,7 +782,7 @@ class DBInstance(CloudFormationModel, RDSBaseModel):
         super().__init__(backend)
         self.status = "available"
         self.is_replica = False
-        self.replicas: List[str] = []
+        self.replicas: list[str] = []
         self.engine: str = kwargs["engine"]
         if self.engine not in DbInstanceEngine.valid_db_instance_engine():
             raise InvalidParameterValue(
@@ -817,9 +817,9 @@ class DBInstance(CloudFormationModel, RDSBaseModel):
             self.allocated_storage = DBInstance.default_allocated_storage(
                 engine=self.engine, storage_type=self.storage_type
             )
-        self.db_cluster_identifier: Optional[str] = kwargs.get("db_cluster_identifier")
+        self.db_cluster_identifier: str | None = kwargs.get("db_cluster_identifier")
         self.db_instance_identifier = db_instance_identifier
-        self.source_db_identifier: Optional[str] = kwargs.get("source_db_identifier")
+        self.source_db_identifier: str | None = kwargs.get("source_db_identifier")
         self.db_instance_class = kwargs.get("db_instance_class")
         self.port = kwargs.get("port")
         if self.port is None:
@@ -912,10 +912,10 @@ class DBInstance(CloudFormationModel, RDSBaseModel):
         return self.arn
 
     @property
-    def physical_resource_id(self) -> Optional[str]:
+    def physical_resource_id(self) -> str | None:
         return self.db_instance_identifier
 
-    def db_parameter_groups(self) -> List["DBParameterGroup"]:
+    def db_parameter_groups(self) -> list["DBParameterGroup"]:
         if not self.db_parameter_group_name or self.is_default_parameter_group(
             self.db_parameter_group_name
         ):
@@ -943,7 +943,7 @@ class DBInstance(CloudFormationModel, RDSBaseModel):
     def is_default_parameter_group(self, param_group_name: str) -> bool:
         return param_group_name.startswith(f"default.{self.engine.lower()}")  # type: ignore
 
-    def default_db_parameter_group_details(self) -> Tuple[str, str]:
+    def default_db_parameter_group_details(self) -> tuple[str, str]:
         if not self.engine_version:
             return "", ""
 
@@ -952,7 +952,7 @@ class DBInstance(CloudFormationModel, RDSBaseModel):
 
         return db_family, f"default.{db_family}"
 
-    def master_user_secret(self) -> Dict[str, Any]:
+    def master_user_secret(self) -> dict[str, Any]:
         return {
             "secret_arn": f"arn:{self.partition}:secretsmanager:{self.region}:{self.account_id}:secret:rds!{self.name}",
             "secret_status": self.master_user_secret_status,
@@ -1115,7 +1115,7 @@ class DBInstance(CloudFormationModel, RDSBaseModel):
         self.is_replica = True
         self.replicas = []
 
-    def update(self, db_kwargs: Dict[str, Any]) -> None:
+    def update(self, db_kwargs: dict[str, Any]) -> None:
         for key, value in db_kwargs.items():
             if value is not None:
                 setattr(self, key, value)
@@ -1279,7 +1279,7 @@ class DBSnapshot(RDSBaseModel):
         database: DBInstance,
         snapshot_id: str,
         snapshot_type: str,
-        tags: List[Dict[str, str]],
+        tags: list[dict[str, str]],
     ):
         super().__init__(backend)
         self.database = database
@@ -1288,7 +1288,7 @@ class DBSnapshot(RDSBaseModel):
         self.tags = tags
         self.status = "available"
         self.created_at = iso_8601_datetime_with_milliseconds()
-        self.attributes: List[Dict[str, Any]] = []
+        self.attributes: list[dict[str, Any]] = []
 
     @property
     def name(self) -> str:
@@ -1353,8 +1353,8 @@ class DBSnapshot(RDSBaseModel):
 class ExportTask(BaseModel):
     def __init__(
         self,
-        snapshot: Union[DBSnapshot, DBClusterSnapshot],
-        kwargs: Dict[str, Any],
+        snapshot: DBSnapshot | DBClusterSnapshot,
+        kwargs: dict[str, Any],
     ):
         self.snapshot = snapshot
 
@@ -1462,14 +1462,14 @@ class DBSecurityGroup(CloudFormationModel, RDSBaseModel):
         backend: "RDSBackend",
         group_name: str,
         description: str,
-        tags: List[Dict[str, str]],
+        tags: list[dict[str, str]],
     ):
         super().__init__(backend)
         self.group_name = group_name
         self.description = description
         self.status = "authorized"
-        self.ip_ranges: List[Any] = []
-        self.ec2_security_groups: List[Any] = []
+        self.ip_ranges: list[Any] = []
+        self.ec2_security_groups: list[Any] = []
         self.tags = tags
         self.vpc_id = None
 
@@ -1567,8 +1567,8 @@ class DBSubnetGroup(CloudFormationModel, RDSBaseModel):
         backend: "RDSBackend",
         subnet_name: str,
         description: str,
-        subnets: "List[Subnet]",
-        tags: List[Dict[str, str]],
+        subnets: "list[Subnet]",
+        tags: list[dict[str, str]],
     ):
         super().__init__(backend)
         self.subnet_name = subnet_name
@@ -1654,14 +1654,14 @@ class DBProxy(RDSBaseModel):
         backend: "RDSBackend",
         db_proxy_name: str,
         engine_family: str,
-        auth: List[Dict[str, str]],
+        auth: list[dict[str, str]],
         role_arn: str,
-        vpc_subnet_ids: List[str],
-        vpc_security_group_ids: Optional[List[str]],
+        vpc_subnet_ids: list[str],
+        vpc_security_group_ids: Optional[list[str]],
         require_tls: Optional[bool] = False,
         idle_client_timeout: Optional[int] = 1800,
         debug_logging: Optional[bool] = False,
-        tags: Optional[List[Dict[str, str]]] = None,
+        tags: Optional[list[dict[str, str]]] = None,
     ):
         super().__init__(backend)
         self.db_proxy_name = db_proxy_name
@@ -1778,20 +1778,20 @@ class RDSBackend(BaseBackend):
             ARN_PARTITION_REGEX
             + r":rds:.*:[0-9]*:(db|cluster|es|og|pg|ri|secgrp|snapshot|cluster-snapshot|subgrp|db-proxy):.*$"
         )
-        self.clusters: Dict[str, DBCluster] = OrderedDict()
-        self.global_clusters: Dict[str, GlobalCluster] = OrderedDict()
-        self.databases: Dict[str, DBInstance] = OrderedDict()
-        self.database_snapshots: Dict[str, DBSnapshot] = OrderedDict()
-        self.cluster_snapshots: Dict[str, DBClusterSnapshot] = OrderedDict()
-        self.export_tasks: Dict[str, ExportTask] = OrderedDict()
-        self.event_subscriptions: Dict[str, EventSubscription] = OrderedDict()
-        self.db_parameter_groups: Dict[str, DBParameterGroup] = {}
-        self.db_cluster_parameter_groups: Dict[str, DBClusterParameterGroup] = {}
-        self.option_groups: Dict[str, OptionGroup] = {}
-        self.security_groups: Dict[str, DBSecurityGroup] = {}
-        self.subnet_groups: Dict[str, DBSubnetGroup] = {}
-        self._db_cluster_options: Optional[List[Dict[str, Any]]] = None
-        self.db_proxies: Dict[str, DBProxy] = OrderedDict()
+        self.clusters: dict[str, DBCluster] = OrderedDict()
+        self.global_clusters: dict[str, GlobalCluster] = OrderedDict()
+        self.databases: dict[str, DBInstance] = OrderedDict()
+        self.database_snapshots: dict[str, DBSnapshot] = OrderedDict()
+        self.cluster_snapshots: dict[str, DBClusterSnapshot] = OrderedDict()
+        self.export_tasks: dict[str, ExportTask] = OrderedDict()
+        self.event_subscriptions: dict[str, EventSubscription] = OrderedDict()
+        self.db_parameter_groups: dict[str, DBParameterGroup] = {}
+        self.db_cluster_parameter_groups: dict[str, DBClusterParameterGroup] = {}
+        self.option_groups: dict[str, OptionGroup] = {}
+        self.security_groups: dict[str, DBSecurityGroup] = {}
+        self.subnet_groups: dict[str, DBSubnetGroup] = {}
+        self._db_cluster_options: Optional[list[dict[str, Any]]] = None
+        self.db_proxies: dict[str, DBProxy] = OrderedDict()
         self.resource_map = {
             DBCluster: self.clusters,
             DBClusterParameterGroup: self.db_cluster_parameter_groups,
@@ -1809,7 +1809,7 @@ class RDSBackend(BaseBackend):
         }
 
     @lru_cache()
-    def db_cluster_options(self, engine) -> List[Dict[str, Any]]:  # type: ignore
+    def db_cluster_options(self, engine) -> list[dict[str, Any]]:  # type: ignore
         from moto.rds.utils import decode_orderable_db_instance
 
         decoded_options = load_resource(
@@ -1820,7 +1820,7 @@ class RDSBackend(BaseBackend):
         ]
         return self._db_cluster_options
 
-    def create_db_instance(self, db_kwargs: Dict[str, Any]) -> DBInstance:
+    def create_db_instance(self, db_kwargs: dict[str, Any]) -> DBInstance:
         database_id = db_kwargs["db_instance_identifier"]
         self._validate_db_identifier(database_id)
         database = DBInstance(self, **db_kwargs)
@@ -1855,10 +1855,10 @@ class RDSBackend(BaseBackend):
 
     def create_db_snapshot(
         self,
-        db_instance: Union[str, DBInstance],
+        db_instance: str | DBInstance,
         db_snapshot_identifier: str,
         snapshot_type: str = "manual",
-        tags: Optional[List[Dict[str, str]]] = None,
+        tags: Optional[list[dict[str, str]]] = None,
     ) -> DBSnapshot:
         if isinstance(db_instance, str):
             database = self.databases.get(db_instance)
@@ -1887,7 +1887,7 @@ class RDSBackend(BaseBackend):
         self,
         source_snapshot_identifier: str,
         target_snapshot_identifier: str,
-        tags: Optional[List[Dict[str, str]]] = None,
+        tags: Optional[list[dict[str, str]]] = None,
         copy_tags: bool = False,
     ) -> DBSnapshot:
         if source_snapshot_identifier.startswith("arn:aws:rds:"):
@@ -1917,7 +1917,7 @@ class RDSBackend(BaseBackend):
 
         return self.database_snapshots.pop(db_snapshot_identifier)
 
-    def promote_read_replica(self, db_kwargs: Dict[str, Any]) -> DBInstance:
+    def promote_read_replica(self, db_kwargs: dict[str, Any]) -> DBInstance:
         database_id = db_kwargs["db_instance_identifier"]
         database = self.databases[database_id]
         if database.is_replica:
@@ -1926,7 +1926,7 @@ class RDSBackend(BaseBackend):
 
         return database
 
-    def create_db_instance_read_replica(self, db_kwargs: Dict[str, Any]) -> DBInstance:
+    def create_db_instance_read_replica(self, db_kwargs: dict[str, Any]) -> DBInstance:
         database_id = db_kwargs["db_instance_identifier"]
         source_database_id = db_kwargs["source_db_identifier"]
         primary = self.find_db_from_id(source_database_id)
@@ -1942,8 +1942,8 @@ class RDSBackend(BaseBackend):
         return replica
 
     def describe_db_instances(
-        self, db_instance_identifier: Optional[str] = None, filters: Any = None
-    ) -> List[DBInstance]:
+        self, db_instance_identifier: str | None = None, filters: Any = None
+    ) -> list[DBInstance]:
         databases = self.databases
         if db_instance_identifier:
             filters = merge_filters(
@@ -1957,10 +1957,10 @@ class RDSBackend(BaseBackend):
 
     def describe_db_snapshots(
         self,
-        db_instance_identifier: Optional[str],
+        db_instance_identifier: str | None,
         db_snapshot_identifier: str,
-        filters: Optional[Dict[str, Any]] = None,
-    ) -> List[DBSnapshot]:
+        filters: Optional[dict[str, Any]] = None,
+    ) -> list[DBSnapshot]:
         snapshots = self.database_snapshots
         if db_instance_identifier:
             filters = merge_filters(
@@ -1977,7 +1977,7 @@ class RDSBackend(BaseBackend):
         return list(snapshots.values())
 
     def modify_db_instance(
-        self, db_instance_identifier: str, db_kwargs: Dict[str, Any]
+        self, db_instance_identifier: str, db_kwargs: dict[str, Any]
     ) -> DBInstance:
         database = self.describe_db_instances(db_instance_identifier)[0]
         if "new_db_instance_identifier" in db_kwargs:
@@ -2031,7 +2031,7 @@ class RDSBackend(BaseBackend):
         return snapshot_name
 
     def restore_db_instance_from_db_snapshot(
-        self, from_snapshot_id: str, overrides: Dict[str, Any]
+        self, from_snapshot_id: str, overrides: dict[str, Any]
     ) -> DBInstance:
         if from_snapshot_id.startswith("arn:aws:rds:"):
             from_snapshot_id = self.extract_snapshot_name_from_arn(from_snapshot_id)
@@ -2059,7 +2059,7 @@ class RDSBackend(BaseBackend):
         self,
         source_db_identifier: str,
         target_db_identifier: str,
-        overrides: Dict[str, Any],
+        overrides: dict[str, Any],
     ) -> DBInstance:
         db_instance = self.describe_db_instances(
             db_instance_identifier=source_db_identifier
@@ -2088,7 +2088,7 @@ class RDSBackend(BaseBackend):
         return self.create_db_instance(new_instance_props)
 
     def stop_db_instance(
-        self, db_instance_identifier: str, db_snapshot_identifier: Optional[str] = None
+        self, db_instance_identifier: str, db_snapshot_identifier: str | None = None
     ) -> DBInstance:
         self._validate_db_identifier(db_instance_identifier)
         database = self.describe_db_instances(db_instance_identifier)[0]
@@ -2128,7 +2128,7 @@ class RDSBackend(BaseBackend):
         return backend.describe_db_instances(db_name)[0]
 
     def delete_db_instance(
-        self, db_instance_identifier: str, db_snapshot_name: Optional[str] = None
+        self, db_instance_identifier: str, db_snapshot_name: str | None = None
     ) -> DBInstance:
         self._validate_db_identifier(db_instance_identifier)
         if db_instance_identifier in self.databases:
@@ -2152,7 +2152,7 @@ class RDSBackend(BaseBackend):
             raise DBInstanceNotFoundError(db_instance_identifier)
 
     def create_db_security_group(
-        self, group_name: str, description: str, tags: List[Dict[str, str]]
+        self, group_name: str, description: str, tags: list[dict[str, str]]
     ) -> DBSecurityGroup:
         security_group = DBSecurityGroup(self, group_name, description, tags)
         self.security_groups[group_name] = security_group
@@ -2160,7 +2160,7 @@ class RDSBackend(BaseBackend):
 
     def describe_security_groups(
         self, security_group_name: str
-    ) -> List[DBSecurityGroup]:
+    ) -> list[DBSecurityGroup]:
         if security_group_name:
             if security_group_name in self.security_groups:
                 return [self.security_groups[security_group_name]]
@@ -2193,14 +2193,14 @@ class RDSBackend(BaseBackend):
         self,
         subnet_name: str,
         description: str,
-        subnets: List[Any],
-        tags: List[Dict[str, str]],
+        subnets: list[Any],
+        tags: list[dict[str, str]],
     ) -> DBSubnetGroup:
         subnet_group = DBSubnetGroup(self, subnet_name, description, subnets, tags)
         self.subnet_groups[subnet_name] = subnet_group
         return subnet_group
 
-    def describe_db_subnet_groups(self, subnet_group_name: str) -> List[DBSubnetGroup]:
+    def describe_db_subnet_groups(self, subnet_group_name: str) -> list[DBSubnetGroup]:
         if subnet_group_name:
             if subnet_group_name in self.subnet_groups:
                 return [self.subnet_groups[subnet_group_name]]
@@ -2209,7 +2209,7 @@ class RDSBackend(BaseBackend):
         return list(self.subnet_groups.values())
 
     def modify_db_subnet_group(
-        self, subnet_name: str, description: str, subnets: "List[Subnet]"
+        self, subnet_name: str, description: str, subnets: "list[Subnet]"
     ) -> DBSubnetGroup:
         subnet_group = self.subnet_groups.pop(subnet_name)
         if not subnet_group:
@@ -2226,7 +2226,7 @@ class RDSBackend(BaseBackend):
         else:
             raise DBSubnetGroupNotFoundError(subnet_name)
 
-    def create_option_group(self, option_group_kwargs: Dict[str, Any]) -> "OptionGroup":
+    def create_option_group(self, option_group_kwargs: dict[str, Any]) -> "OptionGroup":
         option_group_id = option_group_kwargs["name"]
         # This list was verified against the AWS Console on 14 Dec 2022
         # Having an automated way (using the CLI) would be nice, but AFAICS that's not possible
@@ -2301,8 +2301,8 @@ class RDSBackend(BaseBackend):
             raise OptionGroupNotFoundFaultError(option_group_name)
 
     def describe_option_groups(
-        self, option_group_kwargs: Dict[str, Any]
-    ) -> List["OptionGroup"]:
+        self, option_group_kwargs: dict[str, Any]
+    ) -> list["OptionGroup"]:
         option_group_list = []
         for option_group in self.option_groups.values():
             if (
@@ -2329,7 +2329,7 @@ class RDSBackend(BaseBackend):
 
     @staticmethod
     def describe_option_group_options(
-        engine_name: str, major_engine_version: Optional[str] = None
+        engine_name: str, major_engine_version: str | None = None
     ) -> str:
         default_option_group_options = {
             "mysql": {
@@ -2374,8 +2374,8 @@ class RDSBackend(BaseBackend):
     def modify_option_group(
         self,
         option_group_name: str,
-        options_to_include: Optional[List[Dict[str, Any]]] = None,
-        options_to_remove: Optional[List[Dict[str, Any]]] = None,
+        options_to_include: Optional[list[dict[str, Any]]] = None,
+        options_to_remove: Optional[list[dict[str, Any]]] = None,
     ) -> "OptionGroup":
         if option_group_name not in self.option_groups:
             raise OptionGroupNotFoundFaultError(option_group_name)
@@ -2391,7 +2391,7 @@ class RDSBackend(BaseBackend):
         return self.option_groups[option_group_name]
 
     def create_db_parameter_group(
-        self, db_parameter_group_kwargs: Dict[str, Any]
+        self, db_parameter_group_kwargs: dict[str, Any]
     ) -> "DBParameterGroup":
         db_parameter_group_id = db_parameter_group_kwargs["name"]
         if db_parameter_group_id in self.db_parameter_groups:
@@ -2414,8 +2414,8 @@ class RDSBackend(BaseBackend):
         return db_parameter_group
 
     def describe_db_parameter_groups(
-        self, db_parameter_group_kwargs: Dict[str, Any]
-    ) -> List["DBParameterGroup"]:
+        self, db_parameter_group_kwargs: dict[str, Any]
+    ) -> list["DBParameterGroup"]:
         db_parameter_group_list = []
         for db_parameter_group in self.db_parameter_groups.values():
             if not db_parameter_group_kwargs.get(
@@ -2429,7 +2429,7 @@ class RDSBackend(BaseBackend):
     def modify_db_parameter_group(
         self,
         db_parameter_group_name: str,
-        db_parameter_group_parameters: Iterable[Dict[str, Any]],
+        db_parameter_group_parameters: Iterable[dict[str, Any]],
     ) -> "DBParameterGroup":
         if db_parameter_group_name not in self.db_parameter_groups:
             raise DBParameterGroupNotFoundError(db_parameter_group_name)
@@ -2439,10 +2439,10 @@ class RDSBackend(BaseBackend):
 
         return db_parameter_group
 
-    def describe_db_cluster_parameters(self) -> List[Dict[str, Any]]:
+    def describe_db_cluster_parameters(self) -> list[dict[str, Any]]:
         return []
 
-    def create_db_cluster(self, kwargs: Dict[str, Any]) -> DBCluster:
+    def create_db_cluster(self, kwargs: dict[str, Any]) -> DBCluster:
         cluster_id = kwargs["db_cluster_identifier"]
         cluster = DBCluster(self, **kwargs)
         self.clusters[cluster_id] = cluster
@@ -2473,7 +2473,7 @@ class RDSBackend(BaseBackend):
         cluster.status = "available"  # Already set the final status in the background
         return initial_state
 
-    def modify_db_cluster(self, kwargs: Dict[str, Any]) -> DBCluster:
+    def modify_db_cluster(self, kwargs: dict[str, Any]) -> DBCluster:
         cluster_id = kwargs["db_cluster_identifier"]
 
         cluster = self.clusters[cluster_id]
@@ -2535,7 +2535,7 @@ class RDSBackend(BaseBackend):
         db_cluster_identifier: str,
         db_snapshot_identifier: str,
         snapshot_type: str = "manual",
-        tags: Optional[List[Dict[str, str]]] = None,
+        tags: Optional[list[dict[str, str]]] = None,
     ) -> DBClusterSnapshot:
         cluster = self.clusters.get(db_cluster_identifier)
         if cluster is None:
@@ -2560,7 +2560,7 @@ class RDSBackend(BaseBackend):
         self,
         source_snapshot_identifier: str,
         target_snapshot_identifier: str,
-        tags: Optional[List[Dict[str, str]]] = None,
+        tags: Optional[list[dict[str, str]]] = None,
     ) -> DBClusterSnapshot:
         if source_snapshot_identifier not in self.cluster_snapshots:
             raise DBClusterSnapshotNotFoundError(source_snapshot_identifier)
@@ -2585,8 +2585,8 @@ class RDSBackend(BaseBackend):
         return self.cluster_snapshots.pop(db_snapshot_identifier)
 
     def describe_db_clusters(
-        self, cluster_identifier: Optional[str] = None, filters: Any = None
-    ) -> List[DBCluster]:
+        self, cluster_identifier: str | None = None, filters: Any = None
+    ) -> list[DBCluster]:
         clusters = self.clusters
         if cluster_identifier:
             filters = merge_filters(filters, {"db-cluster-id": [cluster_identifier]})
@@ -2598,10 +2598,10 @@ class RDSBackend(BaseBackend):
 
     def describe_db_cluster_snapshots(
         self,
-        db_cluster_identifier: Optional[str],
+        db_cluster_identifier: str | None,
         db_snapshot_identifier: str,
         filters: Any = None,
-    ) -> List[DBClusterSnapshot]:
+    ) -> list[DBClusterSnapshot]:
         snapshots = self.cluster_snapshots
         if db_cluster_identifier:
             filters = merge_filters(filters, {"db-cluster-id": [db_cluster_identifier]})
@@ -2616,7 +2616,7 @@ class RDSBackend(BaseBackend):
         return list(snapshots.values())
 
     def delete_db_cluster(
-        self, cluster_identifier: str, snapshot_name: Optional[str] = None
+        self, cluster_identifier: str, snapshot_name: str | None = None
     ) -> DBCluster:
         if cluster_identifier in self.clusters:
             cluster = self.clusters[cluster_identifier]
@@ -2649,7 +2649,7 @@ class RDSBackend(BaseBackend):
         return temp_state
 
     def restore_db_cluster_from_snapshot(
-        self, from_snapshot_id: str, overrides: Dict[str, Any]
+        self, from_snapshot_id: str, overrides: dict[str, Any]
     ) -> DBCluster:
         snapshot = self.describe_db_cluster_snapshots(
             db_cluster_identifier=None, db_snapshot_identifier=from_snapshot_id
@@ -2674,7 +2674,7 @@ class RDSBackend(BaseBackend):
         cluster.status = "stopped"
         return previous_state
 
-    def start_export_task(self, kwargs: Dict[str, Any]) -> ExportTask:
+    def start_export_task(self, kwargs: dict[str, Any]) -> ExportTask:
         export_task_id = kwargs["export_task_identifier"]
         source_arn = kwargs["source_arn"]
         snapshot_id = source_arn.split(":")[-1]
@@ -2691,7 +2691,7 @@ class RDSBackend(BaseBackend):
             raise DBClusterSnapshotNotFoundError(snapshot_id)
 
         if snapshot_type == "snapshot":
-            snapshot: Union[DBSnapshot, DBClusterSnapshot] = self.database_snapshots[
+            snapshot: DBSnapshot | DBClusterSnapshot = self.database_snapshots[
                 snapshot_id
             ]
         else:
@@ -2762,7 +2762,7 @@ class RDSBackend(BaseBackend):
                 if resource.arn.endswith(resource_name):
                     return resource
 
-    def list_tags_for_resource(self, arn: str) -> List[Dict[str, str]]:
+    def list_tags_for_resource(self, arn: str) -> list[dict[str, str]]:
         if self.arn_regex.match(arn):
             arn_breakdown = arn.split(":")
             resource_type = arn_breakdown[len(arn_breakdown) - 2]
@@ -2773,7 +2773,7 @@ class RDSBackend(BaseBackend):
             return []
         raise RDSClientError("InvalidParameterValue", f"Invalid resource name: {arn}")
 
-    def remove_tags_from_resource(self, arn: str, tag_keys: List[str]) -> None:
+    def remove_tags_from_resource(self, arn: str, tag_keys: list[str]) -> None:
         if self.arn_regex.match(arn):
             arn_breakdown = arn.split(":")
             resource_type = arn_breakdown[len(arn_breakdown) - 2]
@@ -2785,8 +2785,8 @@ class RDSBackend(BaseBackend):
         raise RDSClientError("InvalidParameterValue", f"Invalid resource name: {arn}")
 
     def add_tags_to_resource(  # type: ignore[return]
-        self, arn: str, tags: List[Dict[str, str]]
-    ) -> List[Dict[str, str]]:
+        self, arn: str, tags: list[dict[str, str]]
+    ) -> list[dict[str, str]]:
         if self.arn_regex.match(arn):
             arn_breakdown = arn.split(":")
             resource_type = arn_breakdown[-2]
@@ -2811,8 +2811,8 @@ class RDSBackend(BaseBackend):
 
     @staticmethod
     def _merge_tags(  # type: ignore[misc]
-        old_tags: List[Dict[str, Any]], new_tags: List[Dict[str, Any]]
-    ) -> List[Dict[str, Any]]:
+        old_tags: list[dict[str, Any]], new_tags: list[dict[str, Any]]
+    ) -> list[dict[str, Any]]:
         tags_dict = dict()
         tags_dict.update({d["Key"]: d["Value"] for d in old_tags})
         tags_dict.update({d["Key"]: d["Value"] for d in new_tags})
@@ -2855,7 +2855,7 @@ class RDSBackend(BaseBackend):
 
     def describe_orderable_db_instance_options(
         self, engine: str, engine_version: str
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Only the Aurora-Postgresql and Neptune-engine is currently implemented
         """
@@ -2886,7 +2886,7 @@ class RDSBackend(BaseBackend):
 
     def describe_db_cluster_parameter_groups(
         self, group_name: str
-    ) -> List["DBClusterParameterGroup"]:
+    ) -> list["DBClusterParameterGroup"]:
         if group_name is not None:
             if group_name not in self.db_cluster_parameter_groups:
                 raise DBClusterParameterGroupNotFoundError(group_name)
@@ -2899,11 +2899,11 @@ class RDSBackend(BaseBackend):
     def create_global_cluster(
         self,
         global_cluster_identifier: str,
-        source_db_cluster_identifier: Optional[str],
-        engine: Optional[str],
-        engine_version: Optional[str],
-        storage_encrypted: Optional[str],
-        deletion_protection: Optional[str],
+        source_db_cluster_identifier: str | None,
+        engine: str | None,
+        engine_version: str | None,
+        storage_encrypted: str | None,
+        deletion_protection: str | None,
     ) -> GlobalCluster:
         source_cluster = None
         if source_db_cluster_identifier is not None:
@@ -2938,7 +2938,7 @@ class RDSBackend(BaseBackend):
             global_cluster.members.append(source_cluster)
         return global_cluster
 
-    def describe_global_clusters(self) -> List[GlobalCluster]:
+    def describe_global_clusters(self) -> list[GlobalCluster]:
         return list(self.global_clusters.values())
 
     def delete_global_cluster(self, global_cluster_identifier: str) -> GlobalCluster:
@@ -2963,7 +2963,7 @@ class RDSBackend(BaseBackend):
 
     def describe_db_snapshot_attributes(
         self, db_snapshot_identifier: str
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         snapshot = self.describe_db_snapshots(
             db_instance_identifier=None, db_snapshot_identifier=db_snapshot_identifier
         )[0]
@@ -2973,9 +2973,9 @@ class RDSBackend(BaseBackend):
         self,
         db_snapshot_identifier: str,
         attribute_name: str,
-        values_to_add: Optional[Dict[str, Dict[str, str]]] = None,
-        values_to_remove: Optional[Dict[str, Dict[str, str]]] = None,
-    ) -> List[Dict[str, Any]]:
+        values_to_add: Optional[dict[str, dict[str, str]]] = None,
+        values_to_remove: Optional[dict[str, dict[str, str]]] = None,
+    ) -> list[dict[str, Any]]:
         snapshot = self.describe_db_snapshots(
             db_instance_identifier=None, db_snapshot_identifier=db_snapshot_identifier
         )[0]
@@ -3004,7 +3004,7 @@ class RDSBackend(BaseBackend):
 
     def describe_db_cluster_snapshot_attributes(
         self, db_cluster_snapshot_identifier: str
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         snapshot = self.describe_db_cluster_snapshots(
             db_cluster_identifier=None,
             db_snapshot_identifier=db_cluster_snapshot_identifier,
@@ -3015,9 +3015,9 @@ class RDSBackend(BaseBackend):
         self,
         db_cluster_snapshot_identifier: str,
         attribute_name: str,
-        values_to_add: Optional[Dict[str, Dict[str, str]]] = None,
-        values_to_remove: Optional[Dict[str, Dict[str, str]]] = None,
-    ) -> List[Dict[str, Any]]:
+        values_to_add: Optional[dict[str, dict[str, str]]] = None,
+        values_to_remove: Optional[dict[str, dict[str, str]]] = None,
+    ) -> list[dict[str, Any]]:
         snapshot = self.describe_db_cluster_snapshots(
             db_cluster_identifier=None,
             db_snapshot_identifier=db_cluster_snapshot_identifier,
@@ -3049,14 +3049,14 @@ class RDSBackend(BaseBackend):
         self,
         db_proxy_name: str,
         engine_family: str,
-        auth: List[Dict[str, str]],
+        auth: list[dict[str, str]],
         role_arn: str,
-        vpc_subnet_ids: List[str],
-        vpc_security_group_ids: Optional[List[str]],
+        vpc_subnet_ids: list[str],
+        vpc_security_group_ids: Optional[list[str]],
         require_tls: Optional[bool],
         idle_client_timeout: Optional[int],
         debug_logging: Optional[bool],
-        tags: Optional[List[Dict[str, str]]],
+        tags: Optional[list[dict[str, str]]],
     ) -> DBProxy:
         self._validate_db_identifier(db_proxy_name)
         if db_proxy_name in self.db_proxies:
@@ -3081,9 +3081,9 @@ class RDSBackend(BaseBackend):
 
     def describe_db_proxies(
         self,
-        db_proxy_name: Optional[str],
-        filters: Optional[List[Dict[str, Any]]] = None,
-    ) -> List[DBProxy]:
+        db_proxy_name: str | None,
+        filters: Optional[list[dict[str, Any]]] = None,
+    ) -> list[DBProxy]:
         """
         The filters-argument is not yet supported
         """
@@ -3098,8 +3098,8 @@ class RDSBackend(BaseBackend):
         self,
         db_proxy_name: str,
         target_group_name: str,
-        db_cluster_identifiers: List[str],
-        db_instance_identifiers: List[str],
+        db_cluster_identifiers: list[str],
+        db_instance_identifiers: list[str],
     ) -> None:
         db_proxy = self.db_proxies[db_proxy_name]
         target_group = db_proxy.proxy_target_groups[target_group_name or "default"]
@@ -3114,9 +3114,9 @@ class RDSBackend(BaseBackend):
         self,
         db_proxy_name: str,
         target_group_name: str,
-        db_cluster_identifiers: List[str],
-        db_instance_identifiers: List[str],
-    ) -> List[ProxyTarget]:
+        db_cluster_identifiers: list[str],
+        db_instance_identifiers: list[str],
+    ) -> list[ProxyTarget]:
         db_proxy = self.db_proxies[db_proxy_name]
         target_group = db_proxy.proxy_target_groups[target_group_name or "default"]
         new_targets = []
@@ -3143,19 +3143,19 @@ class RDSBackend(BaseBackend):
     def delete_db_proxy(self, proxy_name: str) -> DBProxy:
         return self.db_proxies.pop(proxy_name)
 
-    def describe_db_proxy_targets(self, proxy_name: str) -> List[ProxyTarget]:
+    def describe_db_proxy_targets(self, proxy_name: str) -> list[ProxyTarget]:
         proxy = self.db_proxies[proxy_name]
         target_group = proxy.proxy_target_groups["default"]
         return target_group.targets
 
     def describe_db_proxy_target_groups(
         self, proxy_name: str
-    ) -> List[ProxyTargetGroup]:
+    ) -> list[ProxyTargetGroup]:
         proxy = self.db_proxies[proxy_name]
         return list(proxy.proxy_target_groups.values())
 
     def modify_db_proxy_target_group(
-        self, proxy_name: str, config: Dict[str, Any]
+        self, proxy_name: str, config: dict[str, Any]
     ) -> ProxyTargetGroup:
         proxy = self.db_proxies[proxy_name]
         target_group = proxy.proxy_target_groups["default"]
@@ -3184,7 +3184,7 @@ class OptionGroup(RDSBaseModel):
         name: str,
         engine_name: str,
         major_engine_version: str,
-        description: Optional[str] = None,
+        description: str | None = None,
     ):
         super().__init__(backend)
         self.engine_name = engine_name
@@ -3192,9 +3192,9 @@ class OptionGroup(RDSBaseModel):
         self.description = description
         self._name = name
         self.vpc_and_non_vpc_instance_memberships = False
-        self.options: Dict[str, Any] = {}
+        self.options: dict[str, Any] = {}
         self.vpcId = "null"
-        self.tags: List[Dict[str, str]] = []
+        self.tags: list[dict[str, str]] = []
 
     @property
     def name(self) -> str:
@@ -3249,15 +3249,15 @@ class DBParameterGroup(CloudFormationModel, RDSBaseModel):
         backend: "RDSBackend",
         name: str,
         description: str,
-        family: Optional[str],
-        tags: List[Dict[str, str]],
+        family: str | None,
+        tags: list[dict[str, str]],
     ):
         super().__init__(backend)
         self._name = name
         self.description = description
         self.family = family
         self.tags = tags
-        self.parameters: Dict[str, Any] = defaultdict(dict)
+        self.parameters: dict[str, Any] = defaultdict(dict)
 
     @property
     def name(self) -> str:
@@ -3274,7 +3274,7 @@ class DBParameterGroup(CloudFormationModel, RDSBaseModel):
         )
         return template.render(param_group=self)
 
-    def update_parameters(self, new_parameters: Iterable[Dict[str, Any]]) -> None:
+    def update_parameters(self, new_parameters: Iterable[dict[str, Any]]) -> None:
         for new_parameter in new_parameters:
             parameter = self.parameters[new_parameter["ParameterName"]]
             parameter.update(new_parameter)
@@ -3333,7 +3333,7 @@ class DBClusterParameterGroup(CloudFormationModel, RDSBaseModel):
         self._name = name
         self.description = description
         self.family = family
-        self.parameters: Dict[str, Any] = defaultdict(dict)
+        self.parameters: dict[str, Any] = defaultdict(dict)
 
     @property
     def name(self) -> str:

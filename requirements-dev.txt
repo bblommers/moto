@@ -19,6 +19,5 @@ types-PyYAML
 
 
 # typing_extensions is currently used for:
-# Protocol  (3.8+)
 # ParamSpec  (3.10+)
 # Self  (3.11+)

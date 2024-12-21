@@ -1,8 +1,8 @@
 import json
-from typing import TYPE_CHECKING, Any, Dict, List, TypedDict
+from typing import TYPE_CHECKING, Any, TypedDict
 
 if TYPE_CHECKING:
-    from typing_extensions import Any, Dict, Required, Union
+    from typing_extensions import Any, Required
 
 
 # NOTE: Typing is based on the following document https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-event-patterns.html
@@ -11,15 +11,15 @@ EventMessageType = TypedDict(
     {
         "version": str,
         "id": str,
-        "detail-type": "Required[Union[str, List[str]]]",
-        "source": "Required[Union[str, List[str]]]",
+        "detail-type": "Required[str | list[str]]",
+        "source": "Required[str | list[str]]",
         "account": str,
         # support float type for internal use of moto.
-        "time": "Union[str, float]",
+        "time": "str | float",
         "replay-name": str,
         "region": str,
-        "resources": List[str],
-        "detail": "Required[Dict[str, Any]]",
+        "resources": list[str],
+        "detail": "Required[dict[str, Any]]",
         "ingestion-time": float,
     },
     total=False,
@@ -87,8 +87,8 @@ class EventTemplateParser:
 
     @staticmethod
     def parse(  # type: ignore[misc]
-        input_template: str, input_paths_map: Dict[str, Any], event: EventMessageType
-    ) -> Dict[str, Any]:
+        input_template: str, input_paths_map: dict[str, Any], event: EventMessageType
+    ) -> dict[str, Any]:
         from jsonpath_ng.ext import parse
 
         template_to_use = (

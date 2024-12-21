@@ -6,7 +6,7 @@ from collections import OrderedDict
 from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime, timedelta
 from json import JSONDecodeError
-from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Pattern, Tuple
+from typing import TYPE_CHECKING, Any, Iterable, Optional, Pattern
 
 from cryptography import x509
 from cryptography.hazmat._oid import NameOID
@@ -45,7 +45,7 @@ class FakeThing(CloudFormationModel):
         self,
         thing_name: str,
         thing_type: Optional["FakeThingType"],
-        attributes: Dict[str, Any],
+        attributes: dict[str, Any],
         account_id: str,
         region_name: str,
     ):
@@ -60,7 +60,7 @@ class FakeThing(CloudFormationModel):
         # TODO: we need to handle "version"?
 
         # for iot-data
-        self.thing_shadows: Dict[Optional[str], FakeShadow] = {}
+        self.thing_shadows: dict[str | None, FakeShadow] = {}
 
     def matches(self, query_string: str) -> bool:
         if query_string == "*":
@@ -85,7 +85,7 @@ class FakeThing(CloudFormationModel):
         include_thing_id: bool = False,
         include_thing_group_names: bool = False,
         include_shadows_as_json: bool = False,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         obj = {
             "thingName": self.thing_name,
             "thingArn": self.arn,
@@ -226,7 +226,7 @@ class FakeThingType(CloudFormationModel):
     def __init__(
         self,
         thing_type_name: str,
-        thing_type_properties: Optional[Dict[str, Any]],
+        thing_type_properties: Optional[dict[str, Any]],
         account_id: str,
         region_name: str,
     ):
@@ -239,7 +239,7 @@ class FakeThingType(CloudFormationModel):
         self.metadata = {"deprecated": False, "creationDate": int(t * 1000) / 1000.0}
         self.arn = f"arn:{get_partition(self.region_name)}:iot:{self.region_name}:{self.account_id}:thingtype/{thing_type_name}"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "thingTypeName": self.thing_type_name,
             "thingTypeId": self.thing_type_id,
@@ -328,10 +328,10 @@ class FakeThingGroup(BaseModel):
         self,
         thing_group_name: str,
         parent_group_name: str,
-        thing_group_properties: Dict[str, str],
+        thing_group_properties: dict[str, str],
         account_id: str,
         region_name: str,
-        thing_groups: Dict[str, "FakeThingGroup"],
+        thing_groups: dict[str, "FakeThingGroup"],
     ):
         self.account_id = account_id
         self.region_name = region_name
@@ -341,7 +341,7 @@ class FakeThingGroup(BaseModel):
         self.parent_group_name = parent_group_name
         self.thing_group_properties = thing_group_properties or {}
         t = time.time()
-        self.metadata: Dict[str, Any] = {"creationDate": int(t * 1000) / 1000.0}
+        self.metadata: dict[str, Any] = {"creationDate": int(t * 1000) / 1000.0}
         if parent_group_name:
             self.metadata["parentGroupName"] = parent_group_name
             # initilize rootToParentThingGroups
@@ -368,9 +368,9 @@ class FakeThingGroup(BaseModel):
                     ]
                 )
         self.arn = f"arn:{get_partition(self.region_name)}:iot:{self.region_name}:{self.account_id}:thinggroup/{thing_group_name}"
-        self.things: Dict[str, FakeThing] = OrderedDict()
+        self.things: dict[str, FakeThing] = OrderedDict()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "thingGroupName": self.thing_group_name,
             "thingGroupId": self.thing_group_id,
@@ -388,7 +388,7 @@ class FakeCertificate(BaseModel):
         status: str,
         account_id: str,
         region_name: str,
-        ca_certificate_id: Optional[str] = None,
+        ca_certificate_id: str | None = None,
     ):
         self.certificate_id = self.compute_cert_id(certificate_pem)
         self.arn = f"arn:{get_partition(region_name)}:iot:{region_name}:{account_id}:cert/{self.certificate_id}"
@@ -397,7 +397,7 @@ class FakeCertificate(BaseModel):
         self.status = status
 
         self.owner = account_id
-        self.transfer_data: Dict[str, str] = {}
+        self.transfer_data: dict[str, str] = {}
         self.creation_date = time.time()
         self.last_modified_date = self.creation_date
         self.validity_not_before = time.time() - 86400
@@ -430,7 +430,7 @@ class FakeCertificate(BaseModel):
             ).public_bytes(serialization.Encoding.DER)
         ).hexdigest()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "certificateArn": self.arn,
             "certificateId": self.certificate_id,
@@ -439,7 +439,7 @@ class FakeCertificate(BaseModel):
             "creationDate": self.creation_date,
         }
 
-    def to_description_dict(self) -> Dict[str, Any]:
+    def to_description_dict(self) -> dict[str, Any]:
         """
         You might need keys below in some situation
           - caCertificateId
@@ -468,7 +468,7 @@ class FakeCaCertificate(FakeCertificate):
         status: str,
         account_id: str,
         region_name: str,
-        registration_config: Dict[str, str],
+        registration_config: dict[str, str],
     ):
         super().__init__(
             certificate_pem=ca_certificate,
@@ -484,7 +484,7 @@ class FakePolicy(CloudFormationModel):
     def __init__(
         self,
         name: str,
-        document: Dict[str, Any],
+        document: dict[str, Any],
         account_id: str,
         region_name: str,
         default_version_id: str = "1",
@@ -498,7 +498,7 @@ class FakePolicy(CloudFormationModel):
         ]
         self._max_version_id = self.versions[0]._version_id
 
-    def to_get_dict(self) -> Dict[str, Any]:
+    def to_get_dict(self) -> dict[str, Any]:
         return {
             "policyName": self.name,
             "policyArn": self.arn,
@@ -506,7 +506,7 @@ class FakePolicy(CloudFormationModel):
             "defaultVersionId": self.default_version_id,
         }
 
-    def to_dict_at_creation(self) -> Dict[str, Any]:
+    def to_dict_at_creation(self) -> dict[str, Any]:
         return {
             "policyName": self.name,
             "policyArn": self.arn,
@@ -514,7 +514,7 @@ class FakePolicy(CloudFormationModel):
             "policyVersionId": self.default_version_id,
         }
 
-    def to_dict(self) -> Dict[str, str]:
+    def to_dict(self) -> dict[str, str]:
         return {"policyName": self.name, "policyArn": self.arn}
 
     @staticmethod
@@ -606,7 +606,7 @@ class FakePolicyVersion:
     def __init__(
         self,
         policy_name: str,
-        document: Dict[str, Any],
+        document: dict[str, Any],
         is_default: bool,
         account_id: str,
         region_name: str,
@@ -625,7 +625,7 @@ class FakePolicyVersion:
     def version_id(self) -> str:
         return str(self._version_id)
 
-    def to_get_dict(self) -> Dict[str, Any]:
+    def to_get_dict(self) -> dict[str, Any]:
         return {
             "policyName": self.name,
             "policyArn": self.arn,
@@ -637,7 +637,7 @@ class FakePolicyVersion:
             "generationId": self.version_id,
         }
 
-    def to_dict_at_creation(self) -> Dict[str, Any]:
+    def to_dict_at_creation(self) -> dict[str, Any]:
         return {
             "policyArn": self.arn,
             "policyDocument": self.document,
@@ -645,7 +645,7 @@ class FakePolicyVersion:
             "isDefaultVersion": self.is_default,
         }
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "versionId": self.version_id,
             "isDefaultVersion": self.is_default,
@@ -660,18 +660,18 @@ class FakeJob(BaseModel):
     def __init__(
         self,
         job_id: str,
-        targets: List[str],
+        targets: list[str],
         document_source: str,
         document: str,
         description: str,
-        presigned_url_config: Dict[str, Any],
+        presigned_url_config: dict[str, Any],
         target_selection: str,
-        job_executions_rollout_config: Dict[str, Any],
-        document_parameters: Dict[str, str],
-        abort_config: Dict[str, List[Dict[str, Any]]],
-        job_execution_retry_config: Dict[str, Any],
-        scheduling_config: Dict[str, Any],
-        timeout_config: Dict[str, Any],
+        job_executions_rollout_config: dict[str, Any],
+        document_parameters: dict[str, str],
+        abort_config: dict[str, list[dict[str, Any]]],
+        job_execution_retry_config: dict[str, Any],
+        scheduling_config: dict[str, Any],
+        timeout_config: dict[str, Any],
         account_id: str,
         region_name: str,
     ):
@@ -695,8 +695,8 @@ class FakeJob(BaseModel):
         self.scheduling_config = scheduling_config
         self.timeout_config = timeout_config
         self.status = "QUEUED"  # IN_PROGRESS | CANCELED | COMPLETED
-        self.comment: Optional[str] = None
-        self.reason_code: Optional[str] = None
+        self.comment: str | None = None
+        self.reason_code: str | None = None
         self.created_at = time.mktime(datetime(2015, 1, 1).timetuple())
         self.last_updated_at = time.mktime(datetime(2015, 1, 1).timetuple())
         self.completed_at = None
@@ -712,7 +712,7 @@ class FakeJob(BaseModel):
         }
         self.document_parameters = document_parameters
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         obj = {
             "jobArn": self.job_arn,
             "jobId": self.job_id,
@@ -749,7 +749,7 @@ class FakeJobExecution(BaseModel):
         thing_arn: str,
         status: str = "QUEUED",
         force_canceled: bool = False,
-        status_details_map: Optional[Dict[str, Any]] = None,
+        status_details_map: Optional[dict[str, Any]] = None,
     ):
         self.job_id = job_id
         self.status = status  # IN_PROGRESS | CANCELED | COMPLETED
@@ -763,7 +763,7 @@ class FakeJobExecution(BaseModel):
         self.version_number = 123
         self.approximate_seconds_before_time_out = 123
 
-    def to_get_dict(self) -> Dict[str, Any]:
+    def to_get_dict(self) -> dict[str, Any]:
         return {
             "jobId": self.job_id,
             "status": self.status,
@@ -778,7 +778,7 @@ class FakeJobExecution(BaseModel):
             "approximateSecondsBeforeTimedOut": self.approximate_seconds_before_time_out,
         }
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "jobId": self.job_id,
             "thingArn": self.thing_arn,
@@ -802,11 +802,11 @@ class FakeJobTemplate(CloudFormationModel):
         document_source: str,
         document: str,
         description: str,
-        presigned_url_config: Dict[str, Any],
-        job_executions_rollout_config: Dict[str, Any],
-        abort_config: Dict[str, List[Dict[str, Any]]],
-        job_execution_retry_config: Dict[str, Any],
-        timeout_config: Dict[str, Any],
+        presigned_url_config: dict[str, Any],
+        job_executions_rollout_config: dict[str, Any],
+        abort_config: dict[str, list[dict[str, Any]]],
+        job_execution_retry_config: dict[str, Any],
+        timeout_config: dict[str, Any],
         account_id: str,
         region_name: str,
     ):
@@ -827,7 +827,7 @@ class FakeJobTemplate(CloudFormationModel):
         self.timeout_config = timeout_config
         self.created_at = time.mktime(datetime(2015, 1, 1).timetuple())
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "jobTemplateArn": self.job_template_arn,
             "jobTemplateId": self.job_template_id,
@@ -951,12 +951,12 @@ class FakeEndpoint(BaseModel):
             self.endpoint = f"{identifier}.jobs.iot.{self.region_name}.amazonaws.com"
         self.endpoint_type = endpoint_type
 
-    def to_get_dict(self) -> Dict[str, str]:
+    def to_get_dict(self) -> dict[str, str]:
         return {
             "endpointAddress": self.endpoint,
         }
 
-    def to_dict(self) -> Dict[str, str]:
+    def to_dict(self) -> dict[str, str]:
         return {
             "endpointAddress": self.endpoint,
         }
@@ -969,9 +969,9 @@ class FakeRule(BaseModel):
         description: str,
         created_at: int,
         rule_disabled: bool,
-        topic_pattern: Optional[str],
-        actions: List[Dict[str, Any]],
-        error_action: Dict[str, Any],
+        topic_pattern: str | None,
+        actions: list[dict[str, Any]],
+        error_action: dict[str, Any],
         sql: str,
         aws_iot_sql_version: str,
         account_id: str,
@@ -990,7 +990,7 @@ class FakeRule(BaseModel):
         self.aws_iot_sql_version = aws_iot_sql_version or "2016-03-23"
         self.arn = f"arn:{get_partition(self.region_name)}:iot:{self.region_name}:{self.account_id}:rule/{rule_name}"
 
-    def to_get_dict(self) -> Dict[str, Any]:
+    def to_get_dict(self) -> dict[str, Any]:
         return {
             "rule": {
                 "actions": self.actions,
@@ -1005,7 +1005,7 @@ class FakeRule(BaseModel):
             "ruleArn": self.arn,
         }
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "ruleName": self.rule_name,
             "createdAt": self.created_at,
@@ -1022,10 +1022,10 @@ class FakeDomainConfiguration(BaseModel):
         region_name: str,
         domain_configuration_name: str,
         domain_name: str,
-        server_certificate_arns: List[str],
+        server_certificate_arns: list[str],
         domain_configuration_status: str,
         service_type: str,
-        authorizer_config: Optional[Dict[str, Any]],
+        authorizer_config: Optional[dict[str, Any]],
         domain_type: str,
     ):
         if service_type and service_type not in ["DATA", "CREDENTIAL_PROVIDER", "JOBS"]:
@@ -1048,7 +1048,7 @@ class FakeDomainConfiguration(BaseModel):
         self.domain_type = domain_type
         self.last_status_change_date = time.time()
 
-    def to_description_dict(self) -> Dict[str, Any]:
+    def to_description_dict(self) -> dict[str, Any]:
         return {
             "domainConfigurationName": self.domain_configuration_name,
             "domainConfigurationArn": self.domain_configuration_arn,
@@ -1061,7 +1061,7 @@ class FakeDomainConfiguration(BaseModel):
             "lastStatusChangeDate": self.last_status_change_date,
         }
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "domainConfigurationName": self.domain_configuration_name,
             "domainConfigurationArn": self.domain_configuration_arn,
@@ -1086,7 +1086,7 @@ class FakeRoleAlias(CloudFormationModel):
         self.last_modified_date = self.creation_date
         self.arn = f"arn:{get_partition(self.region_name)}:iot:{self.region_name}:{self.account_id}:rolealias/{role_alias}"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "roleAlias": self.role_alias,
             "roleAliasArn": self.arn,
@@ -1178,8 +1178,8 @@ class FakeConfigField:
 
 @dataclass(frozen=True)
 class FakeThingGroupIndexingConfiguration:
-    customFields: List[FakeConfigField] = field(default_factory=list)
-    managedFields: List[FakeConfigField] = field(default_factory=list)
+    customFields: list[FakeConfigField] = field(default_factory=list)
+    managedFields: list[FakeConfigField] = field(default_factory=list)
     thingGroupIndexingMode: str = "OFF"
 
 
@@ -1191,16 +1191,16 @@ class FakeThingIndexingConfigurationFilterGeoLocations:
 
 @dataclass(frozen=True)
 class FakeThingIndexingConfigurationFilter:
-    geoLocations: List[FakeThingIndexingConfigurationFilterGeoLocations] = field(
+    geoLocations: list[FakeThingIndexingConfigurationFilterGeoLocations] = field(
         default_factory=list
     )
-    namedShadowNames: List[str] = field(default_factory=list)
+    namedShadowNames: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)
 class FakeThingIndexingConfiguration:
-    customFields: List[FakeConfigField] = field(default_factory=list)
-    managedFields: List[FakeConfigField] = field(default_factory=list)
+    customFields: list[FakeConfigField] = field(default_factory=list)
+    managedFields: list[FakeConfigField] = field(default_factory=list)
     filter: FakeThingIndexingConfigurationFilter = field(
         default_factory=FakeThingIndexingConfigurationFilter
     )
@@ -1226,13 +1226,13 @@ class FakeIndexingConfiguration(BaseModel):
         self.account_id = account_id
         self.configuration = FakeIndexingConfigurationData()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return asdict(self.configuration)
 
     def update_configuration(
         self,
-        thingIndexingConfiguration: Dict[str, Any],
-        thingGroupIndexingConfiguration: Dict[str, Any],
+        thingIndexingConfiguration: dict[str, Any],
+        thingGroupIndexingConfiguration: dict[str, Any],
     ) -> None:
         self.configuration = replace(
             self.configuration,
@@ -1250,31 +1250,31 @@ class FakeIndexingConfiguration(BaseModel):
 class IoTBackend(BaseBackend):
     def __init__(self, region_name: str, account_id: str):
         super().__init__(region_name, account_id)
-        self.things: Dict[str, FakeThing] = OrderedDict()
-        self.jobs: Dict[str, FakeJob] = OrderedDict()
-        self.jobs_templates: Dict[str, FakeJobTemplate] = OrderedDict()
-        self.job_executions: Dict[Tuple[str, str], FakeJobExecution] = OrderedDict()
-        self.thing_types: Dict[str, FakeThingType] = OrderedDict()
-        self.thing_groups: Dict[str, FakeThingGroup] = OrderedDict()
-        self.ca_certificates: Dict[str, FakeCaCertificate] = OrderedDict()
-        self.certificates: Dict[str, FakeCertificate] = OrderedDict()
-        self.policies: Dict[str, FakePolicy] = OrderedDict()
-        self.principal_policies: Dict[Tuple[str, str], Tuple[str, FakePolicy]] = (
+        self.things: dict[str, FakeThing] = OrderedDict()
+        self.jobs: dict[str, FakeJob] = OrderedDict()
+        self.jobs_templates: dict[str, FakeJobTemplate] = OrderedDict()
+        self.job_executions: dict[tuple[str, str], FakeJobExecution] = OrderedDict()
+        self.thing_types: dict[str, FakeThingType] = OrderedDict()
+        self.thing_groups: dict[str, FakeThingGroup] = OrderedDict()
+        self.ca_certificates: dict[str, FakeCaCertificate] = OrderedDict()
+        self.certificates: dict[str, FakeCertificate] = OrderedDict()
+        self.policies: dict[str, FakePolicy] = OrderedDict()
+        self.principal_policies: dict[tuple[str, str], tuple[str, FakePolicy]] = (
             OrderedDict()
         )
-        self.principal_things: Dict[Tuple[str, str], Tuple[str, FakeThing]] = (
+        self.principal_things: dict[tuple[str, str], tuple[str, FakeThing]] = (
             OrderedDict()
         )
-        self.rules: Dict[str, FakeRule] = OrderedDict()
-        self.role_aliases: Dict[str, FakeRoleAlias] = OrderedDict()
+        self.rules: dict[str, FakeRule] = OrderedDict()
+        self.role_aliases: dict[str, FakeRoleAlias] = OrderedDict()
         self.endpoint: Optional[FakeEndpoint] = None
-        self.domain_configurations: Dict[str, FakeDomainConfiguration] = OrderedDict()
+        self.domain_configurations: dict[str, FakeDomainConfiguration] = OrderedDict()
         self.indexing_configuration = FakeIndexingConfiguration(region_name, account_id)
 
     @staticmethod
     def default_vpc_endpoint_service(
-        service_region: str, zones: List[str]
-    ) -> List[Dict[str, str]]:
+        service_region: str, zones: list[str]
+    ) -> list[dict[str, str]]:
         """Default VPC endpoint service."""
         return BaseBackend.default_vpc_endpoint_service_factory(
             service_region, zones, "iot"
@@ -1337,7 +1337,7 @@ class IoTBackend(BaseBackend):
         self,
         thing_name: str,
         thing_type_name: str,
-        attribute_payload: Optional[Dict[str, Any]],
+        attribute_payload: Optional[dict[str, Any]],
     ) -> FakeThing:
         thing_types = self.list_thing_types()
         thing_type = None
@@ -1355,7 +1355,7 @@ class IoTBackend(BaseBackend):
                     msg=f"Can not create new thing with depreated thing type:{thing_type_name}"
                 )
         if attribute_payload is None:
-            attributes: Dict[str, Any] = {}
+            attributes: dict[str, Any] = {}
         elif "attributes" not in attribute_payload:
             attributes = {}
         else:
@@ -1367,8 +1367,8 @@ class IoTBackend(BaseBackend):
         return thing
 
     def create_thing_type(
-        self, thing_type_name: str, thing_type_properties: Dict[str, Any]
-    ) -> Tuple[str, str]:
+        self, thing_type_name: str, thing_type_properties: dict[str, Any]
+    ) -> tuple[str, str]:
         if thing_type_properties is None:
             thing_type_properties = {}
         thing_type = FakeThingType(
@@ -1378,7 +1378,7 @@ class IoTBackend(BaseBackend):
         return thing_type.thing_type_name, thing_type.arn
 
     def list_thing_types(
-        self, thing_type_name: Optional[str] = None
+        self, thing_type_name: str | None = None
     ) -> Iterable[FakeThingType]:
         if thing_type_name:
             # It's weird but thing_type_name is filtered by forward match, not complete match
@@ -1395,8 +1395,8 @@ class IoTBackend(BaseBackend):
         attribute_value: str,
         thing_type_name: str,
         max_results: int,
-        token: Optional[str],
-    ) -> Tuple[Iterable[FakeThing], Optional[str]]:
+        token: str | None,
+    ) -> tuple[Iterable[FakeThing], str | None]:
         all_things = [_.to_dict() for _ in self.things.values()]
         if attribute_name is not None and thing_type_name is not None:
             filtered_things = list(
@@ -1495,7 +1495,7 @@ class IoTBackend(BaseBackend):
         self,
         thing_name: str,
         thing_type_name: str,
-        attribute_payload: Optional[Dict[str, Any]],
+        attribute_payload: Optional[dict[str, Any]],
         remove_thing_type: bool,
     ) -> None:
         """
@@ -1539,7 +1539,7 @@ class IoTBackend(BaseBackend):
 
     def create_keys_and_certificate(
         self, set_as_active: bool
-    ) -> Tuple[FakeCertificate, Dict[str, str]]:
+    ) -> tuple[FakeCertificate, dict[str, str]]:
         # implement here
         # caCertificate can be blank
         private_key = rsa.generate_private_key(
@@ -1633,7 +1633,7 @@ class IoTBackend(BaseBackend):
         """
         return self.certificates.values()
 
-    def list_certificates_by_ca(self, ca_certificate_id: str) -> List[FakeCertificate]:
+    def list_certificates_by_ca(self, ca_certificate_id: str) -> list[FakeCertificate]:
         """
         Pagination is not yet implemented
         """
@@ -1657,7 +1657,7 @@ class IoTBackend(BaseBackend):
         self,
         ca_certificate: str,
         set_as_active: bool,
-        registration_config: Dict[str, str],
+        registration_config: dict[str, str],
     ) -> FakeCaCertificate:
         """
         The VerificationCertificate-parameter is not yet implemented
@@ -1673,7 +1673,7 @@ class IoTBackend(BaseBackend):
         self.ca_certificates[certificate.certificate_id] = certificate
         return certificate
 
-    def _find_ca_certificate(self, ca_certificate_pem: Optional[str]) -> Optional[str]:
+    def _find_ca_certificate(self, ca_certificate_pem: str | None) -> str | None:
         for ca_cert in self.ca_certificates.values():
             if ca_cert.certificate_pem == ca_certificate_pem:
                 return ca_cert.certificate_id
@@ -1682,7 +1682,7 @@ class IoTBackend(BaseBackend):
     def register_certificate(
         self,
         certificate_pem: str,
-        ca_certificate_pem: Optional[str],
+        ca_certificate_pem: str | None,
         set_as_active: bool,
         status: str,
     ) -> FakeCertificate:
@@ -1717,8 +1717,8 @@ class IoTBackend(BaseBackend):
     def update_ca_certificate(
         self,
         certificate_id: str,
-        new_status: Optional[str],
-        config: Optional[Dict[str, str]],
+        new_status: str | None,
+        config: Optional[dict[str, str]],
     ) -> None:
         """
         The newAutoRegistrationStatus and removeAutoRegistration-parameters are not yet implemented
@@ -1735,7 +1735,7 @@ class IoTBackend(BaseBackend):
         cert.status = new_status
 
     def create_policy(
-        self, policy_name: str, policy_document: Dict[str, Any]
+        self, policy_name: str, policy_document: dict[str, Any]
     ) -> FakePolicy:
         if policy_name in self.policies:
             current_policy = self.policies[policy_name]
@@ -1768,7 +1768,7 @@ class IoTBackend(BaseBackend):
             raise ResourceNotFoundException()
         del self.principal_policies[k]
 
-    def list_attached_policies(self, target: str) -> List[FakePolicy]:
+    def list_attached_policies(self, target: str) -> list[FakePolicy]:
         """
         Pagination is not yet implemented
         """
@@ -1805,7 +1805,7 @@ class IoTBackend(BaseBackend):
         del self.policies[policy.name]
 
     def create_policy_version(
-        self, policy_name: str, policy_document: Dict[str, Any], set_as_default: bool
+        self, policy_name: str, policy_document: dict[str, Any], set_as_default: bool
     ) -> FakePolicyVersion:
         policy = self.get_policy(policy_name)
         if not policy:
@@ -1919,7 +1919,7 @@ class IoTBackend(BaseBackend):
             raise ResourceNotFoundException()
         del self.principal_policies[k]
 
-    def list_principal_policies(self, principal_arn: str) -> List[FakePolicy]:
+    def list_principal_policies(self, principal_arn: str) -> list[FakePolicy]:
         """
         Pagination is not yet implemented
         """
@@ -1928,7 +1928,7 @@ class IoTBackend(BaseBackend):
         ]
         return policies
 
-    def list_policy_principals(self, policy_name: str) -> List[str]:
+    def list_policy_principals(self, policy_name: str) -> list[str]:
         """
         Pagination is not yet implemented
         """
@@ -1940,7 +1940,7 @@ class IoTBackend(BaseBackend):
         ]
         return principals
 
-    def list_targets_for_policy(self, policy_name: str) -> List[str]:
+    def list_targets_for_policy(self, policy_name: str) -> list[str]:
         """
         Pagination is not yet implemented
         """
@@ -1967,13 +1967,13 @@ class IoTBackend(BaseBackend):
             raise ResourceNotFoundException()
         del self.principal_things[k]
 
-    def list_principal_things(self, principal_arn: str) -> List[str]:
+    def list_principal_things(self, principal_arn: str) -> list[str]:
         thing_names = [
             k[1] for k, v in self.principal_things.items() if k[0] == principal_arn
         ]
         return thing_names
 
-    def list_thing_principals(self, thing_name: str) -> List[str]:
+    def list_thing_principals(self, thing_name: str) -> list[str]:
         things = [_ for _ in self.things.values() if _.thing_name == thing_name]
         if len(things) == 0:
             raise ResourceNotFoundException(
@@ -2000,8 +2000,8 @@ class IoTBackend(BaseBackend):
         self,
         thing_group_name: str,
         parent_group_name: str,
-        thing_group_properties: Dict[str, Any],
-    ) -> Tuple[str, str, str]:
+        thing_group_properties: dict[str, Any],
+    ) -> tuple[str, str, str]:
         thing_group = FakeThingGroup(
             thing_group_name,
             parent_group_name,
@@ -2051,10 +2051,10 @@ class IoTBackend(BaseBackend):
 
     def list_thing_groups(
         self,
-        parent_group: Optional[str],
-        name_prefix_filter: Optional[str],
+        parent_group: str | None,
+        name_prefix_filter: str | None,
         recursive: Optional[bool],
-    ) -> List[FakeThingGroup]:
+    ) -> list[FakeThingGroup]:
         if recursive is None:
             recursive = True
         if name_prefix_filter is None:
@@ -2083,7 +2083,7 @@ class IoTBackend(BaseBackend):
     def update_thing_group(
         self,
         thing_group_name: str,
-        thing_group_properties: Dict[str, Any],
+        thing_group_properties: dict[str, Any],
         expected_version: int,
     ) -> int:
         thing_group = self.describe_thing_group(thing_group_name)
@@ -2115,7 +2115,7 @@ class IoTBackend(BaseBackend):
         return thing_group.version
 
     def _identify_thing_group(
-        self, thing_group_name: Optional[str], thing_group_arn: Optional[str]
+        self, thing_group_name: str | None, thing_group_arn: str | None
     ) -> FakeThingGroup:
         # identify thing group
         if thing_group_name is None and thing_group_arn is None:
@@ -2135,7 +2135,7 @@ class IoTBackend(BaseBackend):
         return thing_group
 
     def _identify_thing(
-        self, thing_name: Optional[str], thing_arn: Optional[str]
+        self, thing_name: str | None, thing_arn: str | None
     ) -> FakeThing:
         # identify thing
         if thing_name is None and thing_arn is None:
@@ -2157,9 +2157,9 @@ class IoTBackend(BaseBackend):
     def add_thing_to_thing_group(
         self,
         thing_group_name: str,
-        thing_group_arn: Optional[str],
+        thing_group_arn: str | None,
         thing_name: str,
-        thing_arn: Optional[str],
+        thing_arn: str | None,
     ) -> None:
         thing_group = self._identify_thing_group(thing_group_name, thing_group_arn)
         thing = self._identify_thing(thing_name, thing_arn)
@@ -2171,9 +2171,9 @@ class IoTBackend(BaseBackend):
     def remove_thing_from_thing_group(
         self,
         thing_group_name: str,
-        thing_group_arn: Optional[str],
+        thing_group_arn: str | None,
         thing_name: str,
-        thing_arn: Optional[str],
+        thing_arn: str | None,
     ) -> None:
         thing_group = self._identify_thing_group(thing_group_name, thing_group_arn)
         thing = self._identify_thing(thing_name, thing_arn)
@@ -2189,7 +2189,7 @@ class IoTBackend(BaseBackend):
         thing_group = self.describe_thing_group(thing_group_name)
         return thing_group.things.values()
 
-    def list_thing_groups_for_thing(self, thing_name: str) -> List[Dict[str, str]]:
+    def list_thing_groups_for_thing(self, thing_name: str) -> list[dict[str, str]]:
         """
         Pagination is not yet implemented
         """
@@ -2209,8 +2209,8 @@ class IoTBackend(BaseBackend):
     def update_thing_groups_for_thing(
         self,
         thing_name: str,
-        thing_groups_to_add: List[str],
-        thing_groups_to_remove: List[str],
+        thing_groups_to_add: list[str],
+        thing_groups_to_remove: list[str],
     ) -> None:
         thing = self.describe_thing(thing_name)
         for thing_group_name in thing_groups_to_add:
@@ -2227,19 +2227,19 @@ class IoTBackend(BaseBackend):
     def create_job(
         self,
         job_id: str,
-        targets: List[str],
+        targets: list[str],
         document_source: str,
         document: str,
         description: str,
-        presigned_url_config: Dict[str, Any],
+        presigned_url_config: dict[str, Any],
         target_selection: str,
-        job_executions_rollout_config: Dict[str, Any],
-        document_parameters: Dict[str, str],
-        abort_config: Dict[str, List[Dict[str, Any]]],
-        job_execution_retry_config: Dict[str, Any],
-        scheduling_config: Dict[str, Any],
-        timeout_config: Dict[str, Any],
-    ) -> Tuple[str, str, str]:
+        job_executions_rollout_config: dict[str, Any],
+        document_parameters: dict[str, str],
+        abort_config: dict[str, list[dict[str, Any]]],
+        job_execution_retry_config: dict[str, Any],
+        scheduling_config: dict[str, Any],
+        timeout_config: dict[str, Any],
+    ) -> tuple[str, str, str]:
         job = FakeJob(
             job_id=job_id,
             targets=targets,
@@ -2304,7 +2304,7 @@ class IoTBackend(BaseBackend):
         return self.jobs[job_id]
 
     @paginate(PAGINATION_MODEL)  # type: ignore[misc]
-    def list_jobs(self) -> List[Dict[str, Any]]:
+    def list_jobs(self) -> list[dict[str, Any]]:
         """
         The following parameter are not yet implemented: Status, TargetSelection, ThingGroupName, ThingGroupId
         """
@@ -2365,8 +2365,8 @@ class IoTBackend(BaseBackend):
             raise InvalidStateTransitionException()
 
     def list_job_executions_for_job(
-        self, job_id: str, status: str, max_results: int, token: Optional[str]
-    ) -> Tuple[List[Dict[str, Any]], Optional[str]]:
+        self, job_id: str, status: str, max_results: int, token: str | None
+    ) -> tuple[list[dict[str, Any]], str | None]:
         job_executions = [
             self.job_executions[je].to_dict()
             for je in self.job_executions
@@ -2397,8 +2397,8 @@ class IoTBackend(BaseBackend):
 
     @paginate(PAGINATION_MODEL)  # type: ignore[misc]
     def list_job_executions_for_thing(
-        self, thing_name: str, status: Optional[str]
-    ) -> List[Dict[str, Any]]:
+        self, thing_name: str, status: str | None
+    ) -> list[dict[str, Any]]:
         job_executions = [
             self.job_executions[je].to_dict()
             for je in self.job_executions
@@ -2415,10 +2415,10 @@ class IoTBackend(BaseBackend):
 
         return job_executions
 
-    def list_topic_rules(self) -> List[Dict[str, Any]]:
+    def list_topic_rules(self) -> list[dict[str, Any]]:
         return [r.to_dict() for r in self.rules.values()]
 
-    def get_topic_rule(self, rule_name: str) -> Dict[str, Any]:
+    def get_topic_rule(self, rule_name: str) -> dict[str, Any]:
         if rule_name not in self.rules:
             raise ResourceNotFoundException()
         return self.rules[rule_name].to_get_dict()
@@ -2466,8 +2466,8 @@ class IoTBackend(BaseBackend):
         self,
         domain_configuration_name: str,
         domain_name: str,
-        server_certificate_arns: List[str],
-        authorizer_config: Dict[str, Any],
+        server_certificate_arns: list[str],
+        authorizer_config: dict[str, Any],
         service_type: str,
     ) -> FakeDomainConfiguration:
         """
@@ -2508,13 +2508,13 @@ class IoTBackend(BaseBackend):
             raise ResourceNotFoundException("The specified resource does not exist.")
         return self.domain_configurations[domain_configuration_name]
 
-    def list_domain_configurations(self) -> List[Dict[str, Any]]:
+    def list_domain_configurations(self) -> list[dict[str, Any]]:
         return [_.to_dict() for _ in self.domain_configurations.values()]
 
     def update_domain_configuration(
         self,
         domain_configuration_name: str,
-        authorizer_config: Dict[str, Any],
+        authorizer_config: dict[str, Any],
         domain_configuration_status: str,
         remove_authorizer_config: Optional[bool],
     ) -> FakeDomainConfiguration:
@@ -2531,7 +2531,7 @@ class IoTBackend(BaseBackend):
             domain_configuration.authorizer_config = None
         return domain_configuration
 
-    def search_index(self, query_string: str) -> List[Dict[str, Any]]:
+    def search_index(self, query_string: str) -> list[dict[str, Any]]:
         """
         Pagination is not yet implemented. Only basic search queries are supported for now.
         """
@@ -2584,7 +2584,7 @@ class IoTBackend(BaseBackend):
     def update_role_alias(
         self,
         role_alias_name: str,
-        role_arn: Optional[str] = None,
+        role_arn: str | None = None,
         credential_duration_seconds: Optional[int] = None,
     ) -> FakeRoleAlias:
         role_alias = self.describe_role_alias(role_alias_name=role_alias_name)
@@ -2598,13 +2598,13 @@ class IoTBackend(BaseBackend):
         self.describe_role_alias(role_alias_name=role_alias_name)
         del self.role_aliases[role_alias_name]
 
-    def get_indexing_configuration(self) -> Dict[str, Any]:
+    def get_indexing_configuration(self) -> dict[str, Any]:
         return self.indexing_configuration.to_dict()
 
     def update_indexing_configuration(
         self,
-        thingIndexingConfiguration: Dict[str, Any],
-        thingGroupIndexingConfiguration: Dict[str, Any],
+        thingIndexingConfiguration: dict[str, Any],
+        thingGroupIndexingConfiguration: dict[str, Any],
     ) -> None:
         self.indexing_configuration.update_configuration(
             thingIndexingConfiguration, thingGroupIndexingConfiguration
@@ -2616,11 +2616,11 @@ class IoTBackend(BaseBackend):
         document_source: str,
         document: str,
         description: str,
-        presigned_url_config: Dict[str, Any],
-        job_executions_rollout_config: Dict[str, Any],
-        abort_config: Dict[str, List[Dict[str, Any]]],
-        job_execution_retry_config: Dict[str, Any],
-        timeout_config: Dict[str, Any],
+        presigned_url_config: dict[str, Any],
+        job_executions_rollout_config: dict[str, Any],
+        abort_config: dict[str, list[dict[str, Any]]],
+        job_execution_retry_config: dict[str, Any],
+        timeout_config: dict[str, Any],
     ) -> "FakeJobTemplate":
         if job_template_id in self.jobs_templates:
             raise ConflictException(job_template_id)
@@ -2643,7 +2643,7 @@ class IoTBackend(BaseBackend):
         return job_template
 
     @paginate(PAGINATION_MODEL)  # type: ignore[misc]
-    def list_job_templates(self) -> List[Dict[str, Any]]:
+    def list_job_templates(self) -> list[dict[str, Any]]:
         return [_.to_dict() for _ in self.jobs_templates.values()]
 
     def delete_job_template(self, job_template_id: str) -> None:

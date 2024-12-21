@@ -1,7 +1,7 @@
 import copy
 import re
 import string
-from typing import Any, Dict, Iterator, List, Tuple
+from typing import Any, Iterator
 
 from moto.core.utils import iso_8601_datetime_with_milliseconds
 from moto.moto_api._internal import mock_random as random
@@ -25,8 +25,8 @@ def random_instance_group_id() -> str:
 
 
 def steps_from_query_string(
-    querystring_dict: List[Dict[str, Any]],
-) -> List[Dict[str, Any]]:
+    querystring_dict: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
     steps = []
     for step in querystring_dict:
         step["jar"] = step.pop("hadoop_jar_step._jar")
@@ -53,7 +53,7 @@ def steps_from_query_string(
 
 class Unflattener:
     @staticmethod
-    def unflatten_complex_params(input_dict: Dict[str, Any], param_name: str) -> None:  # type: ignore[misc]
+    def unflatten_complex_params(input_dict: dict[str, Any], param_name: str) -> None:  # type: ignore[misc]
         """Function to unflatten (portions of) dicts with complex keys.  The moto request parser flattens the incoming
         request bodies, which is generally helpful, but for nested dicts/lists can result in a hard-to-manage
         parameter exposion.  This function allows one to selectively unflatten a set of dict keys, replacing them
@@ -137,7 +137,7 @@ class ReleaseLabel:
         self.patch = patch
 
     @classmethod
-    def parse(cls, release_label: str) -> Tuple[int, int, int]:
+    def parse(cls, release_label: str) -> tuple[int, int, int]:
         if not release_label:
             raise ValueError(f"Invalid empty ReleaseLabel: {release_label}")
 
@@ -156,7 +156,7 @@ class ReleaseLabel:
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({str(self)})"
 
-    def __iter__(self) -> Iterator[Tuple[int, int, int]]:
+    def __iter__(self) -> Iterator[tuple[int, int, int]]:
         return iter((self.major, self.minor, self.patch))  # type: ignore
 
     def __eq__(self, other: Any) -> bool:
@@ -363,7 +363,7 @@ class EmrSecurityGroupManager:
         master_security_group: str,
         slave_security_group: str,
         service_access_security_group: str,
-    ) -> Tuple[Any, Any, Any]:
+    ) -> tuple[Any, Any, Any]:
         group_metadata = [
             (
                 master_security_group,
@@ -381,7 +381,7 @@ class EmrSecurityGroupManager:
                 EmrManagedServiceAccessSecurityGroup,
             ),
         ]
-        managed_groups: Dict[str, Any] = {}
+        managed_groups: dict[str, Any] = {}
         for name, kind, defaults in group_metadata:
             managed_groups[kind] = self._get_or_create_sg(name, defaults)
         self._add_rules_to(managed_groups)
@@ -404,7 +404,7 @@ class EmrSecurityGroupManager:
             group = create_sg(defaults.group_name, defaults.description(), self.vpc_id)
         return group
 
-    def _add_rules_to(self, managed_groups: Dict[str, Any]) -> None:
+    def _add_rules_to(self, managed_groups: dict[str, Any]) -> None:
         rules_metadata = [
             (self.MANAGED_RULES_EGRESS, self.ec2.authorize_security_group_egress),
             (self.MANAGED_RULES_INGRESS, self.ec2.authorize_security_group_ingress),
@@ -422,8 +422,8 @@ class EmrSecurityGroupManager:
 
     @staticmethod
     def _render_rules(  # type: ignore[misc]
-        rules: Any, managed_groups: Dict[str, Any]
-    ) -> List[Dict[str, Any]]:
+        rules: Any, managed_groups: dict[str, Any]
+    ) -> list[dict[str, Any]]:
         rendered_rules = copy.deepcopy(rules)
         for rule in rendered_rules:
             rule["group_name_or_id"] = managed_groups[rule["group_name_or_id"]].id

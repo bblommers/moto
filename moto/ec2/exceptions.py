@@ -1,4 +1,4 @@
-from typing import Any, Iterable, List, Optional, Union
+from typing import Any, Iterable
 
 from moto.core.exceptions import RESTError
 
@@ -70,7 +70,7 @@ class InvalidParameterCombination(EC2ClientError):
 
 
 class MalformedDHCPOptionsIdError(EC2ClientError):
-    def __init__(self, dhcp_options_id: Optional[str]):
+    def __init__(self, dhcp_options_id: str | None):
         super().__init__(
             "InvalidDhcpOptionsId.Malformed",
             f'Invalid id: "{dhcp_options_id}" (expecting "dopt-...")',
@@ -270,7 +270,7 @@ class InvalidInstanceTypeError(EC2ClientError):
 
 
 class InvalidAMIIdError(EC2ClientError):
-    def __init__(self, ami_id: Union[List[str], str]):
+    def __init__(self, ami_id: list[str] | str):
         super().__init__(
             "InvalidAMIID.NotFound",
             f"The image id '[{ami_id}]' does not exist",
@@ -286,7 +286,7 @@ class UnvailableAMIIdError(EC2ClientError):
 
 
 class InvalidAMIAttributeItemValueError(EC2ClientError):
-    def __init__(self, attribute: str, value: Union[str, Iterable[str], None]):
+    def __init__(self, attribute: str, value: str | Iterable[str] | None):
         super().__init__(
             "InvalidAMIAttributeItemValue",
             f'Invalid attribute item value "{value}" for {attribute} item type.',
@@ -294,7 +294,7 @@ class InvalidAMIAttributeItemValueError(EC2ClientError):
 
 
 class MalformedAMIIdError(EC2ClientError):
-    def __init__(self, ami_id: List[str]):
+    def __init__(self, ami_id: list[str]):
         super().__init__(
             "InvalidAMIID.Malformed", f'Invalid id: "{ami_id}" (expecting "ami-...")'
         )
@@ -561,7 +561,7 @@ class MotoNotImplementedError(NotImplementedError):
 
 
 class FilterNotImplementedError(MotoNotImplementedError):
-    def __init__(self, filter_name: str, method_name: Optional[str]):
+    def __init__(self, filter_name: str, method_name: str | None):
         super().__init__(f"The filter '{filter_name}' for {method_name}")
 
 
@@ -602,7 +602,7 @@ class LastEniDetachError(OperationNotPermitted):
 
 class InvalidAvailabilityZoneError(EC2ClientError):
     def __init__(
-        self, availability_zone_value: Optional[str], valid_availability_zones: str
+        self, availability_zone_value: str | None, valid_availability_zones: str
     ):
         super().__init__(
             "InvalidParameterValue",

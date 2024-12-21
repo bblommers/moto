@@ -3,7 +3,7 @@ import operator
 import re
 from datetime import date, datetime
 from itertools import repeat
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional
 
 from pyparsing import (
     CaselessKeyword,
@@ -34,7 +34,7 @@ from .exceptions import (
 )
 
 
-def _cast(type_: str, value: Any) -> Union[date, datetime, float, int, str]:
+def _cast(type_: str, value: Any) -> date | datetime | float | int | str:
     # values are always cast from string to target type
     value = str(value)
 
@@ -102,7 +102,7 @@ def _escape_regex(pattern: str) -> str:
 
 class _Expr(abc.ABC):
     @abc.abstractmethod
-    def eval(self, part_keys: List[Dict[str, str]], part_input: Dict[str, Any]) -> Any:  # type: ignore[misc]
+    def eval(self, part_keys: list[dict[str, str]], part_input: dict[str, Any]) -> Any:  # type: ignore[misc]
         raise NotImplementedError()
 
 
@@ -110,14 +110,14 @@ class _Ident(_Expr):
     def __init__(self, tokens: ParseResults):
         self.ident: str = tokens[0]
 
-    def eval(self, part_keys: List[Dict[str, str]], part_input: Dict[str, Any]) -> Any:
+    def eval(self, part_keys: list[dict[str, str]], part_input: dict[str, Any]) -> Any:
         try:
             return self._eval(part_keys, part_input)
         except ValueError as e:
             # existing partition values cannot be cast to current schema
             raise InvalidStateException("GetPartitions", str(e))
 
-    def leval(self, part_keys: List[Dict[str, str]], literal: Any) -> Any:
+    def leval(self, part_keys: list[dict[str, str]], literal: Any) -> Any:
         # evaluate literal by simulating partition input
         try:
             return self._eval(part_keys, part_input={"Values": repeat(literal)})
@@ -125,14 +125,14 @@ class _Ident(_Expr):
             # expression literal cannot be cast to current schema
             raise InvalidInputException("GetPartitions", str(e))
 
-    def type_(self, part_keys: List[Dict[str, str]]) -> str:
+    def type_(self, part_keys: list[dict[str, str]]) -> str:
         for key in part_keys:
             if self.ident == key["Name"]:
                 return key["Type"]
 
         raise InvalidInputException("GetPartitions", f"Unknown column '{self.ident}'")
 
-    def _eval(self, part_keys: List[Dict[str, str]], part_input: Dict[str, Any]) -> Any:
+    def _eval(self, part_keys: list[dict[str, str]], part_input: dict[str, Any]) -> Any:
         for key, value in zip(part_keys, part_input["Values"]):
             if self.ident == key["Name"]:
                 return _cast(key["Type"], value)
@@ -145,12 +145,12 @@ class _IsNull(_Expr):
     def __init__(self, tokens: ParseResults):
         self.ident: _Ident = tokens[0]
 
-    def eval(self, part_keys: List[Dict[str, str]], part_input: Dict[str, Any]) -> bool:
+    def eval(self, part_keys: list[dict[str, str]], part_input: dict[str, Any]) -> bool:
         return self.ident.eval(part_keys, part_input) is None
 
 
 class _IsNotNull(_IsNull):
-    def eval(self, part_keys: List[Dict[str, str]], part_input: Dict[str, Any]) -> bool:
+    def eval(self, part_keys: list[dict[str, str]], part_input: dict[str, Any]) -> bool:
         return not super().eval(part_keys, part_input)
 
 
@@ -160,7 +160,7 @@ class _BinOp(_Expr):
         self.bin_op: str = tokens[1]
         self.literal: Any = tokens[2]
 
-    def eval(self, part_keys: List[Dict[str, str]], part_input: Dict[str, Any]) -> bool:
+    def eval(self, part_keys: list[dict[str, str]], part_input: dict[str, Any]) -> bool:
         ident = self.ident.eval(part_keys, part_input)
 
         # simulate partition input for the lateral
@@ -181,7 +181,7 @@ class _Like(_Expr):
         self.ident: _Ident = tokens[0]
         self.literal: str = tokens[2]
 
-    def eval(self, part_keys: List[Dict[str, str]], part_input: Dict[str, Any]) -> bool:
+    def eval(self, part_keys: list[dict[str, str]], part_input: dict[str, Any]) -> bool:
         type_ = self.ident.type_(part_keys)
         if type_ in ("bigint", "int", "smallint", "tinyint"):
             raise InvalidInputException(
@@ -213,16 +213,16 @@ class _Like(_Expr):
 
 
 class _NotLike(_Like):
-    def eval(self, part_keys: List[Dict[str, str]], part_input: Dict[str, Any]) -> bool:
+    def eval(self, part_keys: list[dict[str, str]], part_input: dict[str, Any]) -> bool:
         return not super().eval(part_keys, part_input)
 
 
 class _In(_Expr):
     def __init__(self, tokens: ParseResults):
         self.ident: _Ident = tokens[0]
-        self.values: List[Any] = tokens[2:]
+        self.values: list[Any] = tokens[2:]
 
-    def eval(self, part_keys: List[Dict[str, str]], part_input: Dict[str, Any]) -> bool:
+    def eval(self, part_keys: list[dict[str, str]], part_input: dict[str, Any]) -> bool:
         ident = self.ident.eval(part_keys, part_input)
         values = (self.ident.leval(part_keys, value) for value in self.values)
 
@@ -230,7 +230,7 @@ class _In(_Expr):
 
 
 class _NotIn(_In):
-    def eval(self, part_keys: List[Dict[str, str]], part_input: Dict[str, Any]) -> bool:
+    def eval(self, part_keys: list[dict[str, str]], part_input: dict[str, Any]) -> bool:
         return not super().eval(part_keys, part_input)
 
 
@@ -240,7 +240,7 @@ class _Between(_Expr):
         self.left: Any = tokens[2]
         self.right: Any = tokens[4]
 
-    def eval(self, part_keys: List[Dict[str, str]], part_input: Dict[str, Any]) -> bool:
+    def eval(self, part_keys: list[dict[str, str]], part_input: dict[str, Any]) -> bool:
         ident = self.ident.eval(part_keys, part_input)
         left = self.ident.leval(part_keys, self.left)
         right = self.ident.leval(part_keys, self.right)
@@ -249,23 +249,23 @@ class _Between(_Expr):
 
 
 class _NotBetween(_Between):
-    def eval(self, part_keys: List[Dict[str, str]], part_input: Dict[str, Any]) -> bool:
+    def eval(self, part_keys: list[dict[str, str]], part_input: dict[str, Any]) -> bool:
         return not super().eval(part_keys, part_input)
 
 
 class _BoolAnd(_Expr):
     def __init__(self, tokens: ParseResults) -> None:
-        self.operands: List[_Expr] = tokens[0][0::2]  # skip 'and' between tokens
+        self.operands: list[_Expr] = tokens[0][0::2]  # skip 'and' between tokens
 
-    def eval(self, part_keys: List[Dict[str, str]], part_input: Dict[str, Any]) -> bool:
+    def eval(self, part_keys: list[dict[str, str]], part_input: dict[str, Any]) -> bool:
         return all(operand.eval(part_keys, part_input) for operand in self.operands)
 
 
 class _BoolOr(_Expr):
     def __init__(self, tokens: ParseResults) -> None:
-        self.operands: List[_Expr] = tokens[0][0::2]  # skip 'or' between tokens
+        self.operands: list[_Expr] = tokens[0][0::2]  # skip 'or' between tokens
 
-    def eval(self, part_keys: List[Dict[str, str]], part_input: Dict[str, Any]) -> bool:
+    def eval(self, part_keys: list[dict[str, str]], part_input: dict[str, Any]) -> bool:
         return any(operand.eval(part_keys, part_input) for operand in self.operands)
 
 
@@ -324,9 +324,9 @@ class _PartitionFilterExpressionCache:
         )
         self._expr = expr.set_name("expr")
 
-        self._cache: Dict[str, _Expr] = {}
+        self._cache: dict[str, _Expr] = {}
 
-    def get(self, expression: Optional[str]) -> Optional[_Expr]:
+    def get(self, expression: str | None) -> Optional[_Expr]:
         if expression is None:
             return None
 
@@ -348,7 +348,7 @@ _PARTITION_FILTER_EXPRESSION_CACHE = _PartitionFilterExpressionCache()
 
 
 class PartitionFilter:
-    def __init__(self, expression: Optional[str], fake_table: Any):
+    def __init__(self, expression: str | None, fake_table: Any):
         self.expression = expression
         self.fake_table = fake_table
 

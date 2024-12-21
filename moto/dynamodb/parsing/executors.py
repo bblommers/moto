@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Any, Optional, Type
 
 from moto.dynamodb.exceptions import (
     IncorrectDataType,
@@ -29,7 +29,7 @@ from moto.dynamodb.parsing.validators import ExpressionPathResolver
 
 
 class NodeExecutor:
-    def __init__(self, ast_node: Node, expression_attribute_names: Dict[str, str]):
+    def __init__(self, ast_node: Node, expression_attribute_names: dict[str, str]):
         self.node = ast_node
         self.expression_attribute_names = expression_attribute_names
 
@@ -38,8 +38,8 @@ class NodeExecutor:
         pass
 
     def get_item_part_for_path_nodes(
-        self, item: Item, path_nodes: List[Node]
-    ) -> Union[DynamoType, Dict[str, Any]]:
+        self, item: Item, path_nodes: list[Node]
+    ) -> DynamoType | dict[str, Any]:
         """
         For a list of path nodes travers the item by following the path_nodes
         Args:
@@ -56,9 +56,7 @@ class NodeExecutor:
                 self.expression_attribute_names
             ).resolve_expression_path_nodes_to_dynamo_type(item, path_nodes)
 
-    def get_item_before_end_of_path(
-        self, item: Item
-    ) -> Union[DynamoType, Dict[str, Any]]:
+    def get_item_before_end_of_path(self, item: Item) -> DynamoType | dict[str, Any]:
         """
         Get the part ot the item where the item will perform the action. For most actions this should be the parent. As
         that element will need to be modified by the action.
@@ -72,7 +70,7 @@ class NodeExecutor:
             item, self.get_path_expression_nodes()[:-1]
         )
 
-    def get_item_at_end_of_path(self, item: Item) -> Union[DynamoType, Dict[str, Any]]:
+    def get_item_at_end_of_path(self, item: Item) -> DynamoType | dict[str, Any]:
         """
         For a DELETE the path points at the stringset so we need to evaluate the full path.
         Args:
@@ -87,7 +85,7 @@ class NodeExecutor:
     # that element will need to be modified by the action.
     get_item_part_in_which_to_perform_action = get_item_before_end_of_path
 
-    def get_path_expression_nodes(self) -> List[Node]:
+    def get_path_expression_nodes(self) -> list[Node]:
         update_expression_path = self.node.children[0]
         assert isinstance(update_expression_path, UpdateExpressionPath)
         return update_expression_path.children
@@ -122,10 +120,10 @@ class SetExecutor(NodeExecutor):
     @classmethod
     def set(  # type: ignore[misc]
         cls,
-        item_part_to_modify_with_set: Union[DynamoType, Dict[str, Any]],
+        item_part_to_modify_with_set: DynamoType | dict[str, Any],
         element_to_set: Any,
         value_to_set: Any,
-        expression_attribute_names: Dict[str, str],
+        expression_attribute_names: dict[str, str],
     ) -> None:
         if isinstance(element_to_set, ExpressionAttribute):
             attribute_name = element_to_set.get_attribute_name()
@@ -281,7 +279,7 @@ class UpdateExpressionExecutor:
     }
 
     def __init__(
-        self, update_ast: Node, item: Item, expression_attribute_names: Dict[str, str]
+        self, update_ast: Node, item: Item, expression_attribute_names: dict[str, str]
     ):
         self.update_ast = update_ast
         self.item = item

@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Callable, Optional, TypeVar, Union, overload
+from typing import TYPE_CHECKING, Callable, Optional, TypeVar, overload
 
 from moto import settings
 from moto.core.config import DefaultConfig
@@ -25,7 +25,7 @@ def mock_aws(
 def mock_aws(
     func: "Optional[Callable[P, T]]" = None,
     config: Optional[DefaultConfig] = None,
-) -> Union["MockAWS", "Callable[P, T]"]:
+) -> "MockAWS" | "Callable[P, T]":
     clss = (
         ServerModeMockAWS
         if settings.TEST_SERVER_MODE

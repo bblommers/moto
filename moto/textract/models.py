@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Any, Dict, List
+from typing import Any
 
 from moto.core.base_backend import BackendDict, BaseBackend
 from moto.core.common_models import BaseModel
@@ -16,10 +16,10 @@ class TextractJobStatus:
 
 
 class TextractJob(BaseModel):
-    def __init__(self, job: Dict[str, Any]):
+    def __init__(self, job: dict[str, Any]):
         self.job = job
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return self.job
 
 
@@ -28,11 +28,11 @@ class TextractBackend(BaseBackend):
 
     JOB_STATUS = TextractJobStatus.succeeded
     PAGES = {"Pages": mock_random.randint(5, 500)}
-    BLOCKS: List[Dict[str, Any]] = []
+    BLOCKS: list[dict[str, Any]] = []
 
     def __init__(self, region_name: str, account_id: str):
         super().__init__(region_name, account_id)
-        self.async_text_detection_jobs: Dict[str, TextractJob] = defaultdict()
+        self.async_text_detection_jobs: dict[str, TextractJob] = defaultdict()
 
     def get_document_text_detection(self, job_id: str) -> TextractJob:
         """
@@ -43,7 +43,7 @@ class TextractBackend(BaseBackend):
             raise InvalidJobIdException()
         return job
 
-    def detect_document_text(self) -> Dict[str, Any]:
+    def detect_document_text(self) -> dict[str, Any]:
         return {
             "Blocks": TextractBackend.BLOCKS,
             "DetectDocumentTextModelVersion": "1.0",

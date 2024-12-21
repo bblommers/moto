@@ -1,30 +1,30 @@
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..models import FakeSecret
 
 
-def name_filter(secret: "FakeSecret", names: List[str]) -> bool:
+def name_filter(secret: "FakeSecret", names: list[str]) -> bool:
     return _matcher(names, [secret.name])
 
 
-def description_filter(secret: "FakeSecret", descriptions: List[str]) -> bool:
+def description_filter(secret: "FakeSecret", descriptions: list[str]) -> bool:
     return _matcher(descriptions, [secret.description], match_prefix=False)  # type: ignore
 
 
-def tag_key(secret: "FakeSecret", tag_keys: List[str]) -> bool:
+def tag_key(secret: "FakeSecret", tag_keys: list[str]) -> bool:
     if not secret.tags:
         return False
     return _matcher(tag_keys, [tag["Key"] for tag in secret.tags])
 
 
-def tag_value(secret: "FakeSecret", tag_values: List[str]) -> bool:
+def tag_value(secret: "FakeSecret", tag_values: list[str]) -> bool:
     if not secret.tags:
         return False
     return _matcher(tag_values, [tag["Value"] for tag in secret.tags])
 
 
-def filter_all(secret: "FakeSecret", values: List[str]) -> bool:
+def filter_all(secret: "FakeSecret", values: list[str]) -> bool:
     attributes = [secret.name, secret.description]
     if secret.tags:
         attributes += [tag["Key"] for tag in secret.tags] + [
@@ -35,7 +35,7 @@ def filter_all(secret: "FakeSecret", values: List[str]) -> bool:
 
 
 def _matcher(
-    patterns: List[str], strings: List[str], match_prefix: bool = True
+    patterns: list[str], strings: list[str], match_prefix: bool = True
 ) -> bool:
     for pattern in [p for p in patterns if p.startswith("!")]:
         for string in strings:

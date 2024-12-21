@@ -1,5 +1,5 @@
 import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from moto.core.base_backend import BackendDict, BaseBackend
 from moto.core.common_models import BaseModel
@@ -50,7 +50,7 @@ class EngineVersion(BaseModel):
         self.create_time = unix_time(create_time)
         self.update_time = self.create_time
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "Options": self.options,
             "Status": {
@@ -70,21 +70,21 @@ class OpenSearchDomain(BaseModel):
         region: str,
         domain_name: str,
         engine_version: str,
-        cluster_config: Dict[str, Any],
-        ebs_options: Dict[str, Any],
+        cluster_config: dict[str, Any],
+        ebs_options: dict[str, Any],
         access_policies: str,
-        snapshot_options: Dict[str, int],
-        vpc_options: Dict[str, List[str]],
-        cognito_options: Dict[str, Any],
-        encryption_at_rest_options: Dict[str, Any],
-        node_to_node_encryption_options: Dict[str, bool],
-        advanced_options: Dict[str, str],
-        log_publishing_options: Dict[str, Any],
-        domain_endpoint_options: Dict[str, Any],
-        advanced_security_options: Dict[str, Any],
-        auto_tune_options: Dict[str, Any],
-        off_peak_window_options: Dict[str, Any],
-        software_update_options: Dict[str, bool],
+        snapshot_options: dict[str, int],
+        vpc_options: dict[str, list[str]],
+        cognito_options: dict[str, Any],
+        encryption_at_rest_options: dict[str, Any],
+        node_to_node_encryption_options: dict[str, bool],
+        advanced_options: dict[str, str],
+        log_publishing_options: dict[str, Any],
+        domain_endpoint_options: dict[str, Any],
+        advanced_security_options: dict[str, Any],
+        auto_tune_options: dict[str, Any],
+        off_peak_window_options: dict[str, Any],
+        software_update_options: dict[str, bool],
     ):
         self.domain_id = f"{account_id}/{domain_name}"
         self.domain_name = domain_name
@@ -127,8 +127,8 @@ class OpenSearchDomain(BaseModel):
                 self.cluster_config[key] = value
 
         if self.vpc_options is None:
-            self.endpoint: Optional[str] = f"{domain_name}.{region}.es.amazonaws.com"
-            self.endpoints: Optional[Dict[str, str]] = None
+            self.endpoint: str | None = f"{domain_name}.{region}.es.amazonaws.com"
+            self.endpoints: Optional[dict[str, str]] = None
         else:
             self.endpoint = None
             self.endpoints = {"vpc": f"{domain_name}.{region}.es.amazonaws.com"}
@@ -137,7 +137,7 @@ class OpenSearchDomain(BaseModel):
         self.deleted = True
         self.processing = True
 
-    def dct_options(self) -> Dict[str, Any]:
+    def dct_options(self) -> dict[str, Any]:
         return {
             "Endpoint": self.endpoint,
             "Endpoints": self.endpoints,
@@ -159,7 +159,7 @@ class OpenSearchDomain(BaseModel):
             "SoftwareUpdateOptions": self.software_update_options,
         }
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         dct = {
             "DomainId": self.domain_id,
             "DomainName": self.domain_name,
@@ -174,8 +174,8 @@ class OpenSearchDomain(BaseModel):
                 dct[key] = value
         return dct
 
-    def to_config_dict(self) -> Dict[str, Any]:
-        dct: Dict[str, Any] = dict()
+    def to_config_dict(self) -> dict[str, Any]:
+        dct: dict[str, Any] = dict()
         for key, value in self.dct_options().items():
             if value is not None:
                 dct[key] = {"Options": value}
@@ -183,21 +183,21 @@ class OpenSearchDomain(BaseModel):
 
     def update(
         self,
-        cluster_config: Dict[str, Any],
-        ebs_options: Dict[str, Any],
+        cluster_config: dict[str, Any],
+        ebs_options: dict[str, Any],
         access_policies: str,
-        snapshot_options: Dict[str, int],
-        vpc_options: Dict[str, List[str]],
-        cognito_options: Dict[str, Any],
-        encryption_at_rest_options: Dict[str, Any],
-        node_to_node_encryption_options: Dict[str, bool],
-        advanced_options: Dict[str, str],
-        log_publishing_options: Dict[str, Any],
-        domain_endpoint_options: Dict[str, Any],
-        advanced_security_options: Dict[str, Any],
-        auto_tune_options: Dict[str, Any],
-        off_peak_window_options: Dict[str, Any],
-        software_update_options: Dict[str, bool],
+        snapshot_options: dict[str, int],
+        vpc_options: dict[str, list[str]],
+        cognito_options: dict[str, Any],
+        encryption_at_rest_options: dict[str, Any],
+        node_to_node_encryption_options: dict[str, bool],
+        advanced_options: dict[str, str],
+        log_publishing_options: dict[str, Any],
+        domain_endpoint_options: dict[str, Any],
+        advanced_security_options: dict[str, Any],
+        auto_tune_options: dict[str, Any],
+        off_peak_window_options: dict[str, Any],
+        software_update_options: dict[str, bool],
     ) -> None:
         self.cluster_config = cluster_config or self.cluster_config
         self.ebs_options = ebs_options or self.ebs_options
@@ -236,29 +236,29 @@ class OpenSearchServiceBackend(BaseBackend):
 
     def __init__(self, region_name: str, account_id: str):
         super().__init__(region_name, account_id)
-        self.domains: Dict[str, OpenSearchDomain] = dict()
+        self.domains: dict[str, OpenSearchDomain] = dict()
         self.tagger = TaggingService()
 
     def create_domain(
         self,
         domain_name: str,
         engine_version: str,
-        cluster_config: Dict[str, Any],
-        ebs_options: Dict[str, Any],
+        cluster_config: dict[str, Any],
+        ebs_options: dict[str, Any],
         access_policies: str,
-        snapshot_options: Dict[str, Any],
-        vpc_options: Dict[str, Any],
-        cognito_options: Dict[str, Any],
-        encryption_at_rest_options: Dict[str, Any],
-        node_to_node_encryption_options: Dict[str, Any],
-        advanced_options: Dict[str, Any],
-        log_publishing_options: Dict[str, Any],
-        domain_endpoint_options: Dict[str, Any],
-        advanced_security_options: Dict[str, Any],
-        tag_list: List[Dict[str, str]],
-        auto_tune_options: Dict[str, Any],
-        off_peak_window_options: Dict[str, Any],
-        software_update_options: Dict[str, Any],
+        snapshot_options: dict[str, Any],
+        vpc_options: dict[str, Any],
+        cognito_options: dict[str, Any],
+        encryption_at_rest_options: dict[str, Any],
+        node_to_node_encryption_options: dict[str, Any],
+        advanced_options: dict[str, Any],
+        log_publishing_options: dict[str, Any],
+        domain_endpoint_options: dict[str, Any],
+        advanced_security_options: dict[str, Any],
+        tag_list: list[dict[str, str]],
+        auto_tune_options: dict[str, Any],
+        off_peak_window_options: dict[str, Any],
+        software_update_options: dict[str, Any],
     ) -> OpenSearchDomain:
         domain = OpenSearchDomain(
             account_id=self.account_id,
@@ -286,7 +286,7 @@ class OpenSearchServiceBackend(BaseBackend):
             self.add_tags(domain.arn, tag_list)
         return domain
 
-    def get_compatible_versions(self, domain_name: str) -> List[Dict[str, Any]]:
+    def get_compatible_versions(self, domain_name: str) -> list[dict[str, Any]]:
         if domain_name not in self.domains:
             raise ResourceNotFoundException(domain_name)
         return compatible_versions
@@ -308,21 +308,21 @@ class OpenSearchServiceBackend(BaseBackend):
     def update_domain_config(
         self,
         domain_name: str,
-        cluster_config: Dict[str, Any],
-        ebs_options: Dict[str, Any],
+        cluster_config: dict[str, Any],
+        ebs_options: dict[str, Any],
         access_policies: str,
-        snapshot_options: Dict[str, Any],
-        vpc_options: Dict[str, Any],
-        cognito_options: Dict[str, Any],
-        encryption_at_rest_options: Dict[str, Any],
-        node_to_node_encryption_options: Dict[str, Any],
-        advanced_options: Dict[str, Any],
-        log_publishing_options: Dict[str, Any],
-        domain_endpoint_options: Dict[str, Any],
-        advanced_security_options: Dict[str, Any],
-        auto_tune_options: Dict[str, Any],
-        off_peak_window_options: Dict[str, Any],
-        software_update_options: Dict[str, Any],
+        snapshot_options: dict[str, Any],
+        vpc_options: dict[str, Any],
+        cognito_options: dict[str, Any],
+        encryption_at_rest_options: dict[str, Any],
+        node_to_node_encryption_options: dict[str, Any],
+        advanced_options: dict[str, Any],
+        log_publishing_options: dict[str, Any],
+        domain_endpoint_options: dict[str, Any],
+        advanced_security_options: dict[str, Any],
+        auto_tune_options: dict[str, Any],
+        off_peak_window_options: dict[str, Any],
+        software_update_options: dict[str, Any],
     ) -> OpenSearchDomain:
         domain = self.describe_domain(domain_name)
         domain.update(
@@ -344,16 +344,16 @@ class OpenSearchServiceBackend(BaseBackend):
         )
         return domain
 
-    def add_tags(self, arn: str, tags: List[Dict[str, str]]) -> None:
+    def add_tags(self, arn: str, tags: list[dict[str, str]]) -> None:
         self.tagger.tag_resource(arn, tags)
 
-    def list_tags(self, arn: str) -> List[Dict[str, str]]:
+    def list_tags(self, arn: str) -> list[dict[str, str]]:
         return self.tagger.list_tags_for_resource(arn)["Tags"]
 
-    def remove_tags(self, arn: str, tag_keys: List[str]) -> None:
+    def remove_tags(self, arn: str, tag_keys: list[str]) -> None:
         self.tagger.untag_resource_using_names(arn, tag_keys)
 
-    def list_domain_names(self, engine_type: str) -> List[Dict[str, str]]:
+    def list_domain_names(self, engine_type: str) -> list[dict[str, str]]:
         domains = []
         for domain in self.domains.values():
             if engine_type:
@@ -375,7 +375,7 @@ class OpenSearchServiceBackend(BaseBackend):
                 )
         return domains
 
-    def describe_domains(self, domain_names: List[str]) -> List[OpenSearchDomain]:
+    def describe_domains(self, domain_names: list[str]) -> list[OpenSearchDomain]:
         queried_domains = []
         for domain_name in domain_names:
             if domain_name in self.domains:

@@ -1,5 +1,5 @@
 import json
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, TypeVar
+from typing import TYPE_CHECKING, Any, Callable, TypeVar
 
 from moto.awslambda.exceptions import (
     GenericResourcNotFound,
@@ -18,7 +18,7 @@ TYPE_IDENTITY = TypeVar("TYPE_IDENTITY")
 class Policy:
     def __init__(self, parent: "LambdaFunction"):
         self.revision = str(mock_random.uuid4())
-        self.statements: List[Dict[str, Any]] = []
+        self.statements: list[dict[str, Any]] = []
         self.parent = parent
 
     def wire_format(self) -> str:
@@ -26,7 +26,7 @@ class Policy:
         p["Policy"] = json.dumps(p["Policy"])
         return json.dumps(p)
 
-    def get_policy(self) -> Dict[str, Any]:
+    def get_policy(self) -> dict[str, Any]:
         if not self.statements:
             raise GenericResourcNotFound()
         return {
@@ -39,9 +39,7 @@ class Policy:
         }
 
     # adds the raw JSON statement to the policy
-    def add_statement(
-        self, raw: str, qualifier: Optional[str] = None
-    ) -> Dict[str, Any]:
+    def add_statement(self, raw: str, qualifier: str | None = None) -> dict[str, Any]:
         policy = json.loads(raw, object_hook=self.decode_policy)
         if len(policy.revision) > 0 and self.revision != policy.revision:
             raise PreconditionFailedException(
@@ -77,7 +75,7 @@ class Policy:
 
     # converts AddPermission request to PolicyStatement
     # https://docs.aws.amazon.com/lambda/latest/dg/API_AddPermission.html
-    def decode_policy(self, obj: Dict[str, Any]) -> "Policy":
+    def decode_policy(self, obj: dict[str, Any]) -> "Policy":
         policy = Policy(self.parent)
         policy.revision = obj.get("RevisionId", "")
 
@@ -114,11 +112,11 @@ class Policy:
     def nop_formatter(self, obj: TYPE_IDENTITY) -> TYPE_IDENTITY:
         return obj
 
-    def ensure_set(self, obj: Dict[str, Any], key: str, value: Any) -> None:
+    def ensure_set(self, obj: dict[str, Any], key: str, value: Any) -> None:
         if key not in obj:
             obj[key] = value
 
-    def principal_formatter(self, obj: Dict[str, Any]) -> Dict[str, Any]:
+    def principal_formatter(self, obj: dict[str, Any]) -> dict[str, Any]:
         if isinstance(obj, str):
             if obj.endswith(".amazonaws.com"):
                 return {"Service": obj}
@@ -128,22 +126,22 @@ class Policy:
 
     def source_account_formatter(
         self, obj: TYPE_IDENTITY
-    ) -> Dict[str, Dict[str, TYPE_IDENTITY]]:
+    ) -> dict[str, dict[str, TYPE_IDENTITY]]:
         return {"StringEquals": {"AWS:SourceAccount": obj}}
 
     def source_arn_formatter(
         self, obj: TYPE_IDENTITY
-    ) -> Dict[str, Dict[str, TYPE_IDENTITY]]:
+    ) -> dict[str, dict[str, TYPE_IDENTITY]]:
         return {"ArnLike": {"AWS:SourceArn": obj}}
 
     def principal_org_id_formatter(
         self, obj: TYPE_IDENTITY
-    ) -> Dict[str, Dict[str, TYPE_IDENTITY]]:
+    ) -> dict[str, dict[str, TYPE_IDENTITY]]:
         return {"StringEquals": {"aws:PrincipalOrgID": obj}}
 
     def transform_property(
         self,
-        obj: Dict[str, Any],
+        obj: dict[str, Any],
         old_name: str,
         new_name: str,
         formatter: Callable[..., Any],
@@ -153,12 +151,12 @@ class Policy:
             if new_name != old_name:
                 del obj[old_name]
 
-    def remove_if_set(self, obj: Dict[str, Any], keys: List[str]) -> None:
+    def remove_if_set(self, obj: dict[str, Any], keys: list[str]) -> None:
         for key in keys:
             if key in obj:
                 del obj[key]
 
-    def condition_merge(self, obj: Dict[str, Any]) -> None:
+    def condition_merge(self, obj: dict[str, Any]) -> None:
         if "SourceArn" in obj:
             if "Condition" not in obj:
                 obj["Condition"] = {}

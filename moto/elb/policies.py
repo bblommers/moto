@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 
 class Policy(object):
@@ -24,7 +24,7 @@ class OtherPolicy(Policy):
         self,
         policy_name: str,
         policy_type_name: str,
-        policy_attrs: List[Dict[str, Any]],
+        policy_attrs: list[dict[str, Any]],
     ):
         super().__init__(policy_name, policy_type_name=policy_type_name)
         self.attributes = policy_attrs or []

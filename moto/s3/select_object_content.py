@@ -1,9 +1,9 @@
 import binascii
 import struct
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 
-def parse_query(text_input: str, query: str) -> List[Dict[str, Any]]:
+def parse_query(text_input: str, query: str) -> list[dict[str, Any]]:
     from py_partiql_parser import S3SelectParser
 
     return S3SelectParser(source_data={"s3object": text_input}).parse(query)
@@ -49,7 +49,7 @@ def _create_end_message() -> bytes:
     return _create_message(content_type=None, event_type=b"End", payload=b"")
 
 
-def serialize_select(data_list: List[bytes]) -> bytes:
+def serialize_select(data_list: list[bytes]) -> bytes:
     response = b""
     for data in data_list:
         response += _create_data_message(data)

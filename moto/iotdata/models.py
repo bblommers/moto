@@ -1,6 +1,6 @@
 import json
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional
 
 import jsondiff
 
@@ -23,9 +23,9 @@ class FakeShadow(BaseModel):
 
     def __init__(
         self,
-        desired: Optional[str],
-        reported: Optional[str],
-        requested_payload: Optional[Dict[str, Any]],
+        desired: str | None,
+        reported: str | None,
+        requested_payload: Optional[dict[str, Any]],
         version: int,
         deleted: bool = False,
     ):
@@ -45,7 +45,7 @@ class FakeShadow(BaseModel):
 
     @classmethod
     def create_from_previous_version(  # type: ignore[misc]
-        cls, previous_shadow: Optional["FakeShadow"], payload: Optional[Dict[str, Any]]
+        cls, previous_shadow: Optional["FakeShadow"], payload: Optional[dict[str, Any]]
     ) -> "FakeShadow":
         """
         set None to payload when you want to delete shadow
@@ -140,7 +140,7 @@ class FakeShadow(BaseModel):
 
         return _f(state, ts)
 
-    def to_response_dict(self) -> Dict[str, Any]:
+    def to_response_dict(self) -> dict[str, Any]:
         desired = self.requested_payload["state"].get("desired", None)  # type: ignore
         reported = self.requested_payload["state"].get("reported", None)  # type: ignore
 
@@ -166,7 +166,7 @@ class FakeShadow(BaseModel):
             "version": self.version,
         }
 
-    def to_dict(self, include_delta: bool = True) -> Dict[str, Any]:
+    def to_dict(self, include_delta: bool = True) -> dict[str, Any]:
         """returning nothing except for just top-level keys for now."""
         if self.deleted:
             return {"timestamp": self.timestamp, "version": self.version}
@@ -196,14 +196,14 @@ class FakeShadow(BaseModel):
 class IoTDataPlaneBackend(BaseBackend):
     def __init__(self, region_name: str, account_id: str):
         super().__init__(region_name, account_id)
-        self.published_payloads: List[Tuple[str, bytes]] = list()
+        self.published_payloads: list[tuple[str, bytes]] = list()
 
     @property
     def iot_backend(self) -> IoTBackend:
         return iot_backends[self.account_id][self.region_name]
 
     def update_thing_shadow(
-        self, thing_name: str, payload: str, shadow_name: Optional[str]
+        self, thing_name: str, payload: str, shadow_name: str | None
     ) -> FakeShadow:
         """
         spec of payload:
@@ -232,9 +232,7 @@ class IoTDataPlaneBackend(BaseBackend):
         thing.thing_shadows[shadow_name] = new_shadow
         return new_shadow
 
-    def get_thing_shadow(
-        self, thing_name: str, shadow_name: Optional[str]
-    ) -> FakeShadow:
+    def get_thing_shadow(self, thing_name: str, shadow_name: str | None) -> FakeShadow:
         thing = self.iot_backend.describe_thing(thing_name)
         thing_shadow = thing.thing_shadows.get(shadow_name)
 
@@ -243,7 +241,7 @@ class IoTDataPlaneBackend(BaseBackend):
         return thing_shadow
 
     def delete_thing_shadow(
-        self, thing_name: str, shadow_name: Optional[str]
+        self, thing_name: str, shadow_name: str | None
     ) -> FakeShadow:
         thing = self.iot_backend.describe_thing(thing_name)
         thing_shadow = thing.thing_shadows.get(shadow_name)
@@ -257,7 +255,7 @@ class IoTDataPlaneBackend(BaseBackend):
     def publish(self, topic: str, payload: bytes) -> None:
         self.published_payloads.append((topic, payload))
 
-    def list_named_shadows_for_thing(self, thing_name: str) -> List[str]:
+    def list_named_shadows_for_thing(self, thing_name: str) -> list[str]:
         thing = self.iot_backend.describe_thing(thing_name)
         return [name for name in thing.thing_shadows.keys() if name is not None]
 

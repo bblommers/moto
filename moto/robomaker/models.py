@@ -1,4 +1,4 @@
-from typing import Any, Dict, Iterable, List
+from typing import Any, Iterable
 
 from moto.core.base_backend import BackendDict, BaseBackend
 from moto.core.common_models import BaseModel
@@ -12,8 +12,8 @@ class RobotApplication(BaseModel):
         account_id: str,
         region: str,
         name: str,
-        sources: List[Dict[str, str]],
-        robot_software_suite: Dict[str, str],
+        sources: list[dict[str, str]],
+        robot_software_suite: dict[str, str],
     ):
         self.account_id = account_id
         self.region = region
@@ -26,7 +26,7 @@ class RobotApplication(BaseModel):
     def arn(self) -> str:
         return f"arn:{get_partition(self.region)}:robomaker:{self.region}:{self.account_id}:robot-application/{self.name}/{self.created_on}"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "arn": self.arn,
             "name": self.name,
@@ -38,13 +38,13 @@ class RobotApplication(BaseModel):
 class RoboMakerBackend(BaseBackend):
     def __init__(self, region_name: str, account_id: str):
         super().__init__(region_name, account_id)
-        self.robot_applications: Dict[str, RobotApplication] = {}
+        self.robot_applications: dict[str, RobotApplication] = {}
 
     def create_robot_application(
         self,
         name: str,
-        sources: List[Dict[str, str]],
-        robot_software_suite: Dict[str, str],
+        sources: list[dict[str, str]],
+        robot_software_suite: dict[str, str],
     ) -> RobotApplication:
         """
         The tags and environment parameters are not yet implemented

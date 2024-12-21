@@ -1,5 +1,4 @@
 import re
-from typing import List, Union
 
 from moto.dynamodb.exceptions import (
     InvalidExpressionAttributeNameKey,
@@ -54,7 +53,7 @@ class Token:
         NUMBER: "Number",
     }
 
-    def __init__(self, token_type: Union[int, str], value: str):
+    def __init__(self, token_type: int | str, value: str):
         assert (
             token_type in self.SPECIAL_CHARACTERS
             or token_type in self.PLACEHOLDER_NAMES
@@ -144,16 +143,16 @@ class ExpressionTokenizer(object):
 
     def __init__(self, input_expression_str: str):
         self.input_expression_str = input_expression_str
-        self.token_list: List[Token] = []
+        self.token_list: list[Token] = []
         self.staged_characters = ""
 
     @classmethod
-    def make_list(cls, input_expression_str: str) -> List[Token]:
+    def make_list(cls, input_expression_str: str) -> list[Token]:
         assert isinstance(input_expression_str, str)
 
         return ExpressionTokenizer(input_expression_str)._make_list()
 
-    def add_token(self, token_type: Union[int, str], token_value: str) -> None:
+    def add_token(self, token_type: int | str, token_value: str) -> None:
         self.token_list.append(Token(token_type, token_value))
 
     def add_token_from_stage(self, token_type: int) -> None:
@@ -181,7 +180,7 @@ class ExpressionTokenizer(object):
         else:
             self.raise_unexpected_token()
 
-    def _make_list(self) -> List[Token]:
+    def _make_list(self) -> list[Token]:
         """
         Just go through characters
           if a character is not a token boundary,  stage it for adding it as a grouped token later

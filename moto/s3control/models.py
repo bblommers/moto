@@ -1,6 +1,6 @@
 from collections import defaultdict
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from moto.core.base_backend import BackendDict, BaseBackend
 from moto.core.common_models import BaseModel
@@ -23,15 +23,15 @@ class AccessPoint(BaseModel):
         region_name: str,
         name: str,
         bucket: str,
-        vpc_configuration: Dict[str, Any],
-        public_access_block_configuration: Dict[str, Any],
+        vpc_configuration: dict[str, Any],
+        public_access_block_configuration: dict[str, Any],
     ):
         self.name = name
         self.alias = f"{name}-{mock_random.get_random_hex(34)}-s3alias"
         self.bucket = bucket
         self.created = datetime.now().strftime("%Y-%m-%dT%H:%M:%S.%f")
         self.arn = f"arn:{get_partition(region_name)}:s3:us-east-1:{account_id}:accesspoint/{name}"
-        self.policy: Optional[str] = None
+        self.policy: str | None = None
         self.network_origin = "VPC" if vpc_configuration else "Internet"
         self.vpc_id = (vpc_configuration or {}).get("VpcId")
         pubc = public_access_block_configuration or {}
@@ -56,7 +56,7 @@ class S3ControlBackend(BaseBackend):
     def __init__(self, region_name: str, account_id: str):
         super().__init__(region_name, account_id)
         self.public_access_block: Optional[PublicAccessBlock] = None
-        self.access_points: Dict[str, Dict[str, AccessPoint]] = defaultdict(dict)
+        self.access_points: dict[str, dict[str, AccessPoint]] = defaultdict(dict)
 
     def get_public_access_block(self, account_id: str) -> PublicAccessBlock:
         # The account ID should equal the account id that is set for Moto:
@@ -76,7 +76,7 @@ class S3ControlBackend(BaseBackend):
         self.public_access_block = None
 
     def put_public_access_block(
-        self, account_id: str, pub_block_config: Dict[str, Any]
+        self, account_id: str, pub_block_config: dict[str, Any]
     ) -> None:
         # The account ID should equal the account id that is set for Moto:
         if account_id != self.account_id:
@@ -97,8 +97,8 @@ class S3ControlBackend(BaseBackend):
         account_id: str,
         name: str,
         bucket: str,
-        vpc_configuration: Dict[str, Any],
-        public_access_block_configuration: Dict[str, Any],
+        vpc_configuration: dict[str, Any],
+        public_access_block_configuration: dict[str, Any],
     ) -> AccessPoint:
         access_point = AccessPoint(
             account_id,

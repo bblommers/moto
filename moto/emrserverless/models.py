@@ -3,7 +3,7 @@
 import inspect
 import re
 from datetime import datetime
-from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
+from typing import Any, Iterator, Optional
 
 from moto.core.base_backend import BackendDict, BaseBackend
 from moto.core.common_models import BaseModel
@@ -42,7 +42,7 @@ class FakeApplication(BaseModel):
         region_name: str,
         initial_capacity: str,
         maximum_capacity: str,
-        tags: Dict[str, str],
+        tags: dict[str, str],
         auto_start_configuration: str,
         auto_stop_configuration: str,
         network_configuration: str,
@@ -61,7 +61,7 @@ class FakeApplication(BaseModel):
             auto_stop_configuration or default_auto_stop_configuration()
         )
         self.network_configuration = network_configuration
-        self.tags: Dict[str, str] = tags or {}
+        self.tags: dict[str, str] = tags or {}
 
         # Service-generated-parameters
         self.id = random_appplication_id()
@@ -78,7 +78,7 @@ class FakeApplication(BaseModel):
         )
         self.updated_at = self.created_at
 
-    def __iter__(self) -> Iterator[Tuple[str, Any]]:
+    def __iter__(self) -> Iterator[tuple[str, Any]]:
         yield "applicationId", self.id
         yield "name", self.name
         yield "arn", self.arn
@@ -91,7 +91,7 @@ class FakeApplication(BaseModel):
             self.auto_stop_configuration,
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """
         Dictionary representation of an EMR Serverless Application.
         When used in `list-applications`, capacity, auto-start/stop configs, and tags are not returned. https://docs.aws.amazon.com/emr-serverless/latest/APIReference/API_ListApplications.html
@@ -148,12 +148,12 @@ class FakeJobRun(BaseModel):
         region_name: str,
         release_label: str,
         application_type: str,
-        job_driver: Optional[Dict[str, Dict[str, Union[str, List[str]]]]],
-        configuration_overrides: Optional[Dict[str, Union[List[Any], Dict[str, Any]]]],
-        tags: Optional[Dict[str, str]],
-        network_configuration: Optional[Dict[str, List[str]]],
+        job_driver: Optional[dict[str, dict[str, str | list[str]]]],
+        configuration_overrides: Optional[dict[str, list[Any] | dict[str, Any]]],
+        tags: Optional[dict[str, str]],
+        network_configuration: Optional[dict[str, list[str]]],
         execution_timeout_minutes: Optional[int],
-        name: Optional[str],
+        name: str | None,
     ):
         self.name = name
         self.application_id = application_id
@@ -179,9 +179,9 @@ class FakeJobRun(BaseModel):
         self.application_type = application_type
 
         self.state = JOB_STATUS
-        self.state_details: Optional[str] = None
+        self.state_details: str | None = None
 
-        self.created_by: Optional[str] = None
+        self.created_by: str | None = None
 
         self.created_at: str = iso_8601_datetime_without_milliseconds(
             datetime.today().replace(hour=0, minute=0, second=0, microsecond=0)
@@ -189,7 +189,7 @@ class FakeJobRun(BaseModel):
         self.updated_at: str = self.created_at
 
         self.total_execution_duration_seconds: int = 0
-        self.billed_resource_utilization: Dict[str, float] = {
+        self.billed_resource_utilization: dict[str, float] = {
             "vCPUHour": 0.0,
             "memoryGBHour": 0.0,
             "storageGBHour": 0.0,
@@ -197,7 +197,7 @@ class FakeJobRun(BaseModel):
 
         self.tags = tags
 
-    def to_dict(self, caller_methods_type: str) -> Dict[str, Any]:
+    def to_dict(self, caller_methods_type: str) -> dict[str, Any]:
         # The response structure is different for get/update and list
         if caller_methods_type in ["get", "update"]:
             response = {
@@ -246,8 +246,8 @@ class EMRServerlessBackend(BaseBackend):
         super().__init__(region_name, account_id)
         self.region_name = region_name
         self.partition = get_partition(region_name)
-        self.applications: Dict[str, FakeApplication] = dict()
-        self.job_runs: Dict[str, List[FakeJobRun]] = (
+        self.applications: dict[str, FakeApplication] = dict()
+        self.job_runs: dict[str, list[FakeJobRun]] = (
             dict()
         )  # {application_id: [job_run1, job_run2]}
 
@@ -259,7 +259,7 @@ class EMRServerlessBackend(BaseBackend):
         client_token: str,
         initial_capacity: str,
         maximum_capacity: str,
-        tags: Dict[str, str],
+        tags: dict[str, str],
         auto_start_configuration: str,
         auto_stop_configuration: str,
         network_configuration: str,
@@ -300,15 +300,15 @@ class EMRServerlessBackend(BaseBackend):
             )
         self.applications[application_id].state = "TERMINATED"
 
-    def get_application(self, application_id: str) -> Dict[str, Any]:
+    def get_application(self, application_id: str) -> dict[str, Any]:
         if application_id not in self.applications.keys():
             raise ResourceNotFoundException(application_id)
 
         return self.applications[application_id].to_dict()
 
     def list_applications(
-        self, next_token: Optional[str], max_results: int, states: Optional[List[str]]
-    ) -> Tuple[List[Dict[str, Any]], Optional[str]]:
+        self, next_token: str | None, max_results: int, states: Optional[list[str]]
+    ) -> tuple[list[dict[str, Any]], str | None]:
         applications = [
             application.to_dict() for application in self.applications.values()
         ]
@@ -334,12 +334,12 @@ class EMRServerlessBackend(BaseBackend):
     def update_application(
         self,
         application_id: str,
-        initial_capacity: Optional[str],
-        maximum_capacity: Optional[str],
-        auto_start_configuration: Optional[str],
-        auto_stop_configuration: Optional[str],
-        network_configuration: Optional[str],
-    ) -> Dict[str, Any]:
+        initial_capacity: str | None,
+        maximum_capacity: str | None,
+        auto_start_configuration: str | None,
+        auto_stop_configuration: str | None,
+        network_configuration: str | None,
+    ) -> dict[str, Any]:
         if application_id not in self.applications.keys():
             raise ResourceNotFoundException(application_id)
 
@@ -383,11 +383,11 @@ class EMRServerlessBackend(BaseBackend):
         application_id: str,
         client_token: str,
         execution_role_arn: str,
-        job_driver: Optional[Dict[str, Dict[str, Union[str, List[str]]]]],
-        configuration_overrides: Optional[Dict[str, Union[List[Any], Dict[str, Any]]]],
-        tags: Optional[Dict[str, str]],
+        job_driver: Optional[dict[str, dict[str, str | list[str]]]],
+        configuration_overrides: Optional[dict[str, list[Any] | dict[str, Any]]],
+        tags: Optional[dict[str, str]],
         execution_timeout_minutes: Optional[int],
-        name: Optional[str],
+        name: str | None,
     ) -> FakeJobRun:
         role_account_id = execution_role_arn.split(":")[4]
         if role_account_id != self.account_id:
@@ -441,7 +441,7 @@ class EMRServerlessBackend(BaseBackend):
 
         return job_run
 
-    def cancel_job_run(self, application_id: str, job_run_id: str) -> Tuple[str, str]:
+    def cancel_job_run(self, application_id: str, job_run_id: str) -> tuple[str, str]:
         # implement here
         if application_id not in self.job_runs.keys():
             raise ResourceNotFoundException(application_id, "Application")
@@ -457,11 +457,11 @@ class EMRServerlessBackend(BaseBackend):
         self,
         application_id: str,
         max_results: int,
-        next_token: Optional[str],
-        created_at_after: Optional[str],
-        created_at_before: Optional[str],
-        states: Optional[List[str]],
-    ) -> Tuple[List[Dict[str, Any]], Optional[str]]:
+        next_token: str | None,
+        created_at_after: str | None,
+        created_at_before: str | None,
+        states: Optional[list[str]],
+    ) -> tuple[list[dict[str, Any]], str | None]:
         if application_id not in self.job_runs.keys():
             raise ResourceNotFoundException(application_id, "Application")
         job_runs = self.job_runs[application_id]

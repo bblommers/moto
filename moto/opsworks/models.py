@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from moto.core.base_backend import BackendDict, BaseBackend
 from moto.core.common_models import BaseModel
@@ -20,26 +20,26 @@ class OpsworkInstance(BaseModel):
     def __init__(
         self,
         stack_id: str,
-        layer_ids: List[str],
+        layer_ids: list[str],
         instance_type: str,
         ec2_backend: Any,
-        auto_scale_type: Optional[str] = None,
-        hostname: Optional[str] = None,
-        os: Optional[str] = None,
+        auto_scale_type: str | None = None,
+        hostname: str | None = None,
+        os: str | None = None,
         ami_id: str = "ami-08111162",
-        ssh_keyname: Optional[str] = None,
-        availability_zone: Optional[str] = None,
+        ssh_keyname: str | None = None,
+        availability_zone: str | None = None,
         virtualization_type: str = "hvm",
-        subnet_id: Optional[str] = None,
+        subnet_id: str | None = None,
         architecture: str = "x86_64",
         root_device_type: str = "ebs",
-        block_device_mappings: Optional[List[Dict[str, Any]]] = None,
+        block_device_mappings: Optional[list[dict[str, Any]]] = None,
         install_updates_on_boot: bool = True,
         ebs_optimized: bool = False,
         agent_version: str = "INHERIT",
-        instance_profile_arn: Optional[str] = None,
-        associate_public_ip: Optional[str] = None,
-        security_group_ids: Optional[List[str]] = None,
+        instance_profile_arn: str | None = None,
+        associate_public_ip: str | None = None,
+        security_group_ids: Optional[list[str]] = None,
     ):
         self.ec2_backend = ec2_backend
 
@@ -76,7 +76,7 @@ class OpsworkInstance(BaseModel):
         self.associate_public_ip = associate_public_ip
 
         self.instance: Any = None
-        self.reported_os: Dict[str, Any] = {}
+        self.reported_os: dict[str, Any] = {}
         self.infrastructure_class = "ec2 (fixed)"
         self.platform = "linux (fixed)"
 
@@ -127,7 +127,7 @@ class OpsworkInstance(BaseModel):
             return "online"
         return self.instance._state.name
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         d = {
             "AgentVersion": self.agent_version,
             "Architecture": self.architecture,
@@ -185,19 +185,19 @@ class Layer(BaseModel):
         layer_type: str,
         name: str,
         shortname: str,
-        attributes: Optional[Dict[str, Any]] = None,
-        custom_instance_profile_arn: Optional[str] = None,
-        custom_json: Optional[str] = None,
-        custom_security_group_ids: Optional[List[Dict[str, Any]]] = None,
-        packages: Optional[str] = None,
-        volume_configurations: Optional[List[Dict[str, Any]]] = None,
-        enable_autohealing: Optional[str] = None,
-        auto_assign_elastic_ips: Optional[str] = None,
-        auto_assign_public_ips: Optional[str] = None,
-        custom_recipes: Optional[Dict[str, Any]] = None,
-        install_updates_on_boot: Optional[str] = None,
-        use_ebs_optimized_instances: Optional[str] = None,
-        lifecycle_event_configuration: Optional[Dict[str, Any]] = None,
+        attributes: Optional[dict[str, Any]] = None,
+        custom_instance_profile_arn: str | None = None,
+        custom_json: str | None = None,
+        custom_security_group_ids: Optional[list[dict[str, Any]]] = None,
+        packages: str | None = None,
+        volume_configurations: Optional[list[dict[str, Any]]] = None,
+        enable_autohealing: str | None = None,
+        auto_assign_elastic_ips: str | None = None,
+        auto_assign_public_ips: str | None = None,
+        custom_recipes: Optional[dict[str, Any]] = None,
+        install_updates_on_boot: str | None = None,
+        use_ebs_optimized_instances: str | None = None,
+        lifecycle_event_configuration: Optional[dict[str, Any]] = None,
     ):
         self.stack_id = stack_id
         self.type = layer_type
@@ -264,8 +264,8 @@ class Layer(BaseModel):
     def __eq__(self, other: Any) -> bool:
         return self.id == other.id
 
-    def to_dict(self) -> Dict[str, Any]:
-        d: Dict[str, Any] = {
+    def to_dict(self) -> dict[str, Any]:
+        d: dict[str, Any] = {
             "Attributes": self.attributes,
             "AutoAssignElasticIps": self.auto_assign_elastic_ips,
             "AutoAssignPublicIps": self.auto_assign_public_ips,
@@ -305,18 +305,18 @@ class Stack(BaseModel):
         service_role_arn: str,
         default_instance_profile_arn: str,
         vpcid: str = "vpc-1f99bf7a",
-        attributes: Optional[Dict[str, Any]] = None,
+        attributes: Optional[dict[str, Any]] = None,
         default_os: str = "Ubuntu 12.04 LTS",
         hostname_theme: str = "Layer_Dependent",
         default_availability_zone: str = "us-east-1a",
         default_subnet_id: str = "subnet-73981004",
-        custom_json: Optional[str] = None,
-        configuration_manager: Optional[Dict[str, Any]] = None,
-        chef_configuration: Optional[Dict[str, Any]] = None,
+        custom_json: str | None = None,
+        configuration_manager: Optional[dict[str, Any]] = None,
+        chef_configuration: Optional[dict[str, Any]] = None,
         use_custom_cookbooks: bool = False,
         use_opsworks_security_groups: bool = True,
-        custom_cookbooks_source: Optional[Dict[str, Any]] = None,
-        default_ssh_keyname: Optional[str] = None,
+        custom_cookbooks_source: Optional[dict[str, Any]] = None,
+        default_ssh_keyname: str | None = None,
         default_root_device_type: str = "instance-store",
         agent_version: str = "LATEST",
     ):
@@ -349,8 +349,8 @@ class Stack(BaseModel):
         self.agent_version = agent_version
 
         self.id = str(random.uuid4())
-        self.layers: List[Layer] = []
-        self.apps: List[App] = []
+        self.layers: list[Layer] = []
+        self.apps: list[App] = []
         self.account_number = account_id
         self.created_at = utcnow()
 
@@ -365,7 +365,7 @@ class Stack(BaseModel):
     def arn(self) -> str:
         return f"arn:{get_partition(self.region)}:opsworks:{self.region}:{self.account_number}:stack/{self.id}"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         response = {
             "AgentVersion": self.agent_version,
             "Arn": self.arn,
@@ -402,15 +402,15 @@ class App(BaseModel):
         stack_id: str,
         name: str,
         app_type: str,
-        shortname: Optional[str] = None,
-        description: Optional[str] = None,
-        datasources: Optional[List[str]] = None,
-        app_source: Optional[Dict[str, Any]] = None,
-        domains: Optional[List[str]] = None,
+        shortname: str | None = None,
+        description: str | None = None,
+        datasources: Optional[list[str]] = None,
+        app_source: Optional[dict[str, Any]] = None,
+        domains: Optional[list[str]] = None,
         enable_ssl: bool = False,
-        ssl_configuration: Optional[Dict[str, Any]] = None,
-        attributes: Optional[Dict[str, Any]] = None,
-        environment: Optional[Dict[str, Any]] = None,
+        ssl_configuration: Optional[dict[str, Any]] = None,
+        attributes: Optional[dict[str, Any]] = None,
+        environment: Optional[dict[str, Any]] = None,
     ):
         self.stack_id = stack_id
         self.name = name
@@ -438,7 +438,7 @@ class App(BaseModel):
     def __eq__(self, other: Any) -> bool:
         return self.id == other.id
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "AppId": self.id,
             "AppSource": self.app_source,
@@ -460,10 +460,10 @@ class App(BaseModel):
 class OpsWorksBackend(BaseBackend):
     def __init__(self, region_name: str, account_id: str):
         super().__init__(region_name, account_id)
-        self.stacks: Dict[str, Stack] = {}
-        self.layers: Dict[str, Layer] = {}
-        self.apps: Dict[str, App] = {}
-        self.instances: Dict[str, OpsworkInstance] = {}
+        self.stacks: dict[str, Stack] = {}
+        self.layers: dict[str, Layer] = {}
+        self.apps: dict[str, App] = {}
+        self.instances: dict[str, OpsworkInstance] = {}
         self.ec2_backend = ec2_backends[account_id][region_name]
 
     def create_stack(self, **kwargs: Any) -> Stack:
@@ -544,7 +544,7 @@ class OpsWorksBackend(BaseBackend):
         self.instances[opsworks_instance.id] = opsworks_instance
         return opsworks_instance
 
-    def describe_stacks(self, stack_ids: List[str]) -> List[Dict[str, Any]]:
+    def describe_stacks(self, stack_ids: list[str]) -> list[dict[str, Any]]:
         if stack_ids is None:
             return [stack.to_dict() for stack in self.stacks.values()]
 
@@ -554,8 +554,8 @@ class OpsWorksBackend(BaseBackend):
         return [self.stacks[id].to_dict() for id in stack_ids]
 
     def describe_layers(
-        self, stack_id: str, layer_ids: List[str]
-    ) -> List[Dict[str, Any]]:
+        self, stack_id: str, layer_ids: list[str]
+    ) -> list[dict[str, Any]]:
         if stack_id is not None and layer_ids is not None:
             raise ValidationException(
                 "Please provide one or more layer IDs or a stack ID"
@@ -572,7 +572,7 @@ class OpsWorksBackend(BaseBackend):
             raise ResourceNotFoundException(", ".join(unknown_layers))
         return [self.layers[id].to_dict() for id in layer_ids]
 
-    def describe_apps(self, stack_id: str, app_ids: List[str]) -> List[Dict[str, Any]]:
+    def describe_apps(self, stack_id: str, app_ids: list[str]) -> list[dict[str, Any]]:
         if stack_id is not None and app_ids is not None:
             raise ValidationException(
                 "Please provide one or more app IDs or a stack ID"
@@ -590,8 +590,8 @@ class OpsWorksBackend(BaseBackend):
         return [self.apps[id].to_dict() for id in app_ids]
 
     def describe_instances(  # type: ignore[return]
-        self, instance_ids: List[str], layer_id: str, stack_id: str
-    ) -> List[Dict[str, Any]]:
+        self, instance_ids: list[str], layer_id: str, stack_id: str
+    ) -> list[dict[str, Any]]:
         if len(list(filter(None, (instance_ids, layer_id, stack_id)))) != 1:
             raise ValidationException(
                 "Please provide either one or more "

@@ -1,5 +1,5 @@
 import ipaddress
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Optional
 
 from moto.core.common_models import CloudFormationModel
 from moto.ec2.models.carrier_gateways import CarrierGateway
@@ -40,8 +40,8 @@ class RouteTable(TaggedEC2Resource, CloudFormationModel):
         self.id = route_table_id
         self.vpc_id = vpc_id
         self.main_association_id = random_subnet_association_id() if main else None
-        self.associations: Dict[str, str] = {}
-        self.routes: Dict[str, Route] = {}
+        self.associations: dict[str, str] = {}
+        self.routes: dict[str, Route] = {}
 
     @property
     def owner_id(self) -> str:
@@ -78,9 +78,7 @@ class RouteTable(TaggedEC2Resource, CloudFormationModel):
     def physical_resource_id(self) -> str:
         return self.id
 
-    def get_filter_value(
-        self, filter_name: str, method_name: Optional[str] = None
-    ) -> Any:
+    def get_filter_value(self, filter_name: str, method_name: str | None = None) -> Any:
         if filter_name == "association.main":
             # Note: Boto only supports 'true'.
             # https://github.com/boto/boto/issues/1742
@@ -132,7 +130,7 @@ class RouteTable(TaggedEC2Resource, CloudFormationModel):
             return super().get_filter_value(filter_name, "DescribeRouteTables")
 
     @property
-    def all_associations_ids(self) -> Set[str]:
+    def all_associations_ids(self) -> set[str]:
         # NOTE(yoctozepto): Doing an explicit copy to not touch the original.
         all_associations = set(self.associations)
         if self.main_association_id is not None:
@@ -144,8 +142,8 @@ class Route(CloudFormationModel):
     def __init__(
         self,
         route_table: RouteTable,
-        destination_cidr_block: Optional[str],
-        destination_ipv6_cidr_block: Optional[str],
+        destination_cidr_block: str | None,
+        destination_ipv6_cidr_block: str | None,
         destination_prefix_list: Optional[ManagedPrefixList] = None,
         local: bool = False,
         gateway: Optional[VpnGateway] = None,
@@ -156,7 +154,7 @@ class Route(CloudFormationModel):
         interface: Optional[NetworkInterface] = None,
         vpc_pcx: Optional[VPCPeeringConnection] = None,
         carrier_gateway: Optional[CarrierGateway] = None,
-        vpc_endpoint_id: Optional[str] = None,
+        vpc_endpoint_id: str | None = None,
     ):
         self.id = generate_route_id(
             route_table.id,
@@ -231,12 +229,12 @@ class Route(CloudFormationModel):
 
 class RouteBackend:
     def __init__(self) -> None:
-        self.route_tables: Dict[str, RouteTable] = {}
+        self.route_tables: dict[str, RouteTable] = {}
 
     def create_route_table(
         self,
         vpc_id: str,
-        tags: Optional[List[Dict[str, str]]] = None,
+        tags: Optional[list[dict[str, str]]] = None,
         main: bool = False,
     ) -> RouteTable:
         route_table_id = random_route_table_id()
@@ -270,8 +268,8 @@ class RouteBackend:
         return route_table
 
     def describe_route_tables(
-        self, route_table_ids: Optional[List[str]] = None, filters: Any = None
-    ) -> List[RouteTable]:
+        self, route_table_ids: Optional[list[str]] = None, filters: Any = None
+    ) -> list[RouteTable]:
         route_tables = list(self.route_tables.values())
 
         if route_table_ids:
@@ -301,8 +299,8 @@ class RouteBackend:
     def associate_route_table(
         self,
         route_table_id: str,
-        gateway_id: Optional[str] = None,
-        subnet_id: Optional[str] = None,
+        gateway_id: str | None = None,
+        subnet_id: str | None = None,
     ) -> str:
         # Idempotent if association already exists.
         route_tables_by_subnet = self.describe_route_tables(
@@ -327,7 +325,7 @@ class RouteBackend:
             route_table.associations[association_id] = gateway_id
             return association_id
 
-    def disassociate_route_table(self, association_id: str) -> Optional[str]:
+    def disassociate_route_table(self, association_id: str) -> str | None:
         for route_table in self.route_tables.values():
             if association_id in route_table.associations:
                 return route_table.associations.pop(association_id, None)
@@ -364,19 +362,19 @@ class RouteBackend:
     def create_route(
         self,
         route_table_id: str,
-        destination_cidr_block: Optional[str],
-        destination_ipv6_cidr_block: Optional[str] = None,
-        destination_prefix_list_id: Optional[str] = None,
+        destination_cidr_block: str | None,
+        destination_ipv6_cidr_block: str | None = None,
+        destination_prefix_list_id: str | None = None,
         local: bool = False,
-        gateway_id: Optional[str] = None,
-        instance_id: Optional[str] = None,
-        nat_gateway_id: Optional[str] = None,
-        egress_only_igw_id: Optional[str] = None,
-        transit_gateway_id: Optional[str] = None,
-        interface_id: Optional[str] = None,
-        vpc_peering_connection_id: Optional[str] = None,
-        carrier_gateway_id: Optional[str] = None,
-        vpc_endpoint_id: Optional[str] = None,
+        gateway_id: str | None = None,
+        instance_id: str | None = None,
+        nat_gateway_id: str | None = None,
+        egress_only_igw_id: str | None = None,
+        transit_gateway_id: str | None = None,
+        interface_id: str | None = None,
+        vpc_peering_connection_id: str | None = None,
+        carrier_gateway_id: str | None = None,
+        vpc_endpoint_id: str | None = None,
     ) -> Route:
         gateway = None
         nat_gateway = None
@@ -451,15 +449,15 @@ class RouteBackend:
         self,
         route_table_id: str,
         destination_cidr_block: str,
-        destination_ipv6_cidr_block: Optional[str] = None,
-        destination_prefix_list_id: Optional[str] = None,
-        nat_gateway_id: Optional[str] = None,
-        egress_only_igw_id: Optional[str] = None,
-        transit_gateway_id: Optional[str] = None,
-        gateway_id: Optional[str] = None,
-        instance_id: Optional[str] = None,
-        interface_id: Optional[str] = None,
-        vpc_peering_connection_id: Optional[str] = None,
+        destination_ipv6_cidr_block: str | None = None,
+        destination_prefix_list_id: str | None = None,
+        nat_gateway_id: str | None = None,
+        egress_only_igw_id: str | None = None,
+        transit_gateway_id: str | None = None,
+        gateway_id: str | None = None,
+        instance_id: str | None = None,
+        interface_id: str | None = None,
+        vpc_peering_connection_id: str | None = None,
     ) -> Route:
         cidr = destination_cidr_block
         if destination_ipv6_cidr_block:
@@ -514,8 +512,8 @@ class RouteBackend:
         self,
         route_table_id: str,
         destination_cidr_block: str,
-        destination_ipv6_cidr_block: Optional[str] = None,
-        destination_prefix_list_id: Optional[str] = None,
+        destination_ipv6_cidr_block: str | None = None,
+        destination_prefix_list_id: str | None = None,
     ) -> Route:
         cidr = destination_cidr_block
         route_table = self.get_route_table(route_table_id)

@@ -1,19 +1,19 @@
-from typing import Any, Dict, Iterable, List
+from typing import Any, Iterable
 
 
-def match_task_arn(task: Dict[str, Any], arns: List[str]) -> bool:
+def match_task_arn(task: dict[str, Any], arns: list[str]) -> bool:
     return task["ReplicationTaskArn"] in arns
 
 
-def match_task_id(task: Dict[str, Any], ids: List[str]) -> bool:
+def match_task_id(task: dict[str, Any], ids: list[str]) -> bool:
     return task["ReplicationTaskIdentifier"] in ids
 
 
-def match_task_migration_type(task: Dict[str, Any], migration_types: List[str]) -> bool:
+def match_task_migration_type(task: dict[str, Any], migration_types: list[str]) -> bool:
     return task["MigrationType"] in migration_types
 
 
-def match_task_endpoint_arn(task: Dict[str, Any], endpoint_arns: List[str]) -> bool:
+def match_task_endpoint_arn(task: dict[str, Any], endpoint_arns: list[str]) -> bool:
     return (
         task["SourceEndpointArn"] in endpoint_arns
         or task["TargetEndpointArn"] in endpoint_arns
@@ -21,7 +21,7 @@ def match_task_endpoint_arn(task: Dict[str, Any], endpoint_arns: List[str]) -> b
 
 
 def match_task_replication_instance_arn(
-    task: Dict[str, Any], replication_instance_arns: List[str]
+    task: dict[str, Any], replication_instance_arns: list[str]
 ) -> bool:
     return task["ReplicationInstanceArn"] in replication_instance_arns
 
@@ -35,7 +35,7 @@ task_filter_functions = {
 }
 
 
-def filter_tasks(tasks: Iterable[Any], filters: List[Dict[str, Any]]) -> Any:
+def filter_tasks(tasks: Iterable[Any], filters: list[dict[str, Any]]) -> Any:
     matching_tasks = tasks
 
     for f in filters:

@@ -1,5 +1,5 @@
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 from urllib.parse import unquote
 
 from moto.core.responses import TYPE_RESPONSE, BaseResponse
@@ -42,7 +42,7 @@ class APIGatewayResponse(BaseResponse):
         return None
 
     def __validate_endpoint_configuration(
-        self, endpoint_configuration: Dict[str, str]
+        self, endpoint_configuration: dict[str, str]
     ) -> Optional[TYPE_RESPONSE]:
         if endpoint_configuration and "types" in endpoint_configuration:
             invalid_types = list(
@@ -105,7 +105,7 @@ class APIGatewayResponse(BaseResponse):
         return json.dumps({"item": [api.to_dict() for api in apis]})
 
     def __validte_rest_patch_operations(
-        self, patch_operations: List[Dict[str, str]]
+        self, patch_operations: list[dict[str, str]]
     ) -> Optional[TYPE_RESPONSE]:
         for op in patch_operations:
             path = op["path"]

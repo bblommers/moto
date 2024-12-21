@@ -1,7 +1,7 @@
 import base64
 import copy
 from decimal import Decimal
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Optional
 
 from boto3.dynamodb.types import TypeDeserializer, TypeSerializer
 from botocore.utils import merge_dicts
@@ -61,7 +61,7 @@ class DynamoType(object):
     http://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DataModel.html#DataModelDataTypes
     """
 
-    def __init__(self, type_as_dict: Union["DynamoType", Dict[str, Any]]):
+    def __init__(self, type_as_dict: "DynamoType" | dict[str, Any]):
         if type(type_as_dict) == DynamoType:
             self.type: str = type_as_dict.type
             self.value: Any = type_as_dict.value
@@ -101,10 +101,10 @@ class DynamoType(object):
         if self.type != other.type:
             raise TypeError("Different types of operandi is not allowed.")
         if self.is_number():
-            self_value: Union[Decimal, int] = (
+            self_value: Decimal | int = (
                 Decimal(self.value) if "." in self.value else int(self.value)
             )
-            other_value: Union[Decimal, int] = (
+            other_value: Decimal | int = (
                 Decimal(other.value) if "." in other.value else int(other.value)
             )
             total = self_value + other_value
@@ -171,7 +171,7 @@ class DynamoType(object):
         else:
             return self.value
 
-    def child_attr(self, key: Union[int, str, None]) -> Optional["DynamoType"]:
+    def child_attr(self, key: int | str | None) -> Optional["DynamoType"]:
         """
         Get Map or List children by key. str for Map, int for List.
 
@@ -206,7 +206,7 @@ class DynamoType(object):
             value_size = bytesize(self.value)
         return value_size
 
-    def to_json(self) -> Dict[str, Any]:
+    def to_json(self) -> dict[str, Any]:
         # Returns a regular JSON object where the value can still be/contain a DynamoType
         if self.is_binary() and isinstance(self.value, bytes):
             # Binary data cannot be represented in JSON
@@ -214,7 +214,7 @@ class DynamoType(object):
             return {self.type: base64.b64encode(self.value).decode("utf-8")}
         return {self.type: self.value}
 
-    def to_regular_json(self) -> Dict[str, Any]:
+    def to_regular_json(self) -> dict[str, Any]:
         # Returns a regular JSON object in full
         value = copy.deepcopy(self.value)
         if isinstance(value, dict):
@@ -233,7 +233,7 @@ class DynamoType(object):
             value = base64.b64decode(value)
         return {self.type: value}
 
-    def compare(self, range_comparison: str, range_objs: List[Any]) -> bool:
+    def compare(self, range_comparison: str, range_objs: list[Any]) -> bool:
         """
         Compares this type against comparison filters
         """
@@ -270,7 +270,7 @@ class DynamoType(object):
 
 # https://github.com/getmoto/moto/issues/1874
 # Ensure that the total size of an item does not exceed 400kb
-class LimitedSizeDict(Dict[str, Any]):
+class LimitedSizeDict(dict[str, Any]):
     def __init__(self, *args: Any, **kwargs: Any):
         self.update(*args, **kwargs)
 
@@ -297,7 +297,7 @@ class Item(BaseModel):
         self,
         hash_key: DynamoType,
         range_key: Optional[DynamoType],
-        attrs: Dict[str, Any],
+        attrs: dict[str, Any],
     ):
         self.hash_key = hash_key
         self.range_key = range_key
@@ -321,8 +321,8 @@ class Item(BaseModel):
     def size(self) -> int:
         return sum(bytesize(key) + value.size() for key, value in self.attrs.items())
 
-    def to_json(self, root_attr_name: str = "Attributes") -> Dict[str, Any]:
-        attributes: Dict[str, Any] = {}
+    def to_json(self, root_attr_name: str = "Attributes") -> dict[str, Any]:
+        attributes: dict[str, Any] = {}
         for attribute_key, attribute in self.attrs.items():
             if isinstance(attribute.value, dict):
                 attr_dict_value = {
@@ -341,15 +341,15 @@ class Item(BaseModel):
 
         return {root_attr_name: attributes}
 
-    def to_regular_json(self) -> Dict[str, Any]:
+    def to_regular_json(self) -> dict[str, Any]:
         attributes = {}
         for key, attribute in self.attrs.items():
             attributes[key] = deserializer.deserialize(attribute.to_regular_json())
         return attributes
 
     def describe_attrs(
-        self, attributes: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Dict[str, Any]]:
+        self, attributes: Optional[dict[str, Any]] = None
+    ) -> dict[str, dict[str, Any]]:
         if attributes:
             included = {}
             for key, value in self.attrs.items():
@@ -360,7 +360,7 @@ class Item(BaseModel):
         return {"Item": included}
 
     def validate_no_empty_key_values(
-        self, attribute_updates: Dict[str, Any], key_attributes: List[str]
+        self, attribute_updates: dict[str, Any], key_attributes: list[str]
     ) -> None:
         for attribute_name, update_action in attribute_updates.items():
             action = update_action.get("Action") or "PUT"  # PUT is default
@@ -370,7 +370,7 @@ class Item(BaseModel):
             if action == "PUT" and new_value == "" and attribute_name in key_attributes:
                 raise EmptyKeyAttributeException
 
-    def update_with_attribute_updates(self, attribute_updates: Dict[str, Any]) -> None:
+    def update_with_attribute_updates(self, attribute_updates: dict[str, Any]) -> None:
         for attribute_name, update_action in attribute_updates.items():
             # Use default Action value, if no explicit Action is passed.
             # Default value is 'Put', according to
@@ -441,10 +441,10 @@ class Item(BaseModel):
                     f"{action} action not support for update_with_attribute_updates"
                 )
 
-    def project(self, projection_expressions: List[List[str]]) -> "Item":
+    def project(self, projection_expressions: list[list[str]]) -> "Item":
         # Returns a new Item with only the dictionary-keys that match the provided projection_expression
         # Will return an empty Item if the expression does not match anything
-        result: Dict[str, Any] = dict()
+        result: dict[str, Any] = dict()
         for expr in projection_expressions:
             x = find_nested_key(expr, self.to_regular_json())
             merge_dicts(result, x)
@@ -457,9 +457,7 @@ class Item(BaseModel):
             attrs=serializer.serialize(result)["M"],
         )
 
-    def is_within_segment(
-        self, segments: Union[Tuple[None, None], Tuple[int, int]]
-    ) -> bool:
+    def is_within_segment(self, segments: tuple[None, None] | tuple[int, int]) -> bool:
         """
         Segments can be either (x, y) or (None, None)
         None, None => the user requested the entire table, so the item always falls within that

@@ -1,7 +1,7 @@
 import json
 import re
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Pattern
+from typing import Any, Optional, Pattern
 
 from dateutil.tz import tzlocal
 
@@ -33,10 +33,10 @@ class StateMachine(CloudFormationModel):
         name: str,
         definition: str,
         roleArn: str,
-        tags: Optional[List[Dict[str, str]]] = None,
-        encryptionConfiguration: Optional[Dict[str, Any]] = None,
-        loggingConfiguration: Optional[Dict[str, Any]] = None,
-        tracingConfiguration: Optional[Dict[str, Any]] = None,
+        tags: Optional[list[dict[str, str]]] = None,
+        encryptionConfiguration: Optional[dict[str, Any]] = None,
+        loggingConfiguration: Optional[dict[str, Any]] = None,
+        tracingConfiguration: Optional[dict[str, Any]] = None,
     ):
         self.creation_date = iso_8601_datetime_with_milliseconds()
         self.update_date = self.creation_date
@@ -44,8 +44,8 @@ class StateMachine(CloudFormationModel):
         self.name = name
         self.definition = definition
         self.roleArn = roleArn
-        self.executions: List[Execution] = []
-        self.tags: List[Dict[str, str]] = []
+        self.executions: list[Execution] = []
+        self.tags: list[dict[str, str]] = []
         if tags:
             self.add_tags(tags)
         self.version = 0
@@ -108,7 +108,7 @@ class StateMachine(CloudFormationModel):
                 setattr(self, key, value)
         self.update_date = iso_8601_datetime_with_milliseconds()
 
-    def add_tags(self, tags: List[Dict[str, str]]) -> List[Dict[str, str]]:
+    def add_tags(self, tags: list[dict[str, str]]) -> list[dict[str, str]]:
         merged_tags = []
         for tag in self.tags:
             replacement_index = next(
@@ -125,7 +125,7 @@ class StateMachine(CloudFormationModel):
         self.tags = merged_tags
         return self.tags
 
-    def remove_tags(self, tag_keys: List[str]) -> List[Dict[str, str]]:
+    def remove_tags(self, tag_keys: list[str]) -> list[dict[str, str]]:
         self.tags = [tag_set for tag_set in self.tags if tag_set["key"] not in tag_keys]
         return self.tags
 
@@ -133,7 +133,7 @@ class StateMachine(CloudFormationModel):
     def physical_resource_id(self) -> str:
         return self.arn
 
-    def get_cfn_properties(self, prop_overrides: Dict[str, Any]) -> Dict[str, Any]:
+    def get_cfn_properties(self, prop_overrides: dict[str, Any]) -> dict[str, Any]:
         property_names = [
             "DefinitionString",
             "RoleArn",
@@ -279,15 +279,15 @@ class Execution:
             if settings.get_sf_execution_history_type() == "SUCCESS"
             else "FAILED"
         )
-        self.stop_date: Optional[str] = None
+        self.stop_date: str | None = None
         self.account_id = account_id
         self.region_name = region_name
-        self.output: Optional[str] = None
-        self.output_details: Optional[str] = None
-        self.cause: Optional[str] = None
-        self.error: Optional[str] = None
+        self.output: str | None = None
+        self.output_details: str | None = None
+        self.cause: str | None = None
+        self.error: str | None = None
 
-    def get_execution_history(self, roleArn: str) -> List[Dict[str, Any]]:
+    def get_execution_history(self, roleArn: str) -> list[dict[str, Any]]:
         sf_execution_history_type = settings.get_sf_execution_history_type()
         if sf_execution_history_type == "SUCCESS":
             return [
@@ -522,7 +522,7 @@ class StepFunctionBackend(BaseBackend):
 
     def __init__(self, region_name: str, account_id: str):
         super().__init__(region_name, account_id)
-        self.state_machines: List[StateMachine] = []
+        self.state_machines: list[StateMachine] = []
         self._account_id = None
 
     def create_state_machine(
@@ -530,11 +530,11 @@ class StepFunctionBackend(BaseBackend):
         name: str,
         definition: str,
         roleArn: str,
-        tags: Optional[List[Dict[str, str]]] = None,
+        tags: Optional[list[dict[str, str]]] = None,
         publish: Optional[bool] = None,
-        loggingConfiguration: Optional[Dict[str, Any]] = None,
-        tracingConfiguration: Optional[Dict[str, Any]] = None,
-        encryptionConfiguration: Optional[Dict[str, Any]] = None,
+        loggingConfiguration: Optional[dict[str, Any]] = None,
+        tracingConfiguration: Optional[dict[str, Any]] = None,
+        encryptionConfiguration: Optional[dict[str, Any]] = None,
     ) -> StateMachine:
         self._validate_name(name)
         self._validate_role_arn(roleArn)
@@ -558,7 +558,7 @@ class StepFunctionBackend(BaseBackend):
             return state_machine
 
     @paginate(pagination_model=PAGINATION_MODEL)
-    def list_state_machines(self) -> List[StateMachine]:
+    def list_state_machines(self) -> list[StateMachine]:
         return sorted(self.state_machines, key=lambda x: x.creation_date)
 
     def describe_state_machine(self, arn: str) -> StateMachine:
@@ -579,15 +579,15 @@ class StepFunctionBackend(BaseBackend):
     def update_state_machine(
         self,
         arn: str,
-        definition: Optional[str] = None,
-        role_arn: Optional[str] = None,
-        logging_configuration: Optional[Dict[str, bool]] = None,
-        tracing_configuration: Optional[Dict[str, bool]] = None,
-        encryption_configuration: Optional[Dict[str, Any]] = None,
+        definition: str | None = None,
+        role_arn: str | None = None,
+        logging_configuration: Optional[dict[str, bool]] = None,
+        tracing_configuration: Optional[dict[str, bool]] = None,
+        encryption_configuration: Optional[dict[str, Any]] = None,
         publish: Optional[bool] = None,
     ) -> StateMachine:
         sm = self.describe_state_machine(arn)
-        updates: Dict[str, Any] = {
+        updates: dict[str, Any] = {
             "definition": definition,
             "roleArn": role_arn,
         }
@@ -622,8 +622,8 @@ class StepFunctionBackend(BaseBackend):
 
     @paginate(pagination_model=PAGINATION_MODEL)
     def list_executions(
-        self, state_machine_arn: str, status_filter: Optional[str] = None
-    ) -> List[Execution]:
+        self, state_machine_arn: str, status_filter: str | None = None
+    ) -> list[Execution]:
         executions = self.describe_state_machine(state_machine_arn).executions
 
         if status_filter:
@@ -644,7 +644,7 @@ class StepFunctionBackend(BaseBackend):
             )
         return exctn
 
-    def get_execution_history(self, execution_arn: str) -> List[Dict[str, Any]]:
+    def get_execution_history(self, execution_arn: str) -> list[dict[str, Any]]:
         self._validate_execution_arn(execution_arn)
         state_machine = self._get_state_machine_for_execution(execution_arn)
         execution = next(
@@ -664,28 +664,28 @@ class StepFunctionBackend(BaseBackend):
                     return sm
         raise ResourceNotFound(execution_arn)
 
-    def list_tags_for_resource(self, arn: str) -> List[Dict[str, str]]:
+    def list_tags_for_resource(self, arn: str) -> list[dict[str, str]]:
         try:
             state_machine = self.describe_state_machine(arn)
             return state_machine.tags or []
         except StateMachineDoesNotExist:
             return []
 
-    def tag_resource(self, resource_arn: str, tags: List[Dict[str, str]]) -> None:
+    def tag_resource(self, resource_arn: str, tags: list[dict[str, str]]) -> None:
         try:
             state_machine = self.describe_state_machine(resource_arn)
             state_machine.add_tags(tags)
         except StateMachineDoesNotExist:
             raise ResourceNotFound(resource_arn)
 
-    def untag_resource(self, resource_arn: str, tag_keys: List[str]) -> None:
+    def untag_resource(self, resource_arn: str, tag_keys: list[str]) -> None:
         try:
             state_machine = self.describe_state_machine(resource_arn)
             state_machine.remove_tags(tag_keys)
         except StateMachineDoesNotExist:
             raise ResourceNotFound(resource_arn)
 
-    def send_task_failure(self, task_token: str, error: Optional[str] = None) -> None:
+    def send_task_failure(self, task_token: str, error: str | None = None) -> None:
         pass
 
     def send_task_heartbeat(self, task_token: str) -> None:
@@ -694,7 +694,7 @@ class StepFunctionBackend(BaseBackend):
     def send_task_success(self, task_token: str, outcome: str) -> None:
         pass
 
-    def describe_map_run(self, map_run_arn: str) -> Dict[str, Any]:
+    def describe_map_run(self, map_run_arn: str) -> dict[str, Any]:
         return {}
 
     def list_map_runs(self, execution_arn: str) -> Any:

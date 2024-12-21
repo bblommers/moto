@@ -17,7 +17,7 @@ import logging
 import re
 from abc import ABCMeta, abstractmethod
 from enum import Enum
-from typing import Any, Dict, List, Match, Optional, Union
+from typing import Any, Match, Optional
 
 from botocore.auth import S3SigV4Auth, SigV4Auth
 from botocore.awsrequest import AWSRequest
@@ -48,8 +48,8 @@ log = logging.getLogger(__name__)
 
 
 def create_access_key(
-    account_id: str, partition: str, access_key_id: str, headers: Dict[str, str]
-) -> Union["IAMUserAccessKey", "AssumedRoleAccessKey"]:
+    account_id: str, partition: str, access_key_id: str, headers: dict[str, str]
+) -> "IAMUserAccessKey" | "AssumedRoleAccessKey":
     if access_key_id.startswith("AKIA") or "X-Amz-Security-Token" not in headers:
         return IAMUserAccessKey(
             account_id=account_id,
@@ -76,7 +76,7 @@ class IAMUserAccessKey:
         account_id: str,
         partition: str,
         access_key_id: str,
-        headers: Dict[str, str],
+        headers: dict[str, str],
     ):
         self.account_id = account_id
         self.partition = partition
@@ -102,7 +102,7 @@ class IAMUserAccessKey:
     def create_credentials(self) -> Credentials:
         return Credentials(self._access_key_id, self._secret_access_key)
 
-    def collect_policies(self) -> List[Dict[str, str]]:
+    def collect_policies(self) -> list[dict[str, str]]:
         user_policies = []
 
         inline_policy_names = self.backend.list_user_policies(self._owner_user_name)
@@ -146,7 +146,7 @@ class AssumedRoleAccessKey:
         account_id: str,
         partition: str,
         access_key_id: str,
-        headers: Dict[str, str],
+        headers: dict[str, str],
     ):
         self.account_id = account_id
         self.partition = partition
@@ -171,7 +171,7 @@ class AssumedRoleAccessKey:
             self._access_key_id, self._secret_access_key, self._session_token
         )
 
-    def collect_policies(self) -> List[str]:
+    def collect_policies(self) -> list[str]:
         role_policies = []
 
         inline_policy_names = self.backend.list_role_policies(self._owner_role_name)
@@ -201,9 +201,9 @@ class IAMRequestBase(object, metaclass=ABCMeta):
         account_id: str,
         method: str,
         path: str,
-        data: Dict[str, str],
+        data: dict[str, str],
         body: bytes,
-        headers: Dict[str, str],
+        headers: dict[str, str],
         action: str,
     ):
         log.debug(
@@ -279,8 +279,8 @@ class IAMRequestBase(object, metaclass=ABCMeta):
 
     @staticmethod
     def _create_headers_for_aws_request(
-        signed_headers: List[str], original_headers: Dict[str, str]
-    ) -> Dict[str, str]:
+        signed_headers: list[str], original_headers: dict[str, str]
+    ) -> dict[str, str]:
         headers = {}
         for key, value in original_headers.items():
             if key.lower() in signed_headers:
@@ -435,7 +435,7 @@ class IAMPolicyStatement:
         else:
             return PermissionResult.NEUTRAL
 
-    def is_unknown_principal(self, principal: Optional[str]) -> bool:
+    def is_unknown_principal(self, principal: str | None) -> bool:
         # https://docs.aws.amazon.com/AmazonS3/latest/userguide/s3-bucket-user-policy-specifying-principal-intro.html
         # For now, Moto only verifies principal == *
         # 'Unknown' principals are not verified

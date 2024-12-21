@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional
 
 from dateutil.parser import parse as dtparse
 
@@ -24,7 +24,7 @@ EXAMPLE_AMI_ID = "ami-12c6146b"
 
 class FakeApplication(BaseModel):
     def __init__(
-        self, name: str, version: str, args: List[str], additional_info: Dict[str, str]
+        self, name: str, version: str, args: list[str], additional_info: dict[str, str]
     ):
         self.additional_info = additional_info or {}
         self.args = args or []
@@ -33,7 +33,7 @@ class FakeApplication(BaseModel):
 
 
 class FakeBootstrapAction(BaseModel):
-    def __init__(self, args: List[str], name: str, script_path: str):
+    def __init__(self, args: list[str], name: str, script_path: str):
         self.args = args or []
         self.name = name
         self.script_path = script_path
@@ -44,8 +44,8 @@ class FakeInstance(BaseModel):
         self,
         ec2_instance_id: str,
         instance_group: "FakeInstanceGroup",
-        instance_fleet_id: Optional[str] = None,
-        instance_id: Optional[str] = None,
+        instance_fleet_id: str | None = None,
+        instance_id: str | None = None,
     ):
         self.id = instance_id or random_instance_group_id()
         self.ec2_instance_id = ec2_instance_id
@@ -61,11 +61,11 @@ class FakeInstanceGroup(CloudFormationModel):
         instance_role: str,
         instance_type: str,
         market: str = "ON_DEMAND",
-        name: Optional[str] = None,
-        instance_group_id: Optional[str] = None,
-        bid_price: Optional[str] = None,
-        ebs_configuration: Optional[Dict[str, Any]] = None,
-        auto_scaling_policy: Optional[Dict[str, Any]] = None,
+        name: str | None = None,
+        instance_group_id: str | None = None,
+        bid_price: str | None = None,
+        ebs_configuration: Optional[dict[str, Any]] = None,
+        auto_scaling_policy: Optional[dict[str, Any]] = None,
     ):
         self.id = instance_group_id or random_instance_group_id()
         self.cluster_id = cluster_id
@@ -167,8 +167,8 @@ class FakeStep(BaseModel):
         state: str,
         name: str = "",
         jar: str = "",
-        args: Optional[List[str]] = None,
-        properties: Optional[Dict[str, str]] = None,
+        args: Optional[list[str]] = None,
+        properties: Optional[dict[str, str]] = None,
         action_on_failure: str = "TERMINATE_CLUSTER",
     ):
         self.id = random_step_id()
@@ -197,48 +197,48 @@ class FakeCluster(CloudFormationModel):
         log_uri: str,
         job_flow_role: str,
         service_role: str,
-        steps: List[Dict[str, Any]],
-        instance_attrs: Dict[str, Any],
-        bootstrap_actions: Optional[List[Dict[str, Any]]] = None,
-        configurations: Optional[List[Dict[str, Any]]] = None,
-        cluster_id: Optional[str] = None,
+        steps: list[dict[str, Any]],
+        instance_attrs: dict[str, Any],
+        bootstrap_actions: Optional[list[dict[str, Any]]] = None,
+        configurations: Optional[list[dict[str, Any]]] = None,
+        cluster_id: str | None = None,
         visible_to_all_users: str = "false",
-        release_label: Optional[str] = None,
-        requested_ami_version: Optional[str] = None,
-        running_ami_version: Optional[str] = None,
-        custom_ami_id: Optional[str] = None,
+        release_label: str | None = None,
+        requested_ami_version: str | None = None,
+        running_ami_version: str | None = None,
+        custom_ami_id: str | None = None,
         step_concurrency_level: int = 1,
-        security_configuration: Optional[str] = None,
-        kerberos_attributes: Optional[Dict[str, str]] = None,
-        auto_scaling_role: Optional[str] = None,
+        security_configuration: str | None = None,
+        kerberos_attributes: Optional[dict[str, str]] = None,
+        auto_scaling_role: str | None = None,
     ):
         self.id = cluster_id or random_cluster_id()
         emr_backend.clusters[self.id] = self
         self.emr_backend = emr_backend
 
-        self.applications: List[FakeApplication] = []
+        self.applications: list[FakeApplication] = []
 
-        self.bootstrap_actions: List[FakeBootstrapAction] = []
+        self.bootstrap_actions: list[FakeBootstrapAction] = []
         for bootstrap_action in bootstrap_actions or []:
             self.add_bootstrap_action(bootstrap_action)
 
         self.configurations = configurations or []
 
-        self.tags: Dict[str, str] = {}
+        self.tags: dict[str, str] = {}
 
         self.log_uri = log_uri
         self.name = name
         self.normalized_instance_hours = 0
 
-        self.steps: List[FakeStep] = []
+        self.steps: list[FakeStep] = []
         self.add_steps(steps)
 
         self.set_visibility(visible_to_all_users)
 
-        self.instance_group_ids: List[str] = []
-        self.instances: List[FakeInstance] = []
-        self.master_instance_group_id: Optional[str] = None
-        self.core_instance_group_id: Optional[str] = None
+        self.instance_group_ids: list[str] = []
+        self.instances: list[FakeInstance] = []
+        self.master_instance_group_id: str | None = None
+        self.core_instance_group_id: str | None = None
         if (
             "master_instance_type" in instance_attrs
             and instance_attrs["master_instance_type"]
@@ -308,7 +308,7 @@ class FakeCluster(CloudFormationModel):
         self.start_datetime: Optional[datetime] = None
         self.ready_datetime: Optional[datetime] = None
         self.end_datetime: Optional[datetime] = None
-        self.state: Optional[str] = None
+        self.state: str | None = None
 
         self.start_cluster()
         self.run_bootstrap_actions()
@@ -325,7 +325,7 @@ class FakeCluster(CloudFormationModel):
         return f"arn:{get_partition(self.emr_backend.region_name)}:elasticmapreduce:{self.emr_backend.region_name}:{self.emr_backend.account_id}:cluster/{self.id}"
 
     @property
-    def instance_groups(self) -> List[FakeInstanceGroup]:
+    def instance_groups(self) -> list[FakeInstanceGroup]:
         return self.emr_backend.get_instance_groups(self.instance_group_ids)
 
     @property
@@ -361,7 +361,7 @@ class FakeCluster(CloudFormationModel):
         self.end_datetime = datetime.now(timezone.utc)
         self.state = "TERMINATED"
 
-    def add_applications(self, applications: List[Dict[str, Any]]) -> None:
+    def add_applications(self, applications: list[dict[str, Any]]) -> None:
         self.applications.extend(
             [
                 FakeApplication(
@@ -374,7 +374,7 @@ class FakeCluster(CloudFormationModel):
             ]
         )
 
-    def add_bootstrap_action(self, bootstrap_action: Dict[str, Any]) -> None:
+    def add_bootstrap_action(self, bootstrap_action: dict[str, Any]) -> None:
         self.bootstrap_actions.append(FakeBootstrapAction(**bootstrap_action))
 
     def add_instance_group(self, instance_group: FakeInstanceGroup) -> None:
@@ -400,7 +400,7 @@ class FakeCluster(CloudFormationModel):
     def add_instance(self, instance: FakeInstance) -> None:
         self.instances.append(instance)
 
-    def add_steps(self, steps: List[Dict[str, Any]]) -> List[FakeStep]:
+    def add_steps(self, steps: list[dict[str, Any]]) -> list[FakeStep]:
         added_steps = []
         for step in steps:
             if self.steps:
@@ -413,10 +413,10 @@ class FakeCluster(CloudFormationModel):
         self.state = "RUNNING"
         return added_steps
 
-    def add_tags(self, tags: Dict[str, str]) -> None:
+    def add_tags(self, tags: dict[str, str]) -> None:
         self.tags.update(tags)
 
-    def remove_tags(self, tag_keys: List[str]) -> None:
+    def remove_tags(self, tag_keys: list[str]) -> None:
         for key in tag_keys:
             self.tags.pop(key, None)
 
@@ -494,7 +494,7 @@ class FakeCluster(CloudFormationModel):
     def delete_from_cloudformation_json(  # type: ignore[misc]
         cls,
         resource_name: str,
-        cloudformation_json: Dict[str, Any],
+        cloudformation_json: dict[str, Any],
         account_id: str,
         region_name: str,
     ) -> None:
@@ -538,7 +538,7 @@ class FakeSecurityConfiguration(CloudFormationModel):
     def delete_from_cloudformation_json(  # type: ignore[misc]
         cls,
         resource_name: str,
-        cloudformation_json: Dict[str, Any],
+        cloudformation_json: dict[str, Any],
         account_id: str,
         region_name: str,
     ) -> None:
@@ -552,10 +552,10 @@ class FakeSecurityConfiguration(CloudFormationModel):
 class ElasticMapReduceBackend(BaseBackend):
     def __init__(self, region_name: str, account_id: str):
         super().__init__(region_name, account_id)
-        self.clusters: Dict[str, FakeCluster] = {}
-        self.instance_groups: Dict[str, FakeInstanceGroup] = {}
-        self.security_configurations: Dict[str, FakeSecurityConfiguration] = {}
-        self.block_public_access_configuration: Dict[str, Any] = {}
+        self.clusters: dict[str, FakeCluster] = {}
+        self.instance_groups: dict[str, FakeInstanceGroup] = {}
+        self.security_configurations: dict[str, FakeSecurityConfiguration] = {}
+        self.block_public_access_configuration: dict[str, Any] = {}
 
     @property
     def ec2_backend(self) -> Any:  # type: ignore[misc]
@@ -568,14 +568,14 @@ class ElasticMapReduceBackend(BaseBackend):
         return ec2_backends[self.account_id][self.region_name]
 
     def add_applications(
-        self, cluster_id: str, applications: List[Dict[str, Any]]
+        self, cluster_id: str, applications: list[dict[str, Any]]
     ) -> None:
         cluster = self.describe_cluster(cluster_id)
         cluster.add_applications(applications)
 
     def add_instance_groups(
-        self, cluster_id: str, instance_groups: List[Dict[str, Any]]
-    ) -> List[FakeInstanceGroup]:
+        self, cluster_id: str, instance_groups: list[dict[str, Any]]
+    ) -> list[FakeInstanceGroup]:
         cluster = self.clusters[cluster_id]
         result_groups = []
         for instance_group in instance_groups:
@@ -588,7 +588,7 @@ class ElasticMapReduceBackend(BaseBackend):
     def run_instances(
         self,
         cluster_id: str,
-        instances: Dict[str, Any],
+        instances: dict[str, Any],
         instance_group: FakeInstanceGroup,
     ) -> None:
         cluster = self.clusters[cluster_id]
@@ -603,22 +603,22 @@ class ElasticMapReduceBackend(BaseBackend):
             cluster.add_instance(instance)
 
     def add_job_flow_steps(
-        self, job_flow_id: str, steps: List[Dict[str, Any]]
-    ) -> List[FakeStep]:
+        self, job_flow_id: str, steps: list[dict[str, Any]]
+    ) -> list[FakeStep]:
         cluster = self.clusters[job_flow_id]
         return cluster.add_steps(steps)
 
-    def add_tags(self, cluster_id: str, tags: Dict[str, str]) -> None:
+    def add_tags(self, cluster_id: str, tags: dict[str, str]) -> None:
         cluster = self.describe_cluster(cluster_id)
         cluster.add_tags(tags)
 
     def describe_job_flows(
         self,
-        job_flow_ids: Optional[List[str]] = None,
-        job_flow_states: Optional[List[str]] = None,
-        created_after: Optional[str] = None,
-        created_before: Optional[str] = None,
-    ) -> List[FakeCluster]:
+        job_flow_ids: Optional[list[str]] = None,
+        job_flow_states: Optional[list[str]] = None,
+        created_after: str | None = None,
+        created_before: str | None = None,
+    ) -> list[FakeCluster]:
         clusters = list(self.clusters.values())
 
         within_two_month = datetime.now(timezone.utc) - timedelta(days=60)
@@ -653,8 +653,8 @@ class ElasticMapReduceBackend(BaseBackend):
         raise ResourceNotFoundException("")
 
     def get_instance_groups(
-        self, instance_group_ids: List[str]
-    ) -> List[FakeInstanceGroup]:
+        self, instance_group_ids: list[str]
+    ) -> list[FakeInstanceGroup]:
         return [
             group
             for group_id, group in self.instance_groups.items()
@@ -662,8 +662,8 @@ class ElasticMapReduceBackend(BaseBackend):
         ]
 
     def list_bootstrap_actions(
-        self, cluster_id: str, marker: Optional[str] = None
-    ) -> Tuple[List[FakeBootstrapAction], Optional[str]]:
+        self, cluster_id: str, marker: str | None = None
+    ) -> tuple[list[FakeBootstrapAction], str | None]:
         max_items = 50
         actions = self.clusters[cluster_id].bootstrap_actions
         start_idx = 0 if marker is None else int(marker)
@@ -676,11 +676,11 @@ class ElasticMapReduceBackend(BaseBackend):
 
     def list_clusters(
         self,
-        cluster_states: Optional[List[str]] = None,
-        created_after: Optional[str] = None,
-        created_before: Optional[str] = None,
-        marker: Optional[str] = None,
-    ) -> Tuple[List[FakeCluster], Optional[str]]:
+        cluster_states: Optional[list[str]] = None,
+        created_after: str | None = None,
+        created_before: str | None = None,
+        marker: str | None = None,
+    ) -> tuple[list[FakeCluster], str | None]:
         max_items = 50
         clusters = list(self.clusters.values())
         if cluster_states:
@@ -703,8 +703,8 @@ class ElasticMapReduceBackend(BaseBackend):
         return clusters[start_idx : start_idx + max_items], marker
 
     def list_instance_groups(
-        self, cluster_id: str, marker: Optional[str] = None
-    ) -> Tuple[List[FakeInstanceGroup], Optional[str]]:
+        self, cluster_id: str, marker: str | None = None
+    ) -> tuple[list[FakeInstanceGroup], str | None]:
         max_items = 50
         groups = sorted(self.clusters[cluster_id].instance_groups, key=lambda x: x.id)
         start_idx = 0 if marker is None else int(marker)
@@ -716,10 +716,10 @@ class ElasticMapReduceBackend(BaseBackend):
     def list_instances(
         self,
         cluster_id: str,
-        marker: Optional[str] = None,
-        instance_group_id: Optional[str] = None,
-        instance_group_types: Optional[List[str]] = None,
-    ) -> Tuple[List[FakeInstance], Optional[str]]:
+        marker: str | None = None,
+        instance_group_id: str | None = None,
+        instance_group_types: Optional[list[str]] = None,
+    ) -> tuple[list[FakeInstance], str | None]:
         max_items = 50
         groups = sorted(self.clusters[cluster_id].instances, key=lambda x: x.id)
         start_idx = 0 if marker is None else int(marker)
@@ -739,10 +739,10 @@ class ElasticMapReduceBackend(BaseBackend):
     def list_steps(
         self,
         cluster_id: str,
-        marker: Optional[str] = None,
-        step_ids: Optional[List[str]] = None,
-        step_states: Optional[List[str]] = None,
-    ) -> Tuple[List[FakeStep], Optional[str]]:
+        marker: str | None = None,
+        step_ids: Optional[list[str]] = None,
+        step_states: Optional[list[str]] = None,
+    ) -> tuple[list[FakeStep], str | None]:
         max_items = 50
         steps = sorted(
             self.clusters[cluster_id].steps,
@@ -766,12 +766,12 @@ class ElasticMapReduceBackend(BaseBackend):
         cluster.step_concurrency_level = step_concurrency_level
         return cluster
 
-    def modify_instance_groups(self, instance_groups: List[Dict[str, Any]]) -> None:
+    def modify_instance_groups(self, instance_groups: list[dict[str, Any]]) -> None:
         for instance_group in instance_groups:
             group = self.instance_groups[instance_group["instance_group_id"]]
             group.set_instance_count(int(instance_group["instance_count"]))
 
-    def remove_tags(self, cluster_id: str, tag_keys: List[str]) -> None:
+    def remove_tags(self, cluster_id: str, tag_keys: list[str]) -> None:
         cluster = self.describe_cluster(cluster_id)
         cluster.remove_tags(tag_keys)
 
@@ -782,7 +782,7 @@ class ElasticMapReduceBackend(BaseBackend):
         emr_managed_slave_security_group: str,
         service_access_security_group: str,
         **_: Any,
-    ) -> Tuple[str, str, str]:
+    ) -> tuple[str, str, str]:
         default_return_value = (
             emr_managed_master_security_group,
             emr_managed_slave_security_group,
@@ -816,18 +816,18 @@ class ElasticMapReduceBackend(BaseBackend):
         return FakeCluster(self, **kwargs)
 
     def set_visible_to_all_users(
-        self, job_flow_ids: List[str], visible_to_all_users: str
+        self, job_flow_ids: list[str], visible_to_all_users: str
     ) -> None:
         for job_flow_id in job_flow_ids:
             cluster = self.clusters[job_flow_id]
             cluster.set_visibility(visible_to_all_users)
 
-    def set_termination_protection(self, job_flow_ids: List[str], value: bool) -> None:
+    def set_termination_protection(self, job_flow_ids: list[str], value: bool) -> None:
         for job_flow_id in job_flow_ids:
             cluster = self.clusters[job_flow_id]
             cluster.set_termination_protection(value)
 
-    def terminate_job_flows(self, job_flow_ids: List[str]) -> List[FakeCluster]:
+    def terminate_job_flows(self, job_flow_ids: list[str]) -> list[FakeCluster]:
         clusters_terminated = []
         clusters_protected = []
         for job_flow_id in job_flow_ids:
@@ -844,7 +844,7 @@ class ElasticMapReduceBackend(BaseBackend):
         return clusters_terminated
 
     def put_auto_scaling_policy(
-        self, instance_group_id: str, auto_scaling_policy: Optional[Dict[str, Any]]
+        self, instance_group_id: str, auto_scaling_policy: Optional[dict[str, Any]]
     ) -> Optional[FakeInstanceGroup]:
         instance_groups = self.get_instance_groups(
             instance_group_ids=[instance_group_id]
@@ -887,13 +887,13 @@ class ElasticMapReduceBackend(BaseBackend):
 
     def get_block_public_access_configuration(
         self,
-    ) -> Dict[str, Any]:  # type ignore[misc]
+    ) -> dict[str, Any]:  # type ignore[misc]
         return self.block_public_access_configuration
 
     def put_block_public_access_configuration(
         self,
         block_public_security_group_rules: bool,
-        rule_ranges: Optional[List[Dict[str, int]]],
+        rule_ranges: Optional[list[dict[str, int]]],
     ) -> None:
         from moto.sts import sts_backends
 

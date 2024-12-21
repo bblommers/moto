@@ -1,7 +1,7 @@
 """EventBridgeSchedulerBackend class with methods for supported APIs."""
 
 import datetime
-from typing import Any, Dict, Iterable, List, Optional, cast
+from typing import Any, Iterable, cast
 
 from moto.core.base_backend import BackendDict, BaseBackend
 from moto.core.common_models import BaseModel
@@ -24,16 +24,16 @@ class Schedule(BaseModel):
         account_id: str,
         group_name: str,
         name: str,
-        description: Optional[str],
+        description: str | None,
         schedule_expression: str,
-        schedule_expression_timezone: Optional[str],
-        flexible_time_window: Dict[str, Any],
-        target: Dict[str, Any],
-        state: Optional[str],
-        kms_key_arn: Optional[str],
-        start_date: Optional[str],
-        end_date: Optional[str],
-        action_after_completion: Optional[str],
+        schedule_expression_timezone: str | None,
+        flexible_time_window: dict[str, Any],
+        target: dict[str, Any],
+        state: str | None,
+        kms_key_arn: str | None,
+        start_date: str | None,
+        end_date: str | None,
+        action_after_completion: str | None,
     ):
         self.name = name
         self.group_name = group_name
@@ -51,7 +51,7 @@ class Schedule(BaseModel):
         self.creation_date = self.last_modified_date = unix_time()
 
     @staticmethod
-    def validate_target(target: Dict[str, Any]) -> Dict[str, Any]:  # type: ignore[misc]
+    def validate_target(target: dict[str, Any]) -> dict[str, Any]:  # type: ignore[misc]
         if "RetryPolicy" not in target:
             target["RetryPolicy"] = {
                 "MaximumEventAgeInSeconds": 86400,
@@ -59,7 +59,7 @@ class Schedule(BaseModel):
             }
         return target
 
-    def _validate_start_date(self, start_date: Optional[str]) -> Optional[str]:
+    def _validate_start_date(self, start_date: str | None) -> str | None:
         # `.count("*")` means a recurrence expression
         # https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/scheduler/client/create_schedule.html (StartDate parameter)
         if self.schedule_expression.count("*") and start_date is not None:
@@ -75,8 +75,8 @@ class Schedule(BaseModel):
                     )
         return start_date
 
-    def to_dict(self, short: bool = False) -> Dict[str, Any]:
-        dct: Dict[str, Any] = {
+    def to_dict(self, short: bool = False) -> dict[str, Any]:
+        dct: dict[str, Any] = {
             "Arn": self.arn,
             "Name": self.name,
             "GroupName": self.group_name,
@@ -101,13 +101,13 @@ class Schedule(BaseModel):
         self,
         description: str,
         end_date: str,
-        flexible_time_window: Dict[str, Any],
+        flexible_time_window: dict[str, Any],
         kms_key_arn: str,
         schedule_expression: str,
         schedule_expression_timezone: str,
         start_date: str,
         state: str,
-        target: Dict[str, Any],
+        target: dict[str, Any],
     ) -> None:
         self.schedule_expression = schedule_expression
         self.schedule_expression_timezone = schedule_expression_timezone
@@ -125,7 +125,7 @@ class ScheduleGroup(BaseModel):
     def __init__(self, region: str, account_id: str, name: str):
         self.name = name
         self.arn = f"arn:{get_partition(region)}:scheduler:{region}:{account_id}:schedule-group/{name}"
-        self.schedules: Dict[str, Schedule] = dict()
+        self.schedules: dict[str, Schedule] = dict()
         self.created_on = None if self.name == "default" else unix_time()
         self.last_modified = None if self.name == "default" else unix_time()
 
@@ -142,7 +142,7 @@ class ScheduleGroup(BaseModel):
             raise ScheduleNotFound(name)
         self.schedules.pop(name)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "Arn": self.arn,
             "CreationDate": self.created_on,
@@ -157,7 +157,7 @@ class EventBridgeSchedulerBackend(BaseBackend):
 
     def __init__(self, region_name: str, account_id: str):
         super().__init__(region_name, account_id)
-        self.schedules: List[Schedule] = list()
+        self.schedules: list[Schedule] = list()
         self.schedule_groups = {
             "default": ScheduleGroup(
                 region=region_name, account_id=account_id, name="default"
@@ -169,7 +169,7 @@ class EventBridgeSchedulerBackend(BaseBackend):
         self,
         description: str,
         end_date: str,
-        flexible_time_window: Dict[str, Any],
+        flexible_time_window: dict[str, Any],
         group_name: str,
         kms_key_arn: str,
         name: str,
@@ -177,8 +177,8 @@ class EventBridgeSchedulerBackend(BaseBackend):
         schedule_expression_timezone: str,
         start_date: str,
         state: str,
-        target: Dict[str, Any],
-        action_after_completion: Optional[str],
+        target: dict[str, Any],
+        action_after_completion: str | None,
     ) -> Schedule:
         """
         The ClientToken parameter is not yet implemented
@@ -205,11 +205,11 @@ class EventBridgeSchedulerBackend(BaseBackend):
         group.add_schedule(schedule)
         return schedule
 
-    def get_schedule(self, group_name: Optional[str], name: str) -> Schedule:
+    def get_schedule(self, group_name: str | None, name: str) -> Schedule:
         group = self.get_schedule_group(group_name)
         return group.get_schedule(name)
 
-    def delete_schedule(self, group_name: Optional[str], name: str) -> None:
+    def delete_schedule(self, group_name: str | None, name: str) -> None:
         group = self.get_schedule_group(group_name)
         group.delete_schedule(name)
 
@@ -217,7 +217,7 @@ class EventBridgeSchedulerBackend(BaseBackend):
         self,
         description: str,
         end_date: str,
-        flexible_time_window: Dict[str, Any],
+        flexible_time_window: dict[str, Any],
         group_name: str,
         kms_key_arn: str,
         name: str,
@@ -225,7 +225,7 @@ class EventBridgeSchedulerBackend(BaseBackend):
         schedule_expression_timezone: str,
         start_date: str,
         state: str,
-        target: Dict[str, Any],
+        target: dict[str, Any],
     ) -> Schedule:
         """
         The ClientToken is not yet implemented
@@ -245,7 +245,7 @@ class EventBridgeSchedulerBackend(BaseBackend):
         return schedule
 
     def list_schedules(
-        self, group_names: Optional[str], state: Optional[str]
+        self, group_names: str | None, state: str | None
     ) -> Iterable[Schedule]:
         """
         The following parameters are not yet implemented: MaxResults, NamePrefix, NextToken
@@ -259,7 +259,7 @@ class EventBridgeSchedulerBackend(BaseBackend):
         return results
 
     def create_schedule_group(
-        self, name: str, tags: List[Dict[str, str]]
+        self, name: str, tags: list[dict[str, str]]
     ) -> ScheduleGroup:
         """
         The ClientToken parameter is not yet implemented
@@ -271,7 +271,7 @@ class EventBridgeSchedulerBackend(BaseBackend):
         self.tagger.tag_resource(group.arn, tags)
         return group
 
-    def get_schedule_group(self, group_name: Optional[str]) -> ScheduleGroup:
+    def get_schedule_group(self, group_name: str | None) -> ScheduleGroup:
         if (group_name or "default") not in self.schedule_groups:
             raise ScheduleGroupNotFound
         return self.schedule_groups[group_name or "default"]
@@ -282,18 +282,18 @@ class EventBridgeSchedulerBackend(BaseBackend):
         """
         return self.schedule_groups.values()
 
-    def delete_schedule_group(self, name: Optional[str]) -> None:
+    def delete_schedule_group(self, name: str | None) -> None:
         self.schedule_groups.pop(name or "default")
 
     def list_tags_for_resource(
         self, resource_arn: str
-    ) -> Dict[str, List[Dict[str, str]]]:
+    ) -> dict[str, list[dict[str, str]]]:
         return self.tagger.list_tags_for_resource(resource_arn)
 
-    def tag_resource(self, resource_arn: str, tags: List[Dict[str, str]]) -> None:
+    def tag_resource(self, resource_arn: str, tags: list[dict[str, str]]) -> None:
         self.tagger.tag_resource(resource_arn, tags)
 
-    def untag_resource(self, resource_arn: str, tag_keys: List[str]) -> None:
+    def untag_resource(self, resource_arn: str, tag_keys: list[str]) -> None:
         self.tagger.untag_resource_using_names(resource_arn, tag_keys)
 
 

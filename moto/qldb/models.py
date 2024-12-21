@@ -1,7 +1,7 @@
 """QLDBBackend class with methods for supported APIs."""
 
 from datetime import datetime
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Optional
 
 from moto.core.base_backend import BackendDict, BaseBackend
 from moto.qldb.exceptions import (
@@ -16,18 +16,18 @@ class QLDBBackend(BaseBackend):
 
     def __init__(self, region_name: str, account_id: str) -> None:
         super().__init__(region_name, account_id)
-        self.ledgers: Dict[str, Any] = dict()  # type ignore[misc]
+        self.ledgers: dict[str, Any] = dict()  # type ignore[misc]
 
     def describe_ledger(
         self, name: str
-    ) -> Tuple[
+    ) -> tuple[
         str,
-        Optional[str],
-        Optional[str],
+        str | None,
+        str | None,
         Optional[datetime],
-        Optional[str],
+        str | None,
         Optional[bool],
-        Optional[Dict[str, Union[str, datetime]]],
+        Optional[dict[str, str | datetime]],
     ]:
         if name not in self.ledgers:
             raise LedgerNotFoundException(name)
@@ -48,11 +48,11 @@ class QLDBBackend(BaseBackend):
     def create_ledger(
         self,
         name: str,
-        tags: Optional[Dict[str, str]],
+        tags: Optional[dict[str, str]],
         permissions_mode: str,
         deletion_protection: Optional[bool],
-        kms_key: Optional[str],
-    ) -> Tuple[
+        kms_key: str | None,
+    ) -> tuple[
         str,
         str,
         str,
@@ -102,14 +102,14 @@ class QLDBBackend(BaseBackend):
         return
 
     def update_ledger(
-        self, name: str, deletion_protection: Optional[bool], kms_key: Optional[str]
-    ) -> Tuple[
+        self, name: str, deletion_protection: Optional[bool], kms_key: str | None
+    ) -> tuple[
         str,
-        Optional[str],
-        Optional[str],
+        str | None,
+        str | None,
         Optional[datetime],
         Optional[bool],
-        Optional[Dict[str, Union[str, datetime]]],
+        Optional[dict[str, str | datetime]],
     ]:
         if name not in self.ledgers:
             raise LedgerNotFoundException(name)
@@ -131,20 +131,20 @@ class QLDBBackend(BaseBackend):
             ledger.get("encryption_description"),
         )
 
-    def _get_ledger_by_resource_arn(self, resource_arn: str) -> Dict[str, Any]:
+    def _get_ledger_by_resource_arn(self, resource_arn: str) -> dict[str, Any]:
         for ledger in self.ledgers.values():
             if ledger.get("resource_arn") == resource_arn:
                 return ledger
         raise ResourceNotFoundException(resource_arn)
 
-    def tag_resource(self, resource_arn: str, new_tags: Dict[str, str]) -> None:
+    def tag_resource(self, resource_arn: str, new_tags: dict[str, str]) -> None:
         ledger = self._get_ledger_by_resource_arn(resource_arn)
         tags = ledger.get("tags") or {}
         tags.update(new_tags)
         ledger["tags"] = tags
         return
 
-    def list_tags_for_resource(self, resource_arn: str) -> Dict[str, str]:
+    def list_tags_for_resource(self, resource_arn: str) -> dict[str, str]:
         ledger = self._get_ledger_by_resource_arn(resource_arn)
         return ledger.get("tags") or {}
 

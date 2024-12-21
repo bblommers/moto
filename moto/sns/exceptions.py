@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any
 
 from moto.core.exceptions import RESTError
 
@@ -12,7 +12,7 @@ class SNSException(RESTError):
 class SNSNotFoundError(SNSException):
     code = 404
 
-    def __init__(self, message: str, template: Optional[str] = None):
+    def __init__(self, message: str, template: str | None = None):
         super().__init__("NotFound", message, template=template)
 
 

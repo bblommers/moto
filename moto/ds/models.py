@@ -1,6 +1,6 @@
 """DirectoryServiceBackend class with methods for supported APIs."""
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional
 
 from moto.core.base_backend import BackendDict, BaseBackend
 from moto.core.common_models import BaseModel
@@ -30,7 +30,7 @@ class LdapsSettingInfo(BaseModel):
         self.ldaps_status = "Enabled"
         self.ldaps_status_reason = ""
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "LastUpdatedDateTime": self.last_updated_date_time,
             "LDAPSStatus": self.ldaps_status,
@@ -45,9 +45,9 @@ class Trust(BaseModel):
         remote_domain_name: str,
         trust_password: str,
         trust_direction: str,
-        trust_type: Optional[str],
-        conditional_forwarder_ip_addrs: Optional[List[str]],
-        selective_auth: Optional[str],
+        trust_type: str | None,
+        conditional_forwarder_ip_addrs: Optional[list[str]],
+        selective_auth: str | None,
     ) -> None:
         self.trust_id = f"t-{mock_random.get_random_hex(10)}"
         self.created_date_time = unix_time()
@@ -63,7 +63,7 @@ class Trust(BaseModel):
         self.conditional_forwarder_ip_addrs = conditional_forwarder_ip_addrs
         self.selective_auth = selective_auth
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "CreatedDateTime": self.created_date_time,
             "DirectoryId": self.directory_id,
@@ -110,12 +110,12 @@ class Directory(BaseModel):  # pylint: disable=too-many-instance-attributes
         name: str,
         password: str,
         directory_type: str,
-        size: Optional[str] = None,
-        vpc_settings: Optional[Dict[str, Any]] = None,
-        connect_settings: Optional[Dict[str, Any]] = None,
-        short_name: Optional[str] = None,
-        description: Optional[str] = None,
-        edition: Optional[str] = None,
+        size: str | None = None,
+        vpc_settings: Optional[dict[str, Any]] = None,
+        connect_settings: Optional[dict[str, Any]] = None,
+        short_name: str | None = None,
+        description: str | None = None,
+        edition: str | None = None,
     ):  # pylint: disable=too-many-arguments
         self.account_id = account_id
         self.region = region
@@ -138,8 +138,8 @@ class Directory(BaseModel):  # pylint: disable=too-many-instance-attributes
         self.stage = "Active"
         self.launch_time = unix_time()
         self.stage_last_updated_date_time = unix_time()
-        self.ldaps_settings_info: List[LdapsSettingInfo] = []
-        self.trusts: List[Trust] = []
+        self.ldaps_settings_info: list[LdapsSettingInfo] = []
+        self.trusts: list[Trust] = []
         self.settings = (
             SETTINGS_ENTRIES_MODEL.copy()
             if self.directory_type == "MicrosoftAD"
@@ -190,8 +190,8 @@ class Directory(BaseModel):  # pylint: disable=too-many-instance-attributes
         )
 
     def create_eni(
-        self, security_group_id: str, subnet_ids: List[str]
-    ) -> Tuple[List[str], List[str]]:
+        self, security_group_id: str, subnet_ids: list[str]
+    ) -> tuple[list[str], list[str]]:
         """Return ENI ids and primary addresses created for each subnet."""
         eni_ids = []
         subnet_ips = []
@@ -238,7 +238,7 @@ class Directory(BaseModel):  # pylint: disable=too-many-instance-attributes
             for setting in self.ldaps_settings_info:
                 setting.ldaps_status = "Disabled"
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Create a dictionary of attributes for Directory."""
         attributes = {
             "AccessUrl": self.access_url,
@@ -276,10 +276,10 @@ class DirectoryServiceBackend(BaseBackend):
 
     def __init__(self, region_name: str, account_id: str):
         super().__init__(region_name, account_id)
-        self.directories: Dict[str, Directory] = {}
+        self.directories: dict[str, Directory] = {}
         self.tagger = TaggingService()
 
-    def _verify_subnets(self, region: str, vpc_settings: Dict[str, Any]) -> None:
+    def _verify_subnets(self, region: str, vpc_settings: dict[str, Any]) -> None:
         """Verify subnets are valid, else raise an exception.
 
         If settings are valid, add AvailabilityZones to vpc_settings.
@@ -322,8 +322,8 @@ class DirectoryServiceBackend(BaseBackend):
         password: str,
         description: str,
         size: str,
-        connect_settings: Dict[str, Any],
-        tags: List[Dict[str, str]],
+        connect_settings: dict[str, Any],
+        tags: list[dict[str, str]],
     ) -> str:  # pylint: disable=too-many-arguments
         """Create a fake AD Connector."""
         if len(self.directories) > Directory.CONNECTED_DIRECTORIES_LIMIT:
@@ -382,8 +382,8 @@ class DirectoryServiceBackend(BaseBackend):
         password: str,
         description: str,
         size: str,
-        vpc_settings: Dict[str, Any],
-        tags: List[Dict[str, str]],
+        vpc_settings: dict[str, Any],
+        tags: list[dict[str, str]],
     ) -> str:  # pylint: disable=too-many-arguments
         """Create a fake Simple Ad Directory."""
         if len(self.directories) > Directory.CLOUDONLY_DIRECTORIES_LIMIT:
@@ -437,7 +437,7 @@ class DirectoryServiceBackend(BaseBackend):
                 f"Directory {directory_id} does not exist"
             )
 
-    def create_alias(self, directory_id: str, alias: str) -> Dict[str, str]:
+    def create_alias(self, directory_id: str, alias: str) -> dict[str, str]:
         """Create and assign an alias to a directory."""
         self._validate_directory_id(directory_id)
 
@@ -465,9 +465,9 @@ class DirectoryServiceBackend(BaseBackend):
         short_name: str,
         password: str,
         description: str,
-        vpc_settings: Dict[str, Any],
+        vpc_settings: dict[str, Any],
         edition: str,
-        tags: List[Dict[str, str]],
+        tags: list[dict[str, str]],
     ) -> str:  # pylint: disable=too-many-arguments
         """Create a fake Microsoft Ad Directory."""
         if len(self.directories) > Directory.CLOUDONLY_MICROSOFT_AD_LIMIT:
@@ -522,8 +522,8 @@ class DirectoryServiceBackend(BaseBackend):
     def disable_sso(
         self,
         directory_id: str,
-        username: Optional[str] = None,
-        password: Optional[str] = None,
+        username: str | None = None,
+        password: str | None = None,
     ) -> None:
         """Disable single-sign on for a directory."""
         self._validate_directory_id(directory_id)
@@ -534,8 +534,8 @@ class DirectoryServiceBackend(BaseBackend):
     def enable_sso(
         self,
         directory_id: str,
-        username: Optional[str] = None,
-        password: Optional[str] = None,
+        username: str | None = None,
+        password: str | None = None,
     ) -> None:
         """Enable single-sign on for a directory."""
         self._validate_directory_id(directory_id)
@@ -552,8 +552,8 @@ class DirectoryServiceBackend(BaseBackend):
 
     @paginate(pagination_model=PAGINATION_MODEL)
     def describe_directories(
-        self, directory_ids: Optional[List[str]] = None
-    ) -> List[Directory]:
+        self, directory_ids: Optional[list[str]] = None
+    ) -> list[Directory]:
         """Return info on all directories or directories with matching IDs."""
         for directory_id in directory_ids or self.directories:
             self._validate_directory_id(directory_id)
@@ -563,7 +563,7 @@ class DirectoryServiceBackend(BaseBackend):
             directories = [x for x in directories if x.directory_id in directory_ids]
         return sorted(directories, key=lambda x: x.launch_time)
 
-    def get_directory_limits(self) -> Dict[str, Any]:
+    def get_directory_limits(self) -> dict[str, Any]:
         """Return hard-coded limits for the directories."""
         counts = {"SimpleAD": 0, "MicrosoftAD": 0, "ConnectedAD": 0}
         for directory in self.directories.values():
@@ -590,7 +590,7 @@ class DirectoryServiceBackend(BaseBackend):
         }
 
     def add_tags_to_resource(
-        self, resource_id: str, tags: List[Dict[str, str]]
+        self, resource_id: str, tags: list[dict[str, str]]
     ) -> None:
         """Add or overwrite one or more tags for specified directory."""
         self._validate_directory_id(resource_id)
@@ -601,13 +601,13 @@ class DirectoryServiceBackend(BaseBackend):
             raise TagLimitExceededException("Tag limit exceeded")
         self.tagger.tag_resource(resource_id, tags)
 
-    def remove_tags_from_resource(self, resource_id: str, tag_keys: List[str]) -> None:
+    def remove_tags_from_resource(self, resource_id: str, tag_keys: list[str]) -> None:
         """Removes tags from a directory."""
         self._validate_directory_id(resource_id)
         self.tagger.untag_resource_using_names(resource_id, tag_keys)
 
     @paginate(pagination_model=PAGINATION_MODEL)
-    def list_tags_for_resource(self, resource_id: str) -> List[Dict[str, str]]:
+    def list_tags_for_resource(self, resource_id: str) -> list[dict[str, str]]:
         """List all tags on a directory."""
         self._validate_directory_id(resource_id)
         return self.tagger.list_tags_for_resource(resource_id).get("Tags")  # type: ignore[return-value]
@@ -618,9 +618,9 @@ class DirectoryServiceBackend(BaseBackend):
         remote_domain_name: str,
         trust_password: str,
         trust_direction: str,
-        trust_type: Optional[str],
-        conditional_forwarder_ip_addrs: Optional[List[str]],
-        selective_auth: Optional[str],
+        trust_type: str | None,
+        conditional_forwarder_ip_addrs: Optional[list[str]],
+        selective_auth: str | None,
     ) -> str:
         self._validate_directory_id(directory_id)
         validate_args(
@@ -645,8 +645,8 @@ class DirectoryServiceBackend(BaseBackend):
 
     @paginate(pagination_model=PAGINATION_MODEL)
     def describe_trusts(
-        self, directory_id: Optional[str], trust_ids: Optional[List[str]]
-    ) -> List[Trust]:
+        self, directory_id: str | None, trust_ids: Optional[list[str]]
+    ) -> list[Trust]:
         if directory_id:
             self._validate_directory_id(directory_id)
             directory = self.directories[directory_id]
@@ -680,7 +680,7 @@ class DirectoryServiceBackend(BaseBackend):
     @paginate(pagination_model=PAGINATION_MODEL)
     def describe_ldaps_settings(
         self, directory_id: str, type: str
-    ) -> List[LdapsSettingInfo]:
+    ) -> list[LdapsSettingInfo]:
         """Describe LDAPS settings for a Directory"""
         self._validate_directory_id(directory_id)
         directory = self.directories[directory_id]
@@ -705,8 +705,8 @@ class DirectoryServiceBackend(BaseBackend):
 
     @paginate(pagination_model=PAGINATION_MODEL)
     def describe_settings(
-        self, directory_id: str, status: Optional[str]
-    ) -> List[Dict[str, str]]:
+        self, directory_id: str, status: str | None
+    ) -> list[dict[str, str]]:
         """Describe settings for a Directory"""
         self._validate_directory_id(directory_id)
         directory = self.directories[directory_id]
@@ -724,7 +724,7 @@ class DirectoryServiceBackend(BaseBackend):
             queried_settings = directory.settings
         return queried_settings
 
-    def update_settings(self, directory_id: str, settings: List[Dict[str, Any]]) -> str:
+    def update_settings(self, directory_id: str, settings: list[dict[str, Any]]) -> str:
         self._validate_directory_id(directory_id)
         directory = self.directories[directory_id]
         if directory.directory_type not in ("MicrosoftAD"):

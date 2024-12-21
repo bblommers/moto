@@ -1,5 +1,4 @@
 import weakref
-from typing import Dict, List
 
 from moto.core.base_backend import BackendDict, BaseBackend
 from moto.core.common_models import BaseModel
@@ -18,7 +17,7 @@ class FakeEnvironment(BaseModel):
         application: "FakeApplication",
         environment_name: str,
         solution_stack_name: str,
-        tags: Dict[str, str],
+        tags: dict[str, str],
     ):
         self.application = weakref.proxy(
             application
@@ -55,7 +54,7 @@ class FakeApplication(BaseModel):
     ):
         self.backend = weakref.proxy(backend)  # weakref to break cycles
         self.application_name = application_name
-        self.environments: Dict[str, FakeEnvironment] = dict()
+        self.environments: dict[str, FakeEnvironment] = dict()
         self.account_id = self.backend.account_id
         self.region = self.backend.region_name
         self.arn = make_arn(
@@ -63,7 +62,7 @@ class FakeApplication(BaseModel):
         )
 
     def create_environment(
-        self, environment_name: str, solution_stack_name: str, tags: Dict[str, str]
+        self, environment_name: str, solution_stack_name: str, tags: dict[str, str]
     ) -> FakeEnvironment:
         if environment_name in self.environments:
             raise InvalidParameterValueError(message="")
@@ -82,7 +81,7 @@ class FakeApplication(BaseModel):
 class EBBackend(BaseBackend):
     def __init__(self, region_name: str, account_id: str):
         super().__init__(region_name, account_id)
-        self.applications: Dict[str, FakeApplication] = dict()
+        self.applications: dict[str, FakeApplication] = dict()
 
     def create_application(self, application_name: str) -> FakeApplication:
         if application_name in self.applications:
@@ -98,13 +97,13 @@ class EBBackend(BaseBackend):
         app: FakeApplication,
         environment_name: str,
         stack_name: str,
-        tags: Dict[str, str],
+        tags: dict[str, str],
     ) -> FakeEnvironment:
         return app.create_environment(
             environment_name=environment_name, solution_stack_name=stack_name, tags=tags
         )
 
-    def describe_environments(self) -> List[FakeEnvironment]:
+    def describe_environments(self) -> list[FakeEnvironment]:
         envs = []
         for app in self.applications.values():
             for env in app.environments.values():
@@ -116,7 +115,7 @@ class EBBackend(BaseBackend):
         pass
 
     def update_tags_for_resource(
-        self, resource_arn: str, tags_to_add: Dict[str, str], tags_to_remove: List[str]
+        self, resource_arn: str, tags_to_add: dict[str, str], tags_to_remove: list[str]
     ) -> None:
         try:
             res = self._find_environment_by_arn(resource_arn)
@@ -131,7 +130,7 @@ class EBBackend(BaseBackend):
         for key in tags_to_remove:
             del res.tags[key]
 
-    def list_tags_for_resource(self, resource_arn: str) -> Dict[str, str]:
+    def list_tags_for_resource(self, resource_arn: str) -> dict[str, str]:
         try:
             res = self._find_environment_by_arn(resource_arn)
         except KeyError:

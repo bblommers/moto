@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any
 
 from moto.core.base_backend import BackendDict, BaseBackend
 from moto.core.common_models import BaseModel
@@ -14,19 +14,19 @@ class Domain(BaseModel):
         region_name: str,
         domain_name: str,
         es_version: str,
-        elasticsearch_cluster_config: Dict[str, Any],
-        ebs_options: Dict[str, Any],
-        access_policies: Dict[str, Any],
-        snapshot_options: Dict[str, Any],
-        vpc_options: Dict[str, Any],
-        cognito_options: Dict[str, Any],
-        encryption_at_rest_options: Dict[str, Any],
-        node_to_node_encryption_options: Dict[str, Any],
-        advanced_options: Dict[str, Any],
-        log_publishing_options: Dict[str, Any],
-        domain_endpoint_options: Dict[str, Any],
-        advanced_security_options: Dict[str, Any],
-        auto_tune_options: Dict[str, Any],
+        elasticsearch_cluster_config: dict[str, Any],
+        ebs_options: dict[str, Any],
+        access_policies: dict[str, Any],
+        snapshot_options: dict[str, Any],
+        vpc_options: dict[str, Any],
+        cognito_options: dict[str, Any],
+        encryption_at_rest_options: dict[str, Any],
+        node_to_node_encryption_options: dict[str, Any],
+        advanced_options: dict[str, Any],
+        log_publishing_options: dict[str, Any],
+        domain_endpoint_options: dict[str, Any],
+        advanced_security_options: dict[str, Any],
+        auto_tune_options: dict[str, Any],
     ):
         self.domain_id = mock_random.get_random_hex(8)
         self.region_name = region_name
@@ -52,7 +52,7 @@ class Domain(BaseModel):
     def arn(self) -> str:
         return f"arn:{get_partition(self.region_name)}:es:{self.region_name}:domain/{self.domain_id}"
 
-    def to_json(self) -> Dict[str, Any]:
+    def to_json(self) -> dict[str, Any]:
         return {
             "DomainId": self.domain_id,
             "DomainName": self.domain_name,
@@ -83,26 +83,26 @@ class ElasticsearchServiceBackend(BaseBackend):
 
     def __init__(self, region_name: str, account_id: str):
         super().__init__(region_name, account_id)
-        self.domains: Dict[str, Domain] = dict()
+        self.domains: dict[str, Domain] = dict()
 
     def create_elasticsearch_domain(
         self,
         domain_name: str,
         elasticsearch_version: str,
-        elasticsearch_cluster_config: Dict[str, Any],
-        ebs_options: Dict[str, Any],
-        access_policies: Dict[str, Any],
-        snapshot_options: Dict[str, Any],
-        vpc_options: Dict[str, Any],
-        cognito_options: Dict[str, Any],
-        encryption_at_rest_options: Dict[str, Any],
-        node_to_node_encryption_options: Dict[str, Any],
-        advanced_options: Dict[str, Any],
-        log_publishing_options: Dict[str, Any],
-        domain_endpoint_options: Dict[str, Any],
-        advanced_security_options: Dict[str, Any],
-        auto_tune_options: Dict[str, Any],
-    ) -> Dict[str, Any]:
+        elasticsearch_cluster_config: dict[str, Any],
+        ebs_options: dict[str, Any],
+        access_policies: dict[str, Any],
+        snapshot_options: dict[str, Any],
+        vpc_options: dict[str, Any],
+        cognito_options: dict[str, Any],
+        encryption_at_rest_options: dict[str, Any],
+        node_to_node_encryption_options: dict[str, Any],
+        advanced_options: dict[str, Any],
+        log_publishing_options: dict[str, Any],
+        domain_endpoint_options: dict[str, Any],
+        advanced_security_options: dict[str, Any],
+        auto_tune_options: dict[str, Any],
+    ) -> dict[str, Any]:
         # TODO: Persist/Return other attributes
         new_domain = Domain(
             region_name=self.region_name,
@@ -130,12 +130,12 @@ class ElasticsearchServiceBackend(BaseBackend):
             raise DomainNotFound(domain_name)
         del self.domains[domain_name]
 
-    def describe_elasticsearch_domain(self, domain_name: str) -> Dict[str, Any]:
+    def describe_elasticsearch_domain(self, domain_name: str) -> dict[str, Any]:
         if domain_name not in self.domains:
             raise DomainNotFound(domain_name)
         return self.domains[domain_name].to_json()
 
-    def list_domain_names(self) -> List[Dict[str, str]]:
+    def list_domain_names(self) -> list[dict[str, str]]:
         """
         The engine-type parameter is not yet supported.
         Pagination is not yet implemented.
@@ -143,8 +143,8 @@ class ElasticsearchServiceBackend(BaseBackend):
         return [{"DomainName": domain.domain_name} for domain in self.domains.values()]
 
     def describe_elasticsearch_domains(
-        self, domain_names: List[str]
-    ) -> List[Dict[str, Any]]:
+        self, domain_names: list[str]
+    ) -> list[dict[str, Any]]:
         queried_domains = []
         for domain_name in domain_names:
             if domain_name in self.domains:

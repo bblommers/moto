@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional
 
 from moto.core.common_models import CloudFormationModel
 
@@ -27,13 +27,13 @@ class NetworkInterface(TaggedEC2Resource, CloudFormationModel):
         self,
         ec2_backend: Any,
         subnet: Any,
-        private_ip_address: Union[List[str], str],
-        private_ip_addresses: Optional[List[Dict[str, Any]]] = None,
+        private_ip_address: list[str] | str,
+        private_ip_addresses: Optional[list[dict[str, Any]]] = None,
         device_index: int = 0,
         public_ip_auto_assign: bool = False,
-        group_ids: Optional[List[str]] = None,
-        description: Optional[str] = None,
-        tags: Optional[Dict[str, str]] = None,
+        group_ids: Optional[list[str]] = None,
+        description: str | None = None,
+        tags: Optional[dict[str, str]] = None,
         delete_on_termination: Optional[bool] = False,
         **kwargs: Any,
     ):
@@ -42,21 +42,21 @@ class NetworkInterface(TaggedEC2Resource, CloudFormationModel):
         self.device_index: Optional[int] = device_index
         if isinstance(private_ip_address, list) and private_ip_address:
             private_ip_address = private_ip_address[0]
-        self.private_ip_address: Optional[str] = private_ip_address or None  # type: ignore
-        self.private_ip_addresses: List[Dict[str, Any]] = private_ip_addresses or []
+        self.private_ip_address: str | None = private_ip_address or None  # type: ignore
+        self.private_ip_addresses: list[dict[str, Any]] = private_ip_addresses or []
         self.ipv6_addresses = kwargs.get("ipv6_addresses") or []
 
         self.subnet = subnet
         if isinstance(subnet, str):
             self.subnet = self.ec2_backend.get_subnet(subnet)
         self.instance: Optional[Instance] = None
-        self.attachment_id: Optional[str] = None
-        self.attach_time: Optional[str] = None
+        self.attachment_id: str | None = None
+        self.attach_time: str | None = None
         self.delete_on_termination = delete_on_termination
         self.description = description
         self.source_dest_check = True
 
-        self.public_ip: Optional[str] = None
+        self.public_ip: str | None = None
         self.public_ip_auto_assign = public_ip_auto_assign
         self.start()
         self.add_tags(tags or {})
@@ -148,8 +148,8 @@ class NetworkInterface(TaggedEC2Resource, CloudFormationModel):
         return self.ec2_backend.account_id
 
     @property
-    def association(self) -> Dict[str, Any]:  # type: ignore[misc]
-        association: Dict[str, Any] = {}
+    def association(self) -> dict[str, Any]:  # type: ignore[misc]
+        association: dict[str, Any] = {}
         if self.public_ip:
             eips = self.ec2_backend.address_by_ip(
                 [self.public_ip], fail_if_not_found=False
@@ -245,9 +245,7 @@ class NetworkInterface(TaggedEC2Resource, CloudFormationModel):
     def physical_resource_id(self) -> str:
         return self.id
 
-    def get_filter_value(
-        self, filter_name: str, method_name: Optional[str] = None
-    ) -> Any:
+    def get_filter_value(self, filter_name: str, method_name: str | None = None) -> Any:
         if filter_name == "network-interface-id":
             return self.id
         elif filter_name in ("addresses.private-ip-address", "private-ip-address"):
@@ -272,16 +270,16 @@ class NetworkInterface(TaggedEC2Resource, CloudFormationModel):
 
 class NetworkInterfaceBackend:
     def __init__(self) -> None:
-        self.enis: Dict[str, NetworkInterface] = {}
+        self.enis: dict[str, NetworkInterface] = {}
 
     def create_network_interface(
         self,
         subnet: Any,
-        private_ip_address: Union[str, List[str]],
-        private_ip_addresses: Optional[List[Dict[str, Any]]] = None,
-        group_ids: Optional[List[str]] = None,
-        description: Optional[str] = None,
-        tags: Optional[Dict[str, str]] = None,
+        private_ip_address: str | list[str],
+        private_ip_addresses: Optional[list[dict[str, Any]]] = None,
+        group_ids: Optional[list[str]] = None,
+        description: str | None = None,
+        tags: Optional[dict[str, str]] = None,
         delete_on_termination: Optional[bool] = False,
         **kwargs: Any,
     ) -> NetworkInterface:
@@ -312,7 +310,7 @@ class NetworkInterfaceBackend:
 
     def describe_network_interfaces(
         self, filters: Any = None
-    ) -> List[NetworkInterface]:
+    ) -> list[NetworkInterface]:
         # Note: This is only used in EC2Backend#do_resources_exist
         # Client-calls use #get_all_network_interfaces()
         # We should probably merge these at some point..
@@ -350,9 +348,9 @@ class NetworkInterfaceBackend:
     def modify_network_interface_attribute(
         self,
         eni_id: str,
-        group_ids: List[str],
+        group_ids: list[str],
         source_dest_check: Optional[bool] = None,
-        description: Optional[str] = None,
+        description: str | None = None,
     ) -> None:
         eni = self.get_network_interface(eni_id)
         groups = [self.get_security_group_from_id(group_id) for group_id in group_ids]  # type: ignore[attr-defined]
@@ -365,8 +363,8 @@ class NetworkInterfaceBackend:
             eni.description = description
 
     def get_all_network_interfaces(
-        self, eni_ids: Optional[List[str]] = None, filters: Any = None
-    ) -> List[NetworkInterface]:
+        self, eni_ids: Optional[list[str]] = None, filters: Any = None
+    ) -> list[NetworkInterface]:
         enis = list(self.enis.values())
 
         if eni_ids:
@@ -380,7 +378,7 @@ class NetworkInterfaceBackend:
         return generic_filter(filters, enis)
 
     def unassign_private_ip_addresses(
-        self, eni_id: str, private_ip_address: Optional[List[str]] = None
+        self, eni_id: str, private_ip_address: Optional[list[str]] = None
     ) -> NetworkInterface:
         eni = self.get_network_interface(eni_id)
         if private_ip_address:
@@ -392,7 +390,7 @@ class NetworkInterfaceBackend:
     def assign_private_ip_addresses(
         self,
         eni_id: str,
-        private_ip_addresses: Optional[List[str]] = None,
+        private_ip_addresses: Optional[list[str]] = None,
         secondary_ips_count: Optional[int] = None,
     ) -> NetworkInterface:
         eni = self.get_network_interface(eni_id)
@@ -418,7 +416,7 @@ class NetworkInterfaceBackend:
     def assign_ipv6_addresses(
         self,
         eni_id: str,
-        ipv6_addresses: Optional[List[str]] = None,
+        ipv6_addresses: Optional[list[str]] = None,
         ipv6_count: Optional[int] = None,
     ) -> NetworkInterface:
         eni = self.get_network_interface(eni_id)
@@ -437,7 +435,7 @@ class NetworkInterfaceBackend:
         return eni
 
     def unassign_ipv6_addresses(
-        self, eni_id: str, ips: Optional[List[str]] = None
+        self, eni_id: str, ips: Optional[list[str]] = None
     ) -> NetworkInterface:
         eni = self.get_network_interface(eni_id)
         if ips:

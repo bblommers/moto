@@ -4,12 +4,12 @@ Note that ValidationExceptions are accumulative.
 """
 
 import re
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional
 
 from moto.route53resolver.exceptions import RRValidationException
 
 
-def validate_args(validators: List[Tuple[str, Any]]) -> None:
+def validate_args(validators: list[tuple[str, Any]]) -> None:
     """Raise exception if any of the validations fails.
 
     validators is a list of tuples each containing the following:
@@ -45,14 +45,14 @@ def validate_args(validators: List[Tuple[str, Any]]) -> None:
         raise RRValidationException(err_msgs)
 
 
-def validate_creator_request_id(value: Optional[str]) -> str:
+def validate_creator_request_id(value: str | None) -> str:
     """Raise exception if the creator_request_id has invalid length."""
     if value and len(value) > 255:
         return "have length less than or equal to 255"
     return ""
 
 
-def validate_direction(value: Optional[str]) -> str:
+def validate_direction(value: str | None) -> str:
     """Raise exception if direction not one of the allowed values."""
     if value and value not in ["INBOUND", "OUTBOUND"]:
         return "satisfy enum value set: [INBOUND, OUTBOUND]"
@@ -66,7 +66,7 @@ def validate_domain_name(value: str) -> str:
     return ""
 
 
-def validate_endpoint_id(value: Optional[str]) -> str:
+def validate_endpoint_id(value: str | None) -> str:
     """Raise exception if resolver endpoint id has invalid length."""
     if value and len(value) > 64:
         return "have length less than or equal to 64"
@@ -87,7 +87,7 @@ def validate_max_results(value: Optional[int]) -> str:
     return ""
 
 
-def validate_name(value: Optional[str]) -> str:
+def validate_name(value: str | None) -> str:
     """Raise exception if name fails to match constraints."""
     if value:
         if len(value) > 64:
@@ -98,28 +98,28 @@ def validate_name(value: Optional[str]) -> str:
     return ""
 
 
-def validate_rule_association_id(value: Optional[str]) -> str:
+def validate_rule_association_id(value: str | None) -> str:
     """Raise exception if resolver rule association id has invalid length."""
     if value and len(value) > 64:
         return "have length less than or equal to 64"
     return ""
 
 
-def validate_rule_id(value: Optional[str]) -> str:
+def validate_rule_id(value: str | None) -> str:
     """Raise exception if resolver rule id has invalid length."""
     if value and len(value) > 64:
         return "have length less than or equal to 64"
     return ""
 
 
-def validate_rule_type(value: Optional[str]) -> str:
+def validate_rule_type(value: str | None) -> str:
     """Raise exception if rule_type not one of the allowed values."""
     if value and value not in ["FORWARD", "SYSTEM", "RECURSIVE"]:
         return "satisfy enum value set: [FORWARD, SYSTEM, RECURSIVE]"
     return ""
 
 
-def validate_security_group_ids(value: List[str]) -> str:
+def validate_security_group_ids(value: list[str]) -> str:
     """Raise exception if IPs fail to match length constraint."""
     # Too many security group IDs is an InvalidParameterException.
     for group_id in value:
@@ -131,7 +131,7 @@ def validate_security_group_ids(value: List[str]) -> str:
     return ""
 
 
-def validate_subnets(value: List[Dict[str, Any]]) -> str:
+def validate_subnets(value: list[dict[str, Any]]) -> str:
     """Raise exception if subnets fail to match length constraint."""
     for subnet_id in [x["SubnetId"] for x in value]:
         if len(subnet_id) > 32:
@@ -139,7 +139,7 @@ def validate_subnets(value: List[Dict[str, Any]]) -> str:
     return ""
 
 
-def validate_target_port(value: Optional[Dict[str, int]]) -> str:
+def validate_target_port(value: Optional[dict[str, int]]) -> str:
     """Raise exception if target port fails to match length constraint."""
     if value and value["Port"] > 65535:
         return "have value less than or equal to 65535"

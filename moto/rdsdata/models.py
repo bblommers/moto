@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional
 
 from moto.core.base_backend import BackendDict, BaseBackend
 
@@ -6,11 +6,11 @@ from moto.core.base_backend import BackendDict, BaseBackend
 class QueryResults:
     def __init__(
         self,
-        records: Optional[List[List[Dict[str, Any]]]] = None,
-        column_metadata: Optional[List[Dict[str, Any]]] = None,
+        records: Optional[list[list[dict[str, Any]]]] = None,
+        column_metadata: Optional[list[dict[str, Any]]] = None,
         number_of_records_updated: Optional[int] = None,
-        generated_fields: Optional[List[Dict[str, Any]]] = None,
-        formatted_records: Optional[str] = None,
+        generated_fields: Optional[list[dict[str, Any]]] = None,
+        formatted_records: str | None = None,
     ):
         self.records = records
         self.column_metadata = column_metadata
@@ -18,7 +18,7 @@ class QueryResults:
         self.generated_fields = generated_fields
         self.formatted_records = formatted_records
 
-    def to_json(self) -> Dict[str, Any]:
+    def to_json(self) -> dict[str, Any]:
         return {
             "records": self.records,
             "columnMetadata": self.column_metadata,
@@ -31,8 +31,8 @@ class QueryResults:
 class RDSDataServiceBackend(BaseBackend):
     def __init__(self, region_name: str, account_id: str):
         super().__init__(region_name, account_id)
-        self.results_queue: List[QueryResults] = []
-        self.sql_results: Dict[Tuple[str, str], QueryResults] = dict()
+        self.results_queue: list[QueryResults] = []
+        self.sql_results: dict[tuple[str, str], QueryResults] = dict()
 
     def execute_statement(self, resource_arn: str, sql: str) -> QueryResults:
         """

@@ -1,4 +1,4 @@
-from typing import Any, List, Optional, Union
+from typing import Any, Optional
 
 from moto.awslambda.models import LambdaBackend
 from moto.core.base_backend import BackendDict
@@ -12,17 +12,17 @@ class LambdaSimpleBackend(LambdaBackend):
 
     def __init__(self, region_name: str, account_id: str):
         super().__init__(region_name, account_id)
-        self.lambda_simple_results_queue: List[str] = []
+        self.lambda_simple_results_queue: list[str] = []
 
     # pylint: disable=unused-argument
     def invoke(
         self,
         function_name: str,
-        qualifier: Optional[str],
+        qualifier: str | None,
         body: Any,
         headers: Any,
         response_headers: Any,
-    ) -> Optional[Union[str, bytes]]:
+    ) -> Optional[str | bytes]:
         default_result = body or "Simple Lambda happy path OK"
         if self.lambda_simple_results_queue:
             default_result = self.lambda_simple_results_queue.pop(0)

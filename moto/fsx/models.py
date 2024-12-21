@@ -1,6 +1,6 @@
 """FSxBackend class with methods for supported APIs."""
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional
 from uuid import uuid4
 
 from moto.core.base_backend import BackendDict, BaseBackend
@@ -27,14 +27,14 @@ class FileSystem(BaseModel):
         file_system_type: str,
         storage_capacity: int,
         storage_type: str,
-        subnet_ids: List[str],
-        security_group_ids: List[str],
-        tags: Optional[List[Dict[str, str]]],
-        kms_key_id: Optional[str],
-        windows_configuration: Optional[Dict[str, Any]],
-        lustre_configuration: Optional[Dict[str, Any]],
-        ontap_configuration: Optional[Dict[str, Any]],
-        open_zfs_configuration: Optional[Dict[str, Any]],
+        subnet_ids: list[str],
+        security_group_ids: list[str],
+        tags: Optional[list[dict[str, str]]],
+        kms_key_id: str | None,
+        windows_configuration: Optional[dict[str, Any]],
+        lustre_configuration: Optional[dict[str, Any]],
+        ontap_configuration: Optional[dict[str, Any]],
+        open_zfs_configuration: Optional[dict[str, Any]],
     ) -> None:
         self.file_system_id = f"fs-{uuid4().hex[:8]}"
         self.file_system_type = file_system_type
@@ -55,7 +55,7 @@ class FileSystem(BaseModel):
         self.ontap_configuration = ontap_configuration
         self.open_zfs_configuration = open_zfs_configuration
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         dct = {
             "FileSystemId": self.file_system_id,
             "FileSystemType": self.file_system_type,
@@ -80,7 +80,7 @@ class FSxBackend(BaseBackend):
 
     def __init__(self, region_name: str, account_id: str) -> None:
         super().__init__(region_name, account_id)
-        self.file_systems: Dict[str, FileSystem] = {}
+        self.file_systems: dict[str, FileSystem] = {}
 
     def create_file_system(
         self,
@@ -88,15 +88,15 @@ class FSxBackend(BaseBackend):
         file_system_type: str,
         storage_capacity: int,
         storage_type: str,
-        subnet_ids: List[str],
-        security_group_ids: List[str],
-        tags: Optional[List[Dict[str, str]]],
-        kms_key_id: Optional[str],
-        windows_configuration: Optional[Dict[str, Any]],
-        lustre_configuration: Optional[Dict[str, Any]],
-        ontap_configuration: Optional[Dict[str, Any]],
-        file_system_type_version: Optional[str],
-        open_zfs_configuration: Optional[Dict[str, Any]],
+        subnet_ids: list[str],
+        security_group_ids: list[str],
+        tags: Optional[list[dict[str, str]]],
+        kms_key_id: str | None,
+        windows_configuration: Optional[dict[str, Any]],
+        lustre_configuration: Optional[dict[str, Any]],
+        ontap_configuration: Optional[dict[str, Any]],
+        file_system_type_version: str | None,
+        open_zfs_configuration: Optional[dict[str, Any]],
     ) -> FileSystem:
         file_system = FileSystem(
             account_id=self.account_id,
@@ -120,7 +120,7 @@ class FSxBackend(BaseBackend):
         return file_system
 
     @paginate(pagination_model=PAGINATION_MODEL)
-    def describe_file_systems(self, file_system_ids: List[str]) -> List[FileSystem]:
+    def describe_file_systems(self, file_system_ids: list[str]) -> list[FileSystem]:
         file_systems = []
         if not file_system_ids:
             file_systems = list(self.file_systems.values())
@@ -134,15 +134,15 @@ class FSxBackend(BaseBackend):
         self,
         file_system_id: str,
         client_request_token: str,
-        windows_configuration: Optional[Dict[str, Any]],
-        lustre_configuration: Optional[Dict[str, Any]],
-        open_zfs_configuration: Optional[Dict[str, Any]],
-    ) -> Tuple[
+        windows_configuration: Optional[dict[str, Any]],
+        lustre_configuration: Optional[dict[str, Any]],
+        open_zfs_configuration: Optional[dict[str, Any]],
+    ) -> tuple[
         str,
         str,
-        Optional[Dict[str, Any]],
-        Optional[Dict[str, Any]],
-        Optional[Dict[str, Any]],
+        Optional[dict[str, Any]],
+        Optional[dict[str, Any]],
+        Optional[dict[str, Any]],
     ]:
         response_template = {"FinalBackUpId": "", "FinalBackUpTags": []}
 
@@ -170,7 +170,7 @@ class FSxBackend(BaseBackend):
             open_zfs_response,
         )
 
-    def tag_resource(self, resource_arn: str, tags: List[Dict[str, str]]) -> None:
+    def tag_resource(self, resource_arn: str, tags: list[dict[str, str]]) -> None:
         resource = self._get_resource_from_arn(resource_arn)
         resource.tags.extend(tags)
 
@@ -182,7 +182,7 @@ class FSxBackend(BaseBackend):
             message = f"Could not find {target_resource} with name {target_name}"
             raise ValueError(message)
 
-    def untag_resource(self, resource_arn: str, tag_keys: List[str]) -> None:
+    def untag_resource(self, resource_arn: str, tag_keys: list[str]) -> None:
         resource = self._get_resource_from_arn(resource_arn)
         if tag_keys:
             resource.tags = [tag for tag in resource.tags if tag["Key"] not in tag_keys]

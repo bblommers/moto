@@ -20,7 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 #
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional
 
 
 class BlockDeviceType(object):
@@ -30,18 +30,18 @@ class BlockDeviceType(object):
 
     def __init__(
         self,
-        connection: Optional[str] = None,
-        ephemeral_name: Optional[str] = None,
-        no_device: Union[bool, str] = False,
-        volume_id: Optional[str] = None,
-        snapshot_id: Optional[str] = None,
-        status: Optional[str] = None,
-        attach_time: Optional[str] = None,
+        connection: str | None = None,
+        ephemeral_name: str | None = None,
+        no_device: bool | str = False,
+        volume_id: str | None = None,
+        snapshot_id: str | None = None,
+        status: str | None = None,
+        attach_time: str | None = None,
         delete_on_termination: bool = False,
         size: Optional[int] = None,
-        volume_type: Optional[str] = None,
-        iops: Optional[str] = None,
-        encrypted: Optional[str] = None,
+        volume_type: str | None = None,
+        iops: str | None = None,
+        encrypted: str | None = None,
     ):
         self.connection = connection
         self.ephemeral_name = ephemeral_name
@@ -63,7 +63,7 @@ class BlockDeviceType(object):
 EBSBlockDeviceType = BlockDeviceType
 
 
-class BlockDeviceMapping(Dict[Any, Any]):
+class BlockDeviceMapping(dict[Any, Any]):
     """
     Represents a collection of BlockDeviceTypes when creating ec2 instances.
 
@@ -75,7 +75,7 @@ class BlockDeviceMapping(Dict[Any, Any]):
     reservation = image.run(..., block_device_map=bdm, ...)
     """
 
-    def to_source_dict(self) -> List[Dict[str, Any]]:
+    def to_source_dict(self) -> list[dict[str, Any]]:
         return [
             {
                 "DeviceName": device_name,

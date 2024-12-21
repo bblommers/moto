@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Dict, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from moto.core.common_models import BaseModel
 from moto.core.utils import unix_time, utcnow
@@ -29,7 +29,7 @@ class DecisionTask(BaseModel):
         # this is *not* necessarily coherent with workflow execution history,
         # but that shouldn't be a problem for tests
         self.scheduled_at = utcnow()
-        self.timeout_type: Optional[str] = None
+        self.timeout_type: str | None = None
 
     @property
     def started(self) -> bool:
@@ -39,9 +39,9 @@ class DecisionTask(BaseModel):
         if not self.workflow_execution.open:
             raise SWFWorkflowExecutionClosedError()
 
-    def to_full_dict(self, reverse_order: bool = False) -> Dict[str, Any]:
+    def to_full_dict(self, reverse_order: bool = False) -> dict[str, Any]:
         events = self.workflow_execution.events(reverse_order=reverse_order)
-        hsh: Dict[str, Any] = {
+        hsh: dict[str, Any] = {
             "events": [evt.to_dict() for evt in events],
             "taskToken": self.task_token,
             "workflowExecution": self.workflow_execution.to_short_dict(),

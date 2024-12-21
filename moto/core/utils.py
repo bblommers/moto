@@ -2,7 +2,7 @@ import datetime
 import inspect
 import re
 from gzip import compress, decompress
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Optional
 from urllib.parse import ParseResult, urlparse
 
 from botocore.exceptions import ClientError
@@ -64,7 +64,7 @@ def camelcase_to_pascal(argument: str) -> str:
     return argument[0].upper() + argument[1:]
 
 
-def method_names_from_class(clazz: object) -> List[str]:
+def method_names_from_class(clazz: object) -> list[str]:
     predicate = inspect.isfunction
     return [x[0] for x in inspect.getmembers(clazz, predicate=predicate)]
 
@@ -166,7 +166,7 @@ def iso_8601_datetime_without_milliseconds(value: datetime.datetime) -> str:
 
 def iso_8601_datetime_without_milliseconds_s3(
     value: datetime.datetime,
-) -> Optional[str]:
+) -> str | None:
     return value.strftime("%Y-%m-%dT%H:%M:%S.000Z") if value else None
 
 
@@ -262,11 +262,11 @@ def path_url(url: str) -> str:
 
 
 def tags_from_query_string(
-    querystring_dict: Dict[str, Any],
+    querystring_dict: dict[str, Any],
     prefix: str = "Tag",
     key_suffix: str = "Key",
     value_suffix: str = "Value",
-) -> Dict[str, str]:
+) -> dict[str, str]:
     response_values = {}
     for key in querystring_dict.keys():
         if key.startswith(prefix) and key.endswith(key_suffix):
@@ -281,8 +281,8 @@ def tags_from_query_string(
 
 
 def tags_from_cloudformation_tags_list(
-    tags_list: List[Dict[str, str]],
-) -> Dict[str, str]:
+    tags_list: list[dict[str, str]],
+) -> dict[str, str]:
     """Return tags in dict form from cloudformation resource tags form (list of dicts)"""
     tags = {}
     for entry in tags_list:
@@ -321,7 +321,7 @@ def remap_nested_keys(root: Any, key_transform: Callable[[str], str]) -> Any:
 
 
 def merge_dicts(
-    dict1: Dict[str, Any], dict2: Dict[str, Any], remove_nulls: bool = False
+    dict1: dict[str, Any], dict2: dict[str, Any], remove_nulls: bool = False
 ) -> None:
     """Given two arbitrarily nested dictionaries, merge the second dict into the first.
 
@@ -347,7 +347,7 @@ def merge_dicts(
                 dict1.pop(key)
 
 
-def remove_null_from_dict(dct: Dict[str, Any]) -> None:
+def remove_null_from_dict(dct: dict[str, Any]) -> None:
     for key in list(dct.keys()):
         if dct[key] is None:
             dct.pop(key)
@@ -376,7 +376,7 @@ def aws_api_matches(pattern: str, string: Any) -> bool:
         return False
 
 
-def extract_region_from_aws_authorization(string: str) -> Optional[str]:
+def extract_region_from_aws_authorization(string: str) -> str | None:
     auth = string or ""
     region = re.sub(r".*Credential=[^/]+/[^/]+/([^/]+)/.*", r"\1", auth)
     if region == auth:
@@ -384,7 +384,7 @@ def extract_region_from_aws_authorization(string: str) -> Optional[str]:
     return region
 
 
-def params_sort_function(item: Tuple[str, Any]) -> Tuple[str, int, str]:
+def params_sort_function(item: tuple[str, Any]) -> tuple[str, int, str]:
     """
     sort by <string-prefix>.member.<integer>.<string-postfix>:
     in case there are more than 10 members, the default-string sort would lead to IndexError when parsing the content.
@@ -416,7 +416,7 @@ ISO_REGION_DOMAINS = {
 ALT_DOMAIN_SUFFIXES = list(ISO_REGION_DOMAINS.values()) + ["amazonaws.com.cn"]
 
 
-def get_equivalent_url_in_aws_domain(url: str) -> Tuple[ParseResult, bool]:
+def get_equivalent_url_in_aws_domain(url: str) -> tuple[ParseResult, bool]:
     """Parses a URL and converts non-standard AWS endpoint hostnames (from ISO
     regions or custom S3 endpoints) to the equivalent standard AWS domain.
 

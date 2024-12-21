@@ -1,5 +1,4 @@
 import json
-from typing import List, Optional
 
 from moto.core.exceptions import JsonRESTError
 
@@ -44,7 +43,7 @@ class ClusterParameterGroupNotFoundError(RedshiftClientError):
 
 
 class InvalidSubnetError(RedshiftClientError):
-    def __init__(self, subnet_identifier: List[str]):
+    def __init__(self, subnet_identifier: list[str]):
         super().__init__("InvalidSubnet", f"Subnet {subnet_identifier} not found.")
 
 
@@ -91,9 +90,9 @@ class ResourceNotFoundFaultError(RedshiftClientError):
 
     def __init__(
         self,
-        resource_type: Optional[str] = None,
-        resource_name: Optional[str] = None,
-        message: Optional[str] = None,
+        resource_type: str | None = None,
+        resource_name: str | None = None,
+        message: str | None = None,
     ):
         if resource_type and not resource_name:
             msg = f"resource of type '{resource_type}' not found."

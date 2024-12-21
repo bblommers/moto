@@ -1,5 +1,5 @@
 import string
-from typing import Any, Dict, List
+from typing import Any
 
 from moto.moto_api._internal import mock_random as random
 
@@ -12,7 +12,7 @@ def generate_receipt_handle() -> str:
     return "".join(random.choice(string.ascii_lowercase) for x in range(length))
 
 
-def extract_input_message_attributes(querystring: Dict[str, Any]) -> List[str]:
+def extract_input_message_attributes(querystring: dict[str, Any]) -> list[str]:
     message_attributes = []
     index = 1
     while True:
@@ -28,11 +28,11 @@ def extract_input_message_attributes(querystring: Dict[str, Any]) -> List[str]:
 
 
 def parse_message_attributes(
-    querystring: Dict[str, Any],
+    querystring: dict[str, Any],
     key: str = "MessageAttribute",
     base: str = "",
     value_namespace: str = "Value.",
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     message_attributes = {}
     index = 1
     while True:
@@ -67,7 +67,7 @@ def parse_message_attributes(
     return message_attributes
 
 
-def validate_message_attributes(message_attributes: Dict[str, Any]) -> None:
+def validate_message_attributes(message_attributes: dict[str, Any]) -> None:
     for name, value in (message_attributes or {}).items():
         data_type = value["data_type"]
 

@@ -8,11 +8,8 @@ from typing import (
     Any,
     Callable,
     ClassVar,
-    Dict,
     Iterator,
-    List,
     Optional,
-    Tuple,
     TypeVar,
 )
 from uuid import uuid4
@@ -40,7 +37,7 @@ if TYPE_CHECKING:
 
 
 class InstanceTrackerMeta(type):
-    def __new__(meta, name: str, bases: Any, dct: Dict[str, Any]) -> type:
+    def __new__(meta, name: str, bases: Any, dct: dict[str, Any]) -> type:
         cls = super(InstanceTrackerMeta, meta).__new__(meta, name, bases, dct)
         if name == "BaseModel":
             return cls
@@ -48,7 +45,7 @@ class InstanceTrackerMeta(type):
         service = cls.__module__.split(".")[1]
         if name not in model_data[service]:
             model_data[service][name] = cls
-        cls.instances: ClassVar[List["BaseModel"]] = []  # type: ignore
+        cls.instances: ClassVar[list["BaseModel"]] = []  # type: ignore
         return cls
 
 
@@ -74,7 +71,7 @@ class BaseBackend:
         return backend_urls_module
 
     @property
-    def urls(self) -> Dict[str, Callable[[Any, str, Any], TYPE_RESPONSE]]:  # type: ignore[misc]
+    def urls(self) -> dict[str, Callable[[Any, str, Any], TYPE_RESPONSE]]:  # type: ignore[misc]
         """
         A dictionary of the urls to be mocked with this service and the handlers
         that should be called in their place
@@ -101,7 +98,7 @@ class BaseBackend:
         return urls
 
     @property
-    def url_paths(self) -> Dict[str, Callable[[Any, str, Any], TYPE_RESPONSE]]:  # type: ignore[misc]
+    def url_paths(self) -> dict[str, Callable[[Any, str, Any], TYPE_RESPONSE]]:  # type: ignore[misc]
         """
         A dictionary of the paths of the urls to be mocked with this service and
         the handlers that should be called in their place
@@ -116,14 +113,14 @@ class BaseBackend:
         return paths
 
     @property
-    def url_bases(self) -> List[str]:
+    def url_bases(self) -> list[str]:
         """
         A list containing the url_bases extracted from urls.py
         """
         return self._url_module.url_bases
 
     @property
-    def flask_paths(self) -> Dict[str, Callable[[Any, str, Any], TYPE_RESPONSE]]:  # type: ignore[misc]
+    def flask_paths(self) -> dict[str, Callable[[Any, str, Any], TYPE_RESPONSE]]:  # type: ignore[misc]
         """
         The url paths that will be used for the flask server
         """
@@ -137,8 +134,8 @@ class BaseBackend:
     @staticmethod
     def default_vpc_endpoint_service(
         service_region: str,
-        zones: List[str],  # pylint: disable=unused-argument
-    ) -> List[Dict[str, str]]:
+        zones: list[str],  # pylint: disable=unused-argument
+    ) -> list[dict[str, str]]:
         """Invoke the factory method for any VPC endpoint(s) services."""
         return []
 
@@ -152,14 +149,14 @@ class BaseBackend:
     @staticmethod
     def default_vpc_endpoint_service_factory(  # type: ignore[misc]
         service_region: str,
-        zones: List[str],
+        zones: list[str],
         service: str = "",
         service_type: str = "Interface",
         private_dns_names: bool = True,
         special_service_name: str = "",
         policy_supported: bool = True,
-        base_endpoint_dns_names: Optional[List[str]] = None,
-    ) -> List[Dict[str, Any]]:  # pylint: disable=too-many-arguments
+        base_endpoint_dns_names: Optional[list[str]] = None,
+    ) -> list[dict[str, Any]]:  # pylint: disable=too-many-arguments
         """List of dicts representing default VPC endpoints for this service."""
         if special_service_name:
             service_name = f"com.amazonaws.{service_region}.{special_service_name}"
@@ -203,7 +200,7 @@ backend_lock = RLock()
 SERVICE_BACKEND = TypeVar("SERVICE_BACKEND", bound=BaseBackend)
 
 
-class AccountSpecificBackend(Dict[str, SERVICE_BACKEND]):
+class AccountSpecificBackend(dict[str, SERVICE_BACKEND]):
     """
     Dictionary storing the data for a service in a specific account.
     Data access pattern:
@@ -216,7 +213,7 @@ class AccountSpecificBackend(Dict[str, SERVICE_BACKEND]):
         account_id: str,
         backend: type,
         use_boto3_regions: bool,
-        additional_regions: Optional[List[str]],
+        additional_regions: Optional[list[str]],
     ):
         self._id = str(uuid4())
         self.service_name = service_name
@@ -228,7 +225,7 @@ class AccountSpecificBackend(Dict[str, SERVICE_BACKEND]):
         self.regions.extend(additional_regions or [])
 
     @lru_cache()
-    def _generate_regions(self, service_name: str) -> List[str]:
+    def _generate_regions(self, service_name: str) -> list[str]:
         regions = []
         for (
             partition
@@ -306,7 +303,7 @@ class AccountSpecificBackend(Dict[str, SERVICE_BACKEND]):
         return super().__getitem__(region_name)
 
 
-class BackendDict(Dict[str, AccountSpecificBackend[SERVICE_BACKEND]]):
+class BackendDict(dict[str, AccountSpecificBackend[SERVICE_BACKEND]]):
     """
     Data Structure to store everything related to a specific service.
     Format:
@@ -320,7 +317,7 @@ class BackendDict(Dict[str, AccountSpecificBackend[SERVICE_BACKEND]]):
     #
     # In other words, this is the list of backends which are in use by the user
     #   making it trivial to determine which backends to reset when the mocks end
-    _instances: List["BackendDict[SERVICE_BACKEND]"] = []
+    _instances: list["BackendDict[SERVICE_BACKEND]"] = []
 
     @classmethod
     def reset(cls) -> None:
@@ -341,7 +338,7 @@ class BackendDict(Dict[str, AccountSpecificBackend[SERVICE_BACKEND]]):
         backend: "Type[SERVICE_BACKEND]",
         service_name: str,
         use_boto3_regions: bool = True,
-        additional_regions: Optional[List[str]] = None,
+        additional_regions: Optional[list[str]] = None,
     ):
         self.backend = backend
         self.service_name = service_name
@@ -392,7 +389,7 @@ class BackendDict(Dict[str, AccountSpecificBackend[SERVICE_BACKEND]]):
                 )
                 BackendDict._instances.append(self)  # type: ignore[misc]
 
-    def iter_backends(self) -> Iterator[Tuple[str, str, BaseBackend]]:
+    def iter_backends(self) -> Iterator[tuple[str, str, BaseBackend]]:
         """
         Iterate over a flattened view of all base backends in a BackendDict.
         Each record is a tuple of account id, region name, and the base backend within that account and region.

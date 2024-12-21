@@ -11,9 +11,7 @@ from typing import (
     Any,
     Callable,
     ContextManager,
-    Dict,
     Optional,
-    Set,
     TypeVar,
 )
 from unittest.mock import patch
@@ -58,7 +56,7 @@ class MockAWS(ContextManager["MockAWS"]):
             "AWS_ACCESS_KEY_ID": "FOOBARKEY",
             "AWS_SECRET_ACCESS_KEY": "FOOBARSECRET",
         }
-        self._orig_creds: Dict[str, Optional[str]] = {}
+        self._orig_creds: dict[str, str | None] = {}
         self._default_session_mock = patch("boto3.DEFAULT_SESSION", None)
         current_user_config = default_user_config.copy()
         current_user_config.update(config or {})
@@ -245,7 +243,7 @@ class MockAWS(ContextManager["MockAWS"]):
         responses_mock.stop()
 
 
-def get_direct_methods_of(klass: object) -> Set[str]:
+def get_direct_methods_of(klass: object) -> set[str]:
     return set(
         x
         for x, y in klass.__dict__.items()
@@ -389,7 +387,7 @@ class ServerModeMockAWS(MockAWS):
         self._client_patcher.start()
         self._resource_patcher.start()
 
-    def _get_region(self, *args: Any, **kwargs: Any) -> Optional[str]:
+    def _get_region(self, *args: Any, **kwargs: Any) -> str | None:
         if "region_name" in kwargs:
             return kwargs["region_name"]
         if type(args) is tuple and len(args) == 2:

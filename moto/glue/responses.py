@@ -1,5 +1,5 @@
 import json
-from typing import Any, Dict, List
+from typing import Any
 
 from moto.core.common_types import TYPE_RESPONSE
 from moto.core.responses import BaseResponse
@@ -23,7 +23,7 @@ class GlueResponse(BaseResponse):
         return glue_backends[self.current_account][self.region]
 
     @property
-    def parameters(self) -> Dict[str, Any]:  # type: ignore[misc]
+    def parameters(self) -> dict[str, Any]:  # type: ignore[misc]
         return json.loads(self.body)
 
     def create_database(self) -> str:
@@ -293,8 +293,8 @@ class GlueResponse(BaseResponse):
         )
 
     def filter_crawlers_by_tags(
-        self, crawlers: List[FakeCrawler], tags: Dict[str, str]
-    ) -> List[str]:
+        self, crawlers: list[FakeCrawler], tags: dict[str, str]
+    ) -> list[str]:
         if not tags:
             return [crawler.get_name() for crawler in crawlers]
         return [
@@ -434,15 +434,15 @@ class GlueResponse(BaseResponse):
         return 200, {}, "{}"
 
     def filter_jobs_by_tags(
-        self, jobs: List[FakeJob], tags: Dict[str, str]
-    ) -> List[str]:
+        self, jobs: list[FakeJob], tags: dict[str, str]
+    ) -> list[str]:
         if not tags:
             return [job.get_name() for job in jobs]
         return [job.get_name() for job in jobs if self.is_tags_match(job.arn, tags)]
 
     def filter_triggers_by_tags(
-        self, triggers: List[FakeTrigger], tags: Dict[str, str]
-    ) -> List[str]:
+        self, triggers: list[FakeTrigger], tags: dict[str, str]
+    ) -> list[str]:
         if not tags:
             return [trigger.get_name() for trigger in triggers]
         return [
@@ -451,7 +451,7 @@ class GlueResponse(BaseResponse):
             if self.is_tags_match(trigger.arn, tags)
         ]
 
-    def is_tags_match(self, resource_arn: str, tags: Dict[str, str]) -> bool:
+    def is_tags_match(self, resource_arn: str, tags: dict[str, str]) -> bool:
         glue_resource_tags = self.glue_backend.get_tags(resource_arn)
         mutual_keys = set(glue_resource_tags).intersection(tags)
         for key in mutual_keys:
@@ -598,8 +598,8 @@ class GlueResponse(BaseResponse):
         )
 
     def _filter_sessions_by_tags(
-        self, sessions: List[FakeSession], tags: Dict[str, str]
-    ) -> List[str]:
+        self, sessions: list[FakeSession], tags: dict[str, str]
+    ) -> list[str]:
         if not tags:
             return [session.get_id() for session in sessions]
         return [

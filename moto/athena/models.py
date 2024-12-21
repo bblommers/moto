@@ -1,6 +1,6 @@
 import time
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from moto.core.base_backend import BackendDict, BaseBackend
 from moto.core.common_models import BaseModel
@@ -20,20 +20,20 @@ class TaggableResourceMixin:
         account_id: str,
         region_name: str,
         resource_name: str,
-        tags: List[Dict[str, str]],
+        tags: list[dict[str, str]],
     ):
         self.region = region_name
         self.resource_name = resource_name
         self.tags = tags or []
         self.arn = f"arn:{get_partition(region_name)}:athena:{region_name}:{account_id}:{resource_name}"
 
-    def create_tags(self, tags: List[Dict[str, str]]) -> List[Dict[str, str]]:
+    def create_tags(self, tags: list[dict[str, str]]) -> list[dict[str, str]]:
         new_keys = [tag_set["Key"] for tag_set in tags]
         self.tags = [tag_set for tag_set in self.tags if tag_set["Key"] not in new_keys]
         self.tags.extend(tags)
         return self.tags
 
-    def delete_tags(self, tag_keys: List[str]) -> List[Dict[str, str]]:
+    def delete_tags(self, tag_keys: list[str]) -> list[dict[str, str]]:
         self.tags = [tag_set for tag_set in self.tags if tag_set["Key"] not in tag_keys]
         return self.tags
 
@@ -46,9 +46,9 @@ class WorkGroup(TaggableResourceMixin, BaseModel):
         self,
         athena_backend: "AthenaBackend",
         name: str,
-        configuration: Dict[str, Any],
+        configuration: dict[str, Any],
         description: str,
-        tags: List[Dict[str, str]],
+        tags: list[dict[str, str]],
     ):
         self.region_name = athena_backend.region_name
         super().__init__(
@@ -85,7 +85,7 @@ class DataCatalog(TaggableResourceMixin, BaseModel):
         catalog_type: str,
         description: str,
         parameters: str,
-        tags: List[Dict[str, str]],
+        tags: list[dict[str, str]],
     ):
         self.region_name = athena_backend.region_name
         super().__init__(
@@ -106,9 +106,9 @@ class Execution(BaseModel):
         self,
         query: str,
         context: str,
-        config: Dict[str, Any],
+        config: dict[str, Any],
         workgroup: Optional[WorkGroup],
-        execution_parameters: Optional[List[str]],
+        execution_parameters: Optional[list[str]],
     ):
         self.id = str(mock_random.uuid4())
         self.query = query
@@ -126,11 +126,11 @@ class Execution(BaseModel):
 
 
 class QueryResults(BaseModel):
-    def __init__(self, rows: List[Dict[str, Any]], column_info: List[Dict[str, str]]):
+    def __init__(self, rows: list[dict[str, Any]], column_info: list[dict[str, str]]):
         self.rows = rows
         self.column_info = column_info
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "ResultSet": {
                 "Rows": self.rows,
@@ -183,13 +183,13 @@ class AthenaBackend(BaseBackend):
 
     def __init__(self, region_name: str, account_id: str):
         super().__init__(region_name, account_id)
-        self.work_groups: Dict[str, WorkGroup] = {}
-        self.executions: Dict[str, Execution] = {}
-        self.named_queries: Dict[str, NamedQuery] = {}
-        self.data_catalogs: Dict[str, DataCatalog] = {}
-        self.query_results: Dict[str, QueryResults] = {}
-        self.query_results_queue: List[QueryResults] = []
-        self.prepared_statements: Dict[str, PreparedStatement] = {}
+        self.work_groups: dict[str, WorkGroup] = {}
+        self.executions: dict[str, Execution] = {}
+        self.named_queries: dict[str, NamedQuery] = {}
+        self.data_catalogs: dict[str, DataCatalog] = {}
+        self.query_results: dict[str, QueryResults] = {}
+        self.query_results_queue: list[QueryResults] = []
+        self.prepared_statements: dict[str, PreparedStatement] = {}
 
         # Initialise with the primary workgroup
         self.create_work_group(
@@ -205,9 +205,9 @@ class AthenaBackend(BaseBackend):
     def create_work_group(
         self,
         name: str,
-        configuration: Dict[str, Any],
+        configuration: dict[str, Any],
         description: str,
-        tags: List[Dict[str, str]],
+        tags: list[dict[str, str]],
     ) -> Optional[WorkGroup]:
         if name in self.work_groups:
             return None
@@ -215,7 +215,7 @@ class AthenaBackend(BaseBackend):
         self.work_groups[name] = work_group
         return work_group
 
-    def list_work_groups(self) -> List[Dict[str, Any]]:
+    def list_work_groups(self) -> list[dict[str, Any]]:
         return [
             {
                 "Name": wg.name,
@@ -226,7 +226,7 @@ class AthenaBackend(BaseBackend):
             for wg in self.work_groups.values()
         ]
 
-    def get_work_group(self, name: str) -> Optional[Dict[str, Any]]:
+    def get_work_group(self, name: str) -> Optional[dict[str, Any]]:
         if name not in self.work_groups:
             return None
         wg = self.work_groups[name]
@@ -245,9 +245,9 @@ class AthenaBackend(BaseBackend):
         self,
         query: str,
         context: str,
-        config: Dict[str, Any],
+        config: dict[str, Any],
         workgroup: str,
-        execution_parameters: Optional[List[str]],
+        execution_parameters: Optional[list[str]],
     ) -> str:
         execution = Execution(
             query=query,
@@ -271,7 +271,7 @@ class AthenaBackend(BaseBackend):
     def get_query_execution(self, exec_id: str) -> Execution:
         return self.executions[exec_id]
 
-    def list_query_executions(self, workgroup: Optional[str]) -> Dict[str, Execution]:
+    def list_query_executions(self, workgroup: str | None) -> dict[str, Execution]:
         if workgroup is not None:
             return {
                 exec_id: execution
@@ -387,13 +387,13 @@ class AthenaBackend(BaseBackend):
     def get_named_query(self, query_id: str) -> Optional[NamedQuery]:
         return self.named_queries[query_id] if query_id in self.named_queries else None
 
-    def list_data_catalogs(self) -> List[Dict[str, str]]:
+    def list_data_catalogs(self) -> list[dict[str, str]]:
         return [
             {"CatalogName": dc.name, "Type": dc.type}
             for dc in self.data_catalogs.values()
         ]
 
-    def get_data_catalog(self, name: str) -> Optional[Dict[str, str]]:
+    def get_data_catalog(self, name: str) -> Optional[dict[str, str]]:
         if name not in self.data_catalogs:
             return None
         dc = self.data_catalogs[name]
@@ -410,7 +410,7 @@ class AthenaBackend(BaseBackend):
         catalog_type: str,
         description: str,
         parameters: str,
-        tags: List[Dict[str, str]],
+        tags: list[dict[str, str]],
     ) -> Optional[DataCatalog]:
         if name in self.data_catalogs:
             return None
@@ -421,7 +421,7 @@ class AthenaBackend(BaseBackend):
         return data_catalog
 
     @paginate(pagination_model=PAGINATION_MODEL)
-    def list_named_queries(self, work_group: str) -> List[str]:
+    def list_named_queries(self, work_group: str) -> list[str]:
         named_query_ids = [
             q.id for q in self.named_queries.values() if q.workgroup.name == work_group
         ]

@@ -1,6 +1,6 @@
 import re
 import string
-from typing import Any, Dict, List
+from typing import Any
 
 from moto.core.base_backend import BackendDict, BaseBackend
 from moto.core.common_models import BaseModel
@@ -51,15 +51,15 @@ class ResourceShare(BaseModel):
         self.last_updated_time = utcnow()
         self.name = kwargs["name"]
         self.owning_account_id = account_id
-        self.principals: List[str] = []
-        self.resource_arns: List[str] = []
+        self.principals: list[str] = []
+        self.resource_arns: list[str] = []
         self.status = "ACTIVE"
 
     @property
     def organizations_backend(self) -> OrganizationsBackend:
         return organizations_backends[self.account_id][self.partition]
 
-    def add_principals(self, principals: List[str]) -> None:
+    def add_principals(self, principals: list[str]) -> None:
         for principal in principals:
             match = re.search(
                 r"^arn:aws:organizations::\d{12}:organization/(o-\w+)$", principal
@@ -109,7 +109,7 @@ class ResourceShare(BaseModel):
         for principal in principals:
             self.principals.append(principal)
 
-    def add_resources(self, resource_arns: List[str]) -> None:
+    def add_resources(self, resource_arns: list[str]) -> None:
         for resource in resource_arns:
             match = re.search(
                 r"^arn:aws:[a-z0-9-]+:[a-z0-9-]*:[0-9]{12}:([a-z-]+)[/:].*$", resource
@@ -131,7 +131,7 @@ class ResourceShare(BaseModel):
         self.last_updated_time = utcnow()
         self.status = "DELETED"
 
-    def describe(self) -> Dict[str, Any]:
+    def describe(self) -> dict[str, Any]:
         return {
             "allowExternalPrincipals": self.allow_external_principals,
             "creationTime": unix_time(self.creation_time),
@@ -154,13 +154,13 @@ class ResourceShare(BaseModel):
 class ResourceAccessManagerBackend(BaseBackend):
     def __init__(self, region_name: str, account_id: str):
         super().__init__(region_name, account_id)
-        self.resource_shares: List[ResourceShare] = []
+        self.resource_shares: list[ResourceShare] = []
 
     @property
     def organizations_backend(self) -> OrganizationsBackend:
         return organizations_backends[self.account_id][self.partition]
 
-    def create_resource_share(self, **kwargs: Any) -> Dict[str, Any]:
+    def create_resource_share(self, **kwargs: Any) -> dict[str, Any]:
         resource = ResourceShare(self.account_id, self.region_name, **kwargs)
         resource.add_principals(kwargs.get("principals", []))
         resource.add_resources(kwargs.get("resourceArns", []))
@@ -172,7 +172,7 @@ class ResourceAccessManagerBackend(BaseBackend):
 
         return dict(resourceShare=response)
 
-    def get_resource_shares(self, **kwargs: Any) -> Dict[str, Any]:
+    def get_resource_shares(self, **kwargs: Any) -> dict[str, Any]:
         owner = kwargs["resourceOwner"]
 
         if owner not in ["SELF", "OTHER-ACCOUNTS"]:
@@ -190,7 +190,7 @@ class ResourceAccessManagerBackend(BaseBackend):
 
         return dict(resourceShares=resouces)
 
-    def update_resource_share(self, **kwargs: Any) -> Dict[str, Any]:
+    def update_resource_share(self, **kwargs: Any) -> dict[str, Any]:
         arn = kwargs["resourceShareArn"]
 
         resource = next(
@@ -206,7 +206,7 @@ class ResourceAccessManagerBackend(BaseBackend):
 
         return dict(resourceShare=response)
 
-    def delete_resource_share(self, arn: str) -> Dict[str, Any]:
+    def delete_resource_share(self, arn: str) -> dict[str, Any]:
         resource = next(
             (resource for resource in self.resource_shares if arn == resource.arn), None
         )
@@ -218,7 +218,7 @@ class ResourceAccessManagerBackend(BaseBackend):
 
         return dict(returnValue=True)
 
-    def enable_sharing_with_aws_organization(self) -> Dict[str, Any]:
+    def enable_sharing_with_aws_organization(self) -> dict[str, Any]:
         if not self.organizations_backend.org:
             raise OperationNotPermittedException
 

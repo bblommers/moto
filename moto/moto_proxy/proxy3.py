@@ -6,7 +6,7 @@ import ssl
 from http.server import BaseHTTPRequestHandler
 from subprocess import CalledProcessError, check_output
 from threading import Lock
-from typing import Any, Dict, Tuple
+from typing import Any
 from urllib.parse import urlparse
 
 from botocore.awsrequest import AWSPreparedRequest
@@ -75,7 +75,7 @@ class MotoRequestHandler:
         path: str,
         headers: Any,
         body: bytes,
-        form_data: Dict[str, Any],
+        form_data: dict[str, Any],
     ) -> Any:
         handler = self.get_handler_for_host(host=host, path=path)
         if handler is None:
@@ -227,7 +227,7 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
             self.wfile.write(res_body)
         self.close_connection = True
 
-    def _get_host_and_path(self, req: Any) -> Tuple[str, str]:
+    def _get_host_and_path(self, req: Any) -> tuple[str, str]:
         if isinstance(self.connection, ssl.SSLSocket):
             host = "https://" + req.headers["Host"]
         else:
@@ -237,7 +237,7 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
             path = path[len(host) :]
         return host, path
 
-    def passthrough_http(self, address: Tuple[str, int]) -> None:
+    def passthrough_http(self, address: tuple[str, int]) -> None:
         s = socket.create_connection(address, timeout=self.timeout)
         s.send(self.raw_requestline)  # type: ignore[attr-defined]
         for key, val in self.headers.items():
@@ -249,7 +249,7 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
                 break
             self.wfile.write(data)
 
-    def connect_relay(self, address: Tuple[str, int]) -> None:
+    def connect_relay(self, address: tuple[str, int]) -> None:
         try:
             s = socket.create_connection(address, timeout=self.timeout)
         except Exception:
@@ -289,7 +289,7 @@ class ProxyRequestHandler(BaseHTTPRequestHandler):
                 break
         return chunked_body
 
-    def decode_request_body(self, headers: Dict[str, str], body: Any) -> Any:
+    def decode_request_body(self, headers: dict[str, str], body: Any) -> Any:
         if body is None:
             return body
         if headers.get("Content-Type", "") in [

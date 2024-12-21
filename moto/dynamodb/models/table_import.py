@@ -1,5 +1,5 @@
 from threading import Thread
-from typing import TYPE_CHECKING, Any, Dict, List, Optional
+from typing import TYPE_CHECKING, Any, Optional
 from uuid import uuid4
 
 from moto.core.utils import gzip_decompress
@@ -15,15 +15,15 @@ class TableImport(Thread):
     def __init__(
         self,
         account_id: str,
-        s3_source: Dict[str, str],
+        s3_source: dict[str, str],
         region_name: str,
         table_name: str,
         billing_mode: str,
-        throughput: Optional[Dict[str, int]],
-        key_schema: List[Dict[str, str]],
-        global_indexes: Optional[List[Dict[str, Any]]],
-        attrs: List[Dict[str, str]],
-        compression_type: Optional[str],
+        throughput: Optional[dict[str, int]],
+        key_schema: list[dict[str, str]],
+        global_indexes: Optional[list[dict[str, Any]]],
+        attrs: list[dict[str, str]],
+        compression_type: str | None,
     ):
         super().__init__()
         self.partition = get_partition(region_name)
@@ -41,8 +41,8 @@ class TableImport(Thread):
         self.attrs = attrs
         self.compression_type = compression_type
 
-        self.failure_code: Optional[str] = None
-        self.failure_message: Optional[str] = None
+        self.failure_code: str | None = None
+        self.failure_message: str | None = None
         self.table: Optional["Table"] = None
         self.table_arn = f"arn:{get_partition(self.region_name)}:dynamodb:{self.region_name}:{self.account_id}:table/{table_name}"
 
@@ -121,7 +121,7 @@ class TableImport(Thread):
 
         self.status = "COMPLETED" if self.error_count == 0 else "FAILED"
 
-    def response(self) -> Dict[str, Any]:
+    def response(self) -> dict[str, Any]:
         return {
             "ImportArn": self.arn,
             "ImportStatus": self.status,

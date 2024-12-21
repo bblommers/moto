@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from moto.core.utils import iso_8601_datetime_with_milliseconds, utcnow
 
@@ -24,9 +24,9 @@ class KeyPair(TaggedEC2Resource):
         self,
         name: str,
         fingerprint: str,
-        material: Optional[str],
+        material: str | None,
         material_public: str,
-        tags: Dict[str, str],
+        tags: dict[str, str],
         ec2_backend: Any,
     ):
         self.id = random_key_pair_id()
@@ -42,9 +42,7 @@ class KeyPair(TaggedEC2Resource):
     def created_iso_8601(self) -> str:
         return iso_8601_datetime_with_milliseconds(self.create_time)
 
-    def get_filter_value(
-        self, filter_name: str, method_name: Optional[str] = None
-    ) -> str:
+    def get_filter_value(self, filter_name: str, method_name: str | None = None) -> str:
         if filter_name == "key-name":
             return self.name
         elif filter_name == "fingerprint":
@@ -55,10 +53,10 @@ class KeyPair(TaggedEC2Resource):
 
 class KeyPairBackend:
     def __init__(self) -> None:
-        self.keypairs: Dict[str, KeyPair] = {}
+        self.keypairs: dict[str, KeyPair] = {}
 
     def create_key_pair(
-        self, name: str, key_type: str, tags: Dict[str, str]
+        self, name: str, key_type: str, tags: dict[str, str]
     ) -> KeyPair:
         if name in self.keypairs:
             raise InvalidKeyPairDuplicateError(name)
@@ -78,8 +76,8 @@ class KeyPairBackend:
         self.keypairs.pop(name, None)
 
     def describe_key_pairs(
-        self, key_names: List[str], filters: Any = None
-    ) -> List[KeyPair]:
+        self, key_names: list[str], filters: Any = None
+    ) -> list[KeyPair]:
         if any(key_names):
             results = [
                 keypair
@@ -98,7 +96,7 @@ class KeyPairBackend:
             return results
 
     def import_key_pair(
-        self, key_name: str, public_key_material: str, tags: Dict[str, str]
+        self, key_name: str, public_key_material: str, tags: dict[str, str]
     ) -> KeyPair:
         if key_name in self.keypairs:
             raise InvalidKeyPairDuplicateError(key_name)

@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from moto.core.common_models import CloudFormationModel
 from moto.core.utils import iso_8601_datetime_with_milliseconds, utcnow
@@ -28,8 +28,8 @@ class TransitGateway(TaggedEC2Resource, CloudFormationModel):
     def __init__(
         self,
         backend: Any,
-        description: Optional[str],
-        options: Optional[Dict[str, str]] = None,
+        description: str | None,
+        options: Optional[dict[str, str]] = None,
     ):
         self.ec2_backend = backend
         self.id = random_transit_gateway_id()
@@ -93,13 +93,13 @@ class TransitGateway(TaggedEC2Resource, CloudFormationModel):
 
 class TransitGatewayBackend:
     def __init__(self) -> None:
-        self.transit_gateways: Dict[str, TransitGateway] = {}
+        self.transit_gateways: dict[str, TransitGateway] = {}
 
     def create_transit_gateway(
         self,
-        description: Optional[str],
-        options: Optional[Dict[str, str]] = None,
-        tags: Optional[List[Dict[str, str]]] = None,
+        description: str | None,
+        options: Optional[dict[str, str]] = None,
+        tags: Optional[list[dict[str, str]]] = None,
     ) -> TransitGateway:
         transit_gateway = TransitGateway(self, description, options)
         for tag in tags or []:
@@ -109,8 +109,8 @@ class TransitGatewayBackend:
         return transit_gateway
 
     def describe_transit_gateways(
-        self, filters: Any, transit_gateway_ids: Optional[List[str]]
-    ) -> List[TransitGateway]:
+        self, filters: Any, transit_gateway_ids: Optional[list[str]]
+    ) -> list[TransitGateway]:
         transit_gateways = list(self.transit_gateways.values())
 
         if transit_gateway_ids:
@@ -137,8 +137,8 @@ class TransitGatewayBackend:
     def modify_transit_gateway(
         self,
         transit_gateway_id: str,
-        description: Optional[str] = None,
-        options: Optional[Dict[str, str]] = None,
+        description: str | None = None,
+        options: Optional[dict[str, str]] = None,
     ) -> TransitGateway:
         transit_gateway = self.transit_gateways[transit_gateway_id]
         if description:

@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 from boto3 import Session
 
@@ -202,8 +202,8 @@ class RegionsAndZonesBackend:
             ]
 
     def describe_regions(
-        self, region_names: Optional[List[str]] = None
-    ) -> List[Region]:
+        self, region_names: Optional[list[str]] = None
+    ) -> list[Region]:
         if not region_names:
             return self.regions
         ret = []
@@ -215,10 +215,10 @@ class RegionsAndZonesBackend:
 
     def describe_availability_zones(
         self,
-        filters: Optional[List[Dict[str, Any]]] = None,
-        zone_names: Optional[List[str]] = None,
-        zone_ids: Optional[List[str]] = None,
-    ) -> List[Zone]:
+        filters: Optional[list[dict[str, Any]]] = None,
+        zone_names: Optional[list[str]] = None,
+        zone_ids: Optional[list[str]] = None,
+    ) -> list[Zone]:
         """
         The following parameters are supported: ZoneIds, ZoneNames, Filters
         The following filters are supported: zone-id, zone-type, zone-name, region-name, state
