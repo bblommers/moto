@@ -4,6 +4,7 @@ from unittest import SkipTest
 
 import boto3
 import pytest
+import requests
 from botocore.exceptions import ClientError
 from freezegun import freeze_time
 
@@ -359,6 +360,12 @@ def test_publish_sms():
             "+15551234567",
             "my message",
         )
+
+        # Verify the data is also serialized
+        resp = requests.get("http://motoapi.amazonaws.com/moto-api/data.json")
+
+        sms_store = resp.json()["sns"]["SMSStore"][0]["instances"]
+        assert sms_store == [{result["MessageId"]: ["+15551234567", "my message"]}]
 
 
 @mock_aws

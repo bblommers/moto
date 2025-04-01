@@ -53,6 +53,10 @@ MAXIMUM_MESSAGE_LENGTH = 262144  # 256 KiB
 MAXIMUM_SMS_MESSAGE_BYTES = 1600  # Amazon limit for a single publish SMS action
 
 
+class SMSStore(BaseModel, OrderedDict[str, tuple[str, str]]):  # type: ignore[misc]
+    pass
+
+
 class Topic(CloudFormationModel):
     def __init__(self, name: str, sns_backend: "SNSBackend"):
         self.name = name
@@ -492,7 +496,7 @@ class SNSBackend(BaseBackend):
         self.platform_endpoints: Dict[str, PlatformEndpoint] = {}
         self.region_name = region_name
         self.sms_attributes: Dict[str, str] = {}
-        self.sms_messages: Dict[str, Tuple[str, str]] = OrderedDict()
+        self.sms_messages: Dict[str, Tuple[str, str]] = SMSStore()
         self.opt_out_numbers = [
             "+447420500600",
             "+447420505401",
