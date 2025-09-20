@@ -90,6 +90,18 @@ DEFAULT_TEXT_ENCODING = sys.getdefaultencoding()
 OWNER = "75aa57f09aa0c8caeab4f8c24e99d10f8e7faeebf76c078efc7c6caea54ba06a"
 
 
+class MultipartUploadPartRequest:
+    def __init__(
+        self,
+        part_number: int,
+        etag: str,
+        checksum: Optional[Tuple[str, str]],  # (CRC32, {checksum})
+    ):
+        self.part_number = part_number
+        self.etag = etag
+        self.checksum = checksum
+
+
 class FakeDeleteMarker(BaseModel):
     def __init__(self, key: "FakeKey"):
         self.key = key
@@ -127,7 +139,9 @@ class FakeKey(BaseModel, ManagedState):
         lock_legal_status: Optional[str] = None,
         lock_until: Optional[str] = None,
         checksum_value: Optional[str] = None,
+            checksum_type: Optional[str] = None,
     ):
+        print(f"create key {name} with checksum value: {checksum_value}")
         ManagedState.__init__(
             self,
             "s3::keyrestore",
@@ -168,7 +182,8 @@ class FakeKey(BaseModel, ManagedState):
         self.lock_mode = lock_mode
         self.lock_legal_status = lock_legal_status
         self.lock_until = lock_until
-        self.checksum_value = checksum_value
+        self._checksum_value = checksum_value
+        self._checksum_type = checksum_type
 
         # Default metadata values
         self._metadata["Content-Type"] = "binary/octet-stream"
@@ -350,6 +365,15 @@ class FakeKey(BaseModel, ManagedState):
         return self._storage_class
 
     @property
+    def checksum_type(self):
+        return self._checksum_type
+
+    @checksum_type.setter
+    def checksum_type(self, checksum_type):
+        self._checksum_type = checksum_type
+        self._metadata["x-amz-checksum-type"] = checksum_type
+
+    @property
     def expiry_date(self) -> Optional[str]:
         if self._expiry is not None:
             return self._expiry.strftime("%a, %d %b %Y %H:%M:%S GMT")
@@ -434,6 +458,8 @@ class FakeMultipart(BaseModel):
         acl: Optional["FakeAcl"] = None,
         sse_encryption: Optional[str] = None,
         kms_key_id: Optional[str] = None,
+        checksum_algorithm: Optional[str] = None,
+            checksum_type: Optional[str] = None,
     ):
         self.key_name = key_name
         self.metadata = metadata
@@ -450,9 +476,11 @@ class FakeMultipart(BaseModel):
         )
         self.sse_encryption = sse_encryption
         self.kms_key_id = kms_key_id
+        self.checksum_algorithm = checksum_algorithm
+        self.checksum_type = checksum_type
 
     def complete(
-        self, body: Iterator[Tuple[int, str]]
+        self, body: Iterator[MultipartUploadPartRequest]
     ) -> Tuple[bytes, str, Optional[str]]:
         checksum_algo = self.metadata.get("x-amz-checksum-algorithm")
         decode_hex = codecs.getdecoder("hex_codec")
@@ -462,18 +490,19 @@ class FakeMultipart(BaseModel):
 
         last = None
         count = 0
-        for pn, etag in body:
-            part = self.parts.get(pn)
-            part_etag = None
+        for part_request in body:
+            part = self.parts.get(part_request.part_number)
+            part_etag = provided_etag = None
             if part is not None:
                 part_etag = part.etag.replace('"', "")
-                etag = etag.replace('"', "")
-            if part is None or part_etag != etag:
+                provided_etag = part_request.etag.replace('"', "")
+            if part is None or part_etag != provided_etag:
                 raise InvalidPart()
             if last is not None and last.contentsize < S3_UPLOAD_PART_MIN_SIZE:
                 raise EntityTooSmall()
             md5s.extend(decode_hex(part_etag)[0])  # type: ignore
             total.extend(part.value)
+            print(f"part algo: {checksum_algo}, provided: {part_request.checksum}")
             if checksum_algo:
                 checksum.extend(
                     compute_checksum(part.value, checksum_algo, encode_base64=False)
@@ -2253,6 +2282,7 @@ class S3Backend(BaseBackend, CloudWatchMetricProvider):
             lock_legal_status=lock_legal_status,
             lock_until=lock_until,
             checksum_value=checksum_value,
+            checksum_type=multipart.checksum_type if multipart else None,
         )
 
         existing_keys = bucket.keys.getlist(key_name, [])
@@ -2603,6 +2633,8 @@ class S3Backend(BaseBackend, CloudWatchMetricProvider):
         acl: Optional[FakeAcl],
         sse_encryption: str,
         kms_key_id: str,
+        checksum_algorithm: Optional[str],
+        checksum_type: Optional[str],
     ) -> str:
         multipart = FakeMultipart(
             key_name,
@@ -2614,6 +2646,8 @@ class S3Backend(BaseBackend, CloudWatchMetricProvider):
             acl=acl,
             sse_encryption=sse_encryption,
             kms_key_id=kms_key_id,
+            checksum_algorithm=checksum_algorithm,
+            checksum_type=checksum_type,
         )
 
         bucket = self.get_bucket(bucket_name)
@@ -2621,7 +2655,7 @@ class S3Backend(BaseBackend, CloudWatchMetricProvider):
         return multipart.id
 
     def complete_multipart_upload(
-        self, bucket_name: str, multipart_id: str, body: Iterator[Tuple[int, str]]
+        self, bucket_name: str, multipart_id: str, body: Iterator[MultipartUploadPartRequest]
     ) -> Optional[FakeKey]:
         bucket = self.get_bucket(bucket_name)
         multipart = bucket.multiparts[multipart_id]
@@ -2644,9 +2678,13 @@ class S3Backend(BaseBackend, CloudWatchMetricProvider):
         )
         key.set_metadata(multipart.metadata)
 
+        print(f"computed checksum: {checksum}")
+        print(multipart.metadata)
         if checksum:
             key.checksum_algorithm = multipart.metadata.get("x-amz-checksum-algorithm")
             key.checksum_value = checksum
+        if multipart.checksum_type:
+            key.checksum_type = multipart.checksum_type
 
         self.put_object_tagging(key, multipart.tags)
         self.put_object_acl(

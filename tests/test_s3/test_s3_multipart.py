@@ -1155,3 +1155,67 @@ def test_multipart_upload_overwrites(bucket_name=None):
     content = result["Body"].read()
 
     assert content == new_data
+
+
+@s3_aws_verified
+@pytest.mark.aws_verified()
+@pytest.mark.parametrize(
+    "algorithm,checksum_type",
+    [
+        ("CRC32", "COMPOSITE"),
+    #    ("SHA256", "COMPOSITE"),
+    #    ("CRC32", "FULL_OBJECT")
+    ]
+)
+def test_multipart_upload_checksum(algorithm, checksum_type, bucket_name=None):
+    s3_client = boto3.client("s3", "us-east-1")
+    key = "mykey.txt"
+
+    from pprint import pprint
+
+    upload = s3_client.create_multipart_upload(
+        Bucket=bucket_name,
+        Key=key,
+        ChecksumAlgorithm=algorithm,
+        ChecksumType=checksum_type,
+    )
+    upload_id = upload["UploadId"]
+    assert upload["ChecksumAlgorithm"] == algorithm
+    assert upload["ChecksumType"] == checksum_type
+
+    part_data = b"First part data"
+    part1 = s3_client.upload_part(
+        Bucket=bucket_name,
+        ChecksumAlgorithm=algorithm,
+        Key=key,
+        PartNumber=1,
+        UploadId=upload_id,
+        Body=part_data,
+    )
+    pprint(part1)
+
+    part1_checksum = part1[f"Checksum{algorithm}"]
+    print(f"checksum : {part1_checksum}")
+
+    completed = s3_client.complete_multipart_upload(
+        Bucket=bucket_name,
+        Key=key,
+        UploadId=upload_id,
+        MultipartUpload={"Parts": [
+            {
+                "PartNumber": 1,
+                "ETag": part1["ETag"],
+                # XXX: Should throw an error if this parameter is not supplied
+                f"Checksum{algorithm}": part1_checksum,
+            }
+        ]},
+    )
+    pprint(completed)
+    assert completed["ChecksumType"] == checksum_type
+    assert completed[f"Checksum{algorithm}"]
+
+
+    result = s3_client.get_object(Bucket=bucket_name, Key=key)
+    pprint(result)
+    content = result["Body"].read()
+    assert content == part_data

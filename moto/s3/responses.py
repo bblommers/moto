@@ -64,6 +64,7 @@ from .models import (
     FakeGrant,
     FakeGrantee,
     FakeKey,
+    MultipartUploadPartRequest,
     S3Backend,
     get_canned_acl,
     s3_backends,
@@ -2029,10 +2030,14 @@ class S3Response(BaseResponse):
         upload_id = self._get_param("uploadId")
         part_number = self._get_int_param("partNumber")
 
+
         if part_number > 10000:
             raise InvalidMaxPartNumberArgument(part_number)
         key = self.backend.upload_part(
-            self.bucket_name, upload_id, part_number, self.body
+            bucket_name=self.bucket_name,
+            multipart_id=upload_id,
+            part_id=part_number,
+            value=self.body,
         )
 
         response_headers = self._get_cors_headers_other()
@@ -2553,14 +2558,25 @@ class S3Response(BaseResponse):
         template = self.response_template(S3_DELETE_KEY_TAGGING_RESPONSE)
         return 204, {}, template.render(version_id=version_id)
 
-    def _complete_multipart_body(self, body: bytes) -> Iterator[Tuple[int, str]]:
+    def _complete_multipart_body(self, body: bytes) -> Iterator[MultipartUploadPartRequest]:
         ps = minidom.parseString(body).getElementsByTagName("Part")
         prev = 0
         for p in ps:
             pn = int(p.getElementsByTagName("PartNumber")[0].firstChild.wholeText)  # type: ignore[union-attr]
             if pn <= prev:
                 raise InvalidPartOrder()
-            yield pn, p.getElementsByTagName("ETag")[0].firstChild.wholeText  # type: ignore[union-attr]
+            etag = p.getElementsByTagName("ETag")[0].firstChild.wholeText  # type: ignore[union-attr]
+            checksum: tuple[str, str] = None
+            for algorithm in ["CRC32", "CRC32C", "CRC64NVME", "SHA1", "SHA256"]:
+                if elem := p.getElementsByTagName(f"Checksum{algorithm}"):
+                    checksum = (algorithm, elem[0].firstChild.wholeText)
+                    break
+
+            yield MultipartUploadPartRequest(
+                part_number=pn,
+                etag=etag,
+                checksum=checksum,
+            )
 
     def _key_response_post(
         self,
@@ -2584,16 +2600,20 @@ class S3Response(BaseResponse):
             tagging = self._tagging_from_headers(request.headers)
             storage_type = request.headers.get("x-amz-storage-class", "STANDARD")
             acl = self._acl_from_headers(request.headers)
+            checksum_algorithm = request.headers.get("x-amz-checksum-algorithm")
+            checksum_type = request.headers.get("x-amz-checksum-type")
 
             multipart_id = self.backend.create_multipart_upload(
                 bucket_name,
                 key_name,
                 metadata,
-                storage_type,
-                tagging,
-                acl,
-                encryption,
-                kms_key_id,
+                storage_type=storage_type,
+                tags=tagging,
+                acl=acl,
+                sse_encryption=encryption,
+                kms_key_id=kms_key_id,
+                checksum_algorithm=checksum_algorithm,
+                checksum_type=checksum_type,
             )
             if encryption:
                 response_headers["x-amz-server-side-encryption"] = encryption
@@ -2601,6 +2621,10 @@ class S3Response(BaseResponse):
                 response_headers["x-amz-server-side-encryption-aws-kms-key-id"] = (
                     kms_key_id
                 )
+            if checksum_algorithm:
+                response_headers["x-amz-checksum-algorithm"] = checksum_algorithm
+            if checksum_type:
+                response_headers["x-amz-checksum-type"] = checksum_type
 
             template = self.response_template(S3_MULTIPART_INITIATE_RESPONSE)
             response = template.render(
@@ -2627,6 +2651,7 @@ class S3Response(BaseResponse):
                 key = self.backend.complete_multipart_upload(
                     bucket_name, multipart_id, self._complete_multipart_body(body)
                 )
+
             if key is None:
                 return 400, {}, ""
 
@@ -2642,12 +2667,21 @@ class S3Response(BaseResponse):
             if key.kms_key_id:
                 headers["x-amz-server-side-encryption-aws-kms-key-id"] = key.kms_key_id
 
+
+            print("complete")
+            print(key.checksum_algorithm)
+            print(key.checksum_value)
+            print(key.checksum_type)
+
+            if key.checksum_algorithm:
+                headers[f"x-amz-checksum-{key.checksum_algorithm}"] = key.checksum_value
+            if key.checksum_type:
+                headers["x-amz-checksum-type"] = key.checksum_type
+
             return (
                 200,
                 headers,
-                template.render(
-                    bucket_name=bucket_name, key_name=key.name, etag=key.etag
-                ),
+                template.render(bucket_name=bucket_name, key=key),
             )
 
         elif "restore" in query:
@@ -3152,8 +3186,10 @@ S3_MULTIPART_COMPLETE_RESPONSE = """<?xml version="1.0" encoding="UTF-8"?>
 <CompleteMultipartUploadResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
   <Location>http://{{ bucket_name }}.s3.amazonaws.com/{{ key_name }}</Location>
   <Bucket>{{ bucket_name }}</Bucket>
-  <Key>{{ key_name }}</Key>
-  <ETag>{{ etag }}</ETag>
+  <Key>{{ key.name }}</Key>
+  <ETag>{{ key.etag }}</ETag>
+  {% if key.checksum_type %}<ChecksumType>{{ key.checksum_type }}</ChecksumType>{% endif %}
+  {% if key.checksum_algorithm %}<Checksum{{ key.checksum_algorithm }}>{{ key.checksum_value }}</Checksum{{ key.checksum_algorithm }}>{% endif %}
 </CompleteMultipartUploadResult>
 """
 
