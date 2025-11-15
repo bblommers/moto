@@ -27,14 +27,14 @@ securityhub
 - [ ] batch_get_standards_control_associations
 - [X] batch_import_findings
   
-        Import findings in batch to SecurityHub.
+Import findings in batch to SecurityHub.
 
-        Args:
-            findings: List of finding dictionaries to import
+Args:
+    findings: List of finding dictionaries to import
 
-        Returns:
-            Tuple of (failed_count, success_count, failed_findings)
-        
+Returns:
+    Tuple of (failed_count, success_count, failed_findings)
+
 
 - [ ] batch_update_automation_rules
 - [ ] batch_update_findings
@@ -92,8 +92,8 @@ securityhub
 - [ ] get_finding_statistics_v2
 - [X] get_findings
   
-        Returns findings based on optional filters and sort criteria.
-        
+Returns findings based on optional filters and sort criteria.
+
 
 - [ ] get_findings_v2
 - [ ] get_insight_results

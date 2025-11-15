@@ -28,17 +28,13 @@ ecs
 - [X] delete_task_definitions
 - [X] delete_task_set
   
-        The Force-parameter is not yet implemented
-        
+The Force-parameter is not yet implemented
+
 
 - [X] deregister_container_instance
 - [X] deregister_task_definition
 - [X] describe_capacity_providers
 - [X] describe_clusters
-  
-        Only include=TAGS is currently supported.
-        
-
 - [X] describe_container_instances
 - [ ] describe_service_deployments
 - [ ] describe_service_revisions
@@ -47,8 +43,8 @@ ecs
 - [X] describe_task_sets
 - [X] describe_tasks
   
-        Only include=TAGS is currently supported.
-        
+Only include=TAGS is currently supported.
+
 
 - [ ] discover_poll_endpoint
 - [ ] execute_command
@@ -56,13 +52,13 @@ ecs
 - [X] list_account_settings
 - [X] list_attributes
   
-        Pagination is not yet implemented
-        
+Pagination is not yet implemented
+
 
 - [X] list_clusters
   
-        maxSize and pagination not implemented
-        
+maxSize and pagination not implemented
+
 
 - [X] list_container_instances
 - [ ] list_service_deployments
@@ -73,8 +69,8 @@ ecs
 
 - [X] list_task_definition_families
   
-        The Status and pagination parameters are not yet implemented
-        
+The Status and pagination parameters are not yet implemented
+
 
 - [X] list_task_definitions
 - [X] list_tasks
@@ -96,8 +92,8 @@ ecs
 - [X] update_capacity_provider
 - [X] update_cluster
   
-        The serviceConnectDefaults-parameter is not yet implemented
-        
+The serviceConnectDefaults-parameter is not yet implemented
+
 
 - [ ] update_cluster_settings
 - [ ] update_container_agent

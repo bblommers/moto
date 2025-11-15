@@ -59,8 +59,8 @@ s3control
 - [ ] get_access_point_policy_for_object_lambda
 - [X] get_access_point_policy_status
   
-        We assume the policy status is always public
-        
+We assume the policy status is always public
+
 
 - [ ] get_access_point_policy_status_for_object_lambda
 - [ ] get_access_point_scope

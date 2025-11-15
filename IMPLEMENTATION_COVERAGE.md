@@ -1195,6 +1195,7 @@
 - [X] execute_change_set
 - [ ] execute_stack_refactor
 - [ ] get_generated_template
+- [ ] get_hook_result
 - [X] get_stack_policy
 - [X] get_template
 - [ ] get_template_summary
@@ -1242,7 +1243,7 @@
 
 ## cloudfront
 <details>
-<summary>17% implemented</summary>
+<summary>16% implemented</summary>
 
 - [ ] associate_alias
 - [ ] associate_distribution_tenant_web_acl
@@ -1289,6 +1290,7 @@
 - [ ] delete_origin_request_policy
 - [X] delete_public_key
 - [ ] delete_realtime_log_config
+- [ ] delete_resource_policy
 - [ ] delete_response_headers_policy
 - [ ] delete_streaming_distribution
 - [ ] delete_vpc_origin
@@ -1327,6 +1329,7 @@
 - [X] get_public_key
 - [ ] get_public_key_config
 - [ ] get_realtime_log_config
+- [ ] get_resource_policy
 - [ ] get_response_headers_policy
 - [ ] get_response_headers_policy_config
 - [ ] get_streaming_distribution
@@ -1346,6 +1349,7 @@
 - [ ] list_distributions_by_connection_mode
 - [ ] list_distributions_by_key_group
 - [ ] list_distributions_by_origin_request_policy_id
+- [ ] list_distributions_by_owned_resource
 - [ ] list_distributions_by_realtime_log_config
 - [ ] list_distributions_by_response_headers_policy_id
 - [ ] list_distributions_by_vpc_origin_id
@@ -1367,9 +1371,11 @@
 - [X] list_tags_for_resource
 - [ ] list_vpc_origins
 - [ ] publish_function
+- [ ] put_resource_policy
 - [X] tag_resource
 - [ ] test_function
 - [X] untag_resource
+- [ ] update_anycast_ip_list
 - [ ] update_cache_policy
 - [ ] update_cloud_front_origin_access_identity
 - [ ] update_connection_group
@@ -2388,11 +2394,13 @@
 
 ## dms
 <details>
-<summary>15% implemented</summary>
+<summary>14% implemented</summary>
 
 - [ ] add_tags_to_resource
 - [ ] apply_pending_maintenance_action
 - [ ] batch_start_recommendations
+- [ ] cancel_metadata_model_conversion
+- [ ] cancel_metadata_model_creation
 - [ ] cancel_replication_task_assessment_run
 - [ ] create_data_migration
 - [ ] create_data_provider
@@ -2441,8 +2449,11 @@
 - [ ] describe_fleet_advisor_schema_object_summary
 - [ ] describe_fleet_advisor_schemas
 - [ ] describe_instance_profiles
+- [ ] describe_metadata_model
 - [ ] describe_metadata_model_assessments
+- [ ] describe_metadata_model_children
 - [ ] describe_metadata_model_conversions
+- [ ] describe_metadata_model_creations
 - [ ] describe_metadata_model_exports_as_script
 - [ ] describe_metadata_model_exports_to_target
 - [ ] describe_metadata_model_imports
@@ -2465,6 +2476,7 @@
 - [ ] describe_schemas
 - [ ] describe_table_statistics
 - [ ] export_metadata_model_assessment
+- [ ] get_target_selection_rules
 - [ ] import_certificate
 - [X] list_tags_for_resource
 - [ ] modify_conversion_configuration
@@ -2489,6 +2501,7 @@
 - [ ] start_extension_pack_association
 - [ ] start_metadata_model_assessment
 - [ ] start_metadata_model_conversion
+- [ ] start_metadata_model_creation
 - [ ] start_metadata_model_export_as_script
 - [ ] start_metadata_model_export_to_target
 - [ ] start_metadata_model_import
@@ -3211,6 +3224,7 @@
 - [ ] get_flow_logs_integration_template
 - [ ] get_groups_for_capacity_reservation
 - [ ] get_host_reservation_purchase_preview
+- [ ] get_image_ancestry
 - [ ] get_image_block_public_access_state
 - [ ] get_instance_metadata_defaults
 - [ ] get_instance_tpm_ek_pub
@@ -4776,6 +4790,7 @@
 - [ ] change_password
 - [X] create_access_key
 - [X] create_account_alias
+- [ ] create_delegation_request
 - [X] create_group
 - [X] create_instance_profile
 - [X] create_login_profile
@@ -5374,7 +5389,7 @@
 
 ## kafka
 <details>
-<summary>19% implemented</summary>
+<summary>18% implemented</summary>
 
 - [ ] batch_associate_scram_secret
 - [ ] batch_disassociate_scram_secret
@@ -5425,6 +5440,7 @@
 - [ ] update_configuration
 - [ ] update_connectivity
 - [ ] update_monitoring
+- [ ] update_rebalancing
 - [ ] update_replication_info
 - [ ] update_security
 - [ ] update_storage
@@ -5432,7 +5448,7 @@
 
 ## kinesis
 <details>
-<summary>86% implemented</summary>
+<summary>79% implemented</summary>
 
 - [X] add_tags_to_stream
 - [X] create_stream
@@ -5440,6 +5456,7 @@
 - [X] delete_resource_policy
 - [X] delete_stream
 - [X] deregister_stream_consumer
+- [ ] describe_account_settings
 - [X] describe_limits
 - [X] describe_stream
 - [X] describe_stream_consumer
@@ -5467,9 +5484,11 @@
 - [ ] subscribe_to_shard
 - [ ] tag_resource
 - [ ] untag_resource
+- [ ] update_account_settings
 - [ ] update_max_record_size
 - [X] update_shard_count
 - [X] update_stream_mode
+- [ ] update_stream_warm_throughput
 </details>
 
 ## kinesis-video-archived-media
@@ -6739,6 +6758,7 @@
 - [ ] get_application
 - [X] get_compatible_versions
 - [ ] get_data_source
+- [ ] get_default_application_setting
 - [ ] get_direct_query_data_source
 - [ ] get_domain_maintenance_status
 - [ ] get_package_version_history
@@ -6759,6 +6779,7 @@
 - [ ] list_vpc_endpoints
 - [ ] list_vpc_endpoints_for_domain
 - [ ] purchase_reserved_instance_offering
+- [ ] put_default_application_setting
 - [ ] reject_inbound_connection
 - [X] remove_tags
 - [ ] revoke_vpc_endpoint_access
@@ -7729,6 +7750,7 @@
 - [ ] failover_primary_compute
 - [X] get_cluster_credentials
 - [ ] get_cluster_credentials_with_iam
+- [ ] get_identity_center_auth_token
 - [ ] get_reserved_node_exchange_configuration_options
 - [ ] get_reserved_node_exchange_offerings
 - [ ] get_resource_policy
@@ -8391,7 +8413,7 @@
 
 ## s3tables
 <details>
-<summary>46% implemented</summary>
+<summary>38% implemented</summary>
 
 - [X] create_namespace
 - [X] create_table
@@ -8400,6 +8422,7 @@
 - [X] delete_table
 - [X] delete_table_bucket
 - [ ] delete_table_bucket_encryption
+- [ ] delete_table_bucket_metrics_configuration
 - [ ] delete_table_bucket_policy
 - [ ] delete_table_policy
 - [X] get_namespace
@@ -8407,6 +8430,7 @@
 - [X] get_table_bucket
 - [ ] get_table_bucket_encryption
 - [ ] get_table_bucket_maintenance_configuration
+- [ ] get_table_bucket_metrics_configuration
 - [ ] get_table_bucket_policy
 - [ ] get_table_encryption
 - [ ] get_table_maintenance_configuration
@@ -8416,12 +8440,16 @@
 - [X] list_namespaces
 - [X] list_table_buckets
 - [X] list_tables
+- [ ] list_tags_for_resource
 - [ ] put_table_bucket_encryption
 - [ ] put_table_bucket_maintenance_configuration
+- [ ] put_table_bucket_metrics_configuration
 - [ ] put_table_bucket_policy
 - [ ] put_table_maintenance_configuration
 - [ ] put_table_policy
 - [X] rename_table
+- [ ] tag_resource
+- [ ] untag_resource
 - [X] update_table_metadata_location
 </details>
 
@@ -9047,7 +9075,7 @@
 
 ## servicecatalog
 <details>
-<summary>8% implemented</summary>
+<summary>12% implemented</summary>
 
 - [ ] accept_portfolio_share
 - [ ] associate_budget_with_resource
@@ -9061,7 +9089,7 @@
 - [ ] create_constraint
 - [X] create_portfolio
 - [X] create_portfolio_share
-- [ ] create_product
+- [X] create_product
 - [ ] create_provisioned_product_plan
 - [ ] create_provisioning_artifact
 - [ ] create_service_action
@@ -9069,7 +9097,7 @@
 - [ ] delete_constraint
 - [X] delete_portfolio
 - [X] delete_portfolio_share
-- [ ] delete_product
+- [X] delete_product
 - [ ] delete_provisioned_product_plan
 - [ ] delete_provisioning_artifact
 - [ ] delete_service_action
@@ -9079,7 +9107,7 @@
 - [X] describe_portfolio
 - [ ] describe_portfolio_share_status
 - [X] describe_portfolio_shares
-- [ ] describe_product
+- [X] describe_product
 - [ ] describe_product_as_admin
 - [ ] describe_product_view
 - [ ] describe_provisioned_product
@@ -9821,7 +9849,7 @@
 
 ## sts
 <details>
-<summary>66% implemented</summary>
+<summary>60% implemented</summary>
 
 - [X] assume_role
 - [X] assume_role_with_saml
@@ -9830,6 +9858,7 @@
 - [ ] decode_authorization_message
 - [ ] get_access_key_info
 - [X] get_caller_identity
+- [ ] get_delegated_access_token
 - [X] get_federation_token
 - [X] get_session_token
 </details>
@@ -10157,7 +10186,7 @@
 
 ## vpc-lattice
 <details>
-<summary>23% implemented</summary>
+<summary>21% implemented</summary>
 
 - [ ] batch_update_rule
 - [X] create_access_log_subscription
@@ -10173,6 +10202,7 @@
 - [ ] create_target_group
 - [X] delete_access_log_subscription
 - [ ] delete_auth_policy
+- [ ] delete_domain_verification
 - [ ] delete_listener
 - [ ] delete_resource_configuration
 - [ ] delete_resource_endpoint_association
@@ -10188,6 +10218,7 @@
 - [ ] deregister_targets
 - [X] get_access_log_subscription
 - [ ] get_auth_policy
+- [ ] get_domain_verification
 - [ ] get_listener
 - [ ] get_resource_configuration
 - [ ] get_resource_gateway
@@ -10200,6 +10231,7 @@
 - [ ] get_service_network_vpc_association
 - [ ] get_target_group
 - [X] list_access_log_subscriptions
+- [ ] list_domain_verifications
 - [ ] list_listeners
 - [ ] list_resource_configurations
 - [ ] list_resource_endpoint_associations
@@ -10217,6 +10249,7 @@
 - [ ] put_auth_policy
 - [ ] put_resource_policy
 - [ ] register_targets
+- [ ] start_domain_verification
 - [X] tag_resource
 - [X] untag_resource
 - [X] update_access_log_subscription

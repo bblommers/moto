@@ -178,9 +178,9 @@ quicksight
 - [ ] put_data_set_refresh_properties
 - [X] register_user
   
-        The following parameters are not yet implemented:
-        IamArn, SessionName, CustomsPermissionsName, ExternalLoginFederationProviderType, CustomFederationProviderUrl, ExternalLoginId
-        
+The following parameters are not yet implemented:
+IamArn, SessionName, CustomsPermissionsName, ExternalLoginFederationProviderType, CustomFederationProviderUrl, ExternalLoginId
+
 
 - [ ] restore_analysis
 - [ ] search_action_connectors

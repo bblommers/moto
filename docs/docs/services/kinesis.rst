@@ -19,11 +19,12 @@ kinesis
 - [X] decrease_stream_retention_period
 - [X] delete_resource_policy
   
-        Remove resource policy with a matching given resource arn.
-        
+Remove resource policy with a matching given resource arn.
+
 
 - [X] delete_stream
 - [X] deregister_stream_consumer
+- [ ] describe_account_settings
 - [X] describe_limits
   Return fixed Kinesis limits.
 
@@ -35,16 +36,16 @@ kinesis
 - [X] get_records
 - [X] get_resource_policy
   
-        Get resource policy with a matching given resource arn.
-        
+Get resource policy with a matching given resource arn.
+
 
 - [X] get_shard_iterator
 - [X] increase_stream_retention_period
 - [X] list_shards
 - [X] list_stream_consumers
   
-        Pagination is not yet implemented
-        
+Pagination is not yet implemented
+
 
 - [X] list_streams
 - [ ] list_tags_for_resource
@@ -54,8 +55,8 @@ kinesis
 - [X] put_records
 - [X] put_resource_policy
   
-        Creates/updates resource policy and return policy object
-        
+Creates/updates resource policy and return policy object
+
 
 - [X] register_stream_consumer
 - [X] remove_tags_from_stream
@@ -65,7 +66,9 @@ kinesis
 - [ ] subscribe_to_shard
 - [ ] tag_resource
 - [ ] untag_resource
+- [ ] update_account_settings
 - [ ] update_max_record_size
 - [X] update_shard_count
 - [X] update_stream_mode
+- [ ] update_stream_warm_throughput
 

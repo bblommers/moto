@@ -25,10 +25,10 @@ cloudfront
 - [ ] create_continuous_deployment_policy
 - [X] create_distribution
   
-        Not all configuration options are supported yet.  Please raise an issue if
-        we're not persisting/returning the correct attributes for your
-        use-case.
-        
+Not all configuration options are supported yet.  Please raise an issue if
+we're not persisting/returning the correct attributes for your
+use-case.
+
 
 - [ ] create_distribution_tenant
 - [X] create_distribution_with_tags
@@ -55,9 +55,9 @@ cloudfront
 - [ ] delete_continuous_deployment_policy
 - [X] delete_distribution
   
-        The IfMatch-value is ignored - any value is considered valid.
-        Calling this function without a value is invalid, per AWS' behaviour
-        
+The IfMatch-value is ignored - any value is considered valid.
+Calling this function without a value is invalid, per AWS' behaviour
+
 
 - [ ] delete_distribution_tenant
 - [ ] delete_field_level_encryption_config
@@ -68,16 +68,17 @@ cloudfront
 - [ ] delete_monitoring_subscription
 - [X] delete_origin_access_control
   
-        The IfMatch-parameter is not yet implemented
-        
+The IfMatch-parameter is not yet implemented
+
 
 - [ ] delete_origin_request_policy
 - [X] delete_public_key
   
-        IfMatch is not yet implemented - deletion always succeeds
-        
+IfMatch is not yet implemented - deletion always succeeds
+
 
 - [ ] delete_realtime_log_config
+- [ ] delete_resource_policy
 - [ ] delete_response_headers_policy
 - [ ] delete_streaming_distribution
 - [ ] delete_vpc_origin
@@ -116,6 +117,7 @@ cloudfront
 - [X] get_public_key
 - [ ] get_public_key_config
 - [ ] get_realtime_log_config
+- [ ] get_resource_policy
 - [ ] get_response_headers_policy
 - [ ] get_response_headers_policy_config
 - [ ] get_streaming_distribution
@@ -131,14 +133,15 @@ cloudfront
 - [ ] list_distribution_tenants_by_customization
 - [X] list_distributions
   
-        Pagination is not supported yet.
-        
+Pagination is not supported yet.
+
 
 - [ ] list_distributions_by_anycast_ip_list_id
 - [ ] list_distributions_by_cache_policy_id
 - [ ] list_distributions_by_connection_mode
 - [ ] list_distributions_by_key_group
 - [ ] list_distributions_by_origin_request_policy_id
+- [ ] list_distributions_by_owned_resource
 - [ ] list_distributions_by_realtime_log_config
 - [ ] list_distributions_by_response_headers_policy_id
 - [ ] list_distributions_by_vpc_origin_id
@@ -149,26 +152,26 @@ cloudfront
 - [ ] list_functions
 - [X] list_invalidations
   
-        Pagination is not yet implemented
-        
+Pagination is not yet implemented
+
 
 - [ ] list_invalidations_for_distribution_tenant
 - [X] list_key_groups
   
-        Pagination is not yet implemented
-        
+Pagination is not yet implemented
+
 
 - [ ] list_key_value_stores
 - [X] list_origin_access_controls
   
-        Pagination is not yet implemented
-        
+Pagination is not yet implemented
+
 
 - [ ] list_origin_request_policies
 - [X] list_public_keys
   
-        Pagination is not yet implemented
-        
+Pagination is not yet implemented
+
 
 - [ ] list_realtime_log_configs
 - [ ] list_response_headers_policies
@@ -176,18 +179,20 @@ cloudfront
 - [X] list_tags_for_resource
 - [ ] list_vpc_origins
 - [ ] publish_function
+- [ ] put_resource_policy
 - [X] tag_resource
 - [ ] test_function
 - [X] untag_resource
+- [ ] update_anycast_ip_list
 - [ ] update_cache_policy
 - [ ] update_cloud_front_origin_access_identity
 - [ ] update_connection_group
 - [ ] update_continuous_deployment_policy
 - [X] update_distribution
   
-        The IfMatch-value is ignored - any value is considered valid.
-        Calling this function without a value is invalid, per AWS' behaviour
-        
+The IfMatch-value is ignored - any value is considered valid.
+Calling this function without a value is invalid, per AWS' behaviour
+
 
 - [ ] update_distribution_tenant
 - [ ] update_distribution_with_staging_config
@@ -199,8 +204,8 @@ cloudfront
 - [ ] update_key_value_store
 - [X] update_origin_access_control
   
-        The IfMatch-parameter is not yet implemented
-        
+The IfMatch-parameter is not yet implemented
+
 
 - [ ] update_origin_request_policy
 - [ ] update_public_key

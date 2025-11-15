@@ -28,8 +28,8 @@ acm
 - [ ] renew_certificate
 - [X] request_certificate
   
-        The parameter DomainValidationOptions has not yet been implemented
-        
+The parameter DomainValidationOptions has not yet been implemented
+
 
 - [ ] resend_validation_email
 - [ ] revoke_certificate

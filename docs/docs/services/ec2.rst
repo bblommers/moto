@@ -140,8 +140,8 @@ ec2
 - [X] create_snapshot
 - [X] create_snapshots
   
-        The CopyTagsFromSource-parameter is not yet implemented.
-        
+The CopyTagsFromSource-parameter is not yet implemented.
+
 
 - [ ] create_spot_datafeed_subscription
 - [ ] create_store_image_task
@@ -277,9 +277,9 @@ ec2
 - [ ] describe_aggregate_id_format
 - [X] describe_availability_zones
   
-        The following parameters are supported: ZoneIds, ZoneNames, Filters
-        The following filters are supported: zone-id, zone-type, zone-name, region-name, state
-        
+The following parameters are supported: ZoneIds, ZoneNames, Filters
+The following filters are supported: zone-id, zone-type, zone-name, region-name, state
+
 
 - [ ] describe_aws_network_performance_metric_subscriptions
 - [ ] describe_bundle_tasks
@@ -308,8 +308,8 @@ ec2
 - [X] describe_dhcp_options
 - [X] describe_egress_only_internet_gateways
   
-        The Filters-argument is not yet supported
-        
+The Filters-argument is not yet supported
+
 
 - [ ] describe_elastic_gpus
 - [ ] describe_export_image_tasks
@@ -326,8 +326,8 @@ ec2
 - [ ] describe_host_reservations
 - [X] describe_hosts
   
-        Pagination is not yet implemented
-        
+Pagination is not yet implemented
+
 
 - [X] describe_iam_instance_profile_associations
 - [ ] describe_id_format
@@ -453,25 +453,25 @@ ec2
 - [ ] describe_vpc_endpoint_connections
 - [X] describe_vpc_endpoint_service_configurations
   
-        The Filters, MaxResults, NextToken parameters are not yet implemented
-        
+The Filters, MaxResults, NextToken parameters are not yet implemented
+
 
 - [X] describe_vpc_endpoint_service_permissions
   
-        The Filters, MaxResults, NextToken parameters are not yet implemented
-        
+The Filters, MaxResults, NextToken parameters are not yet implemented
+
 
 - [X] describe_vpc_endpoint_services
   Return info on services to which you can create a VPC endpoint.
 
-        Currently only the default endpoint services are returned.  When
-        create_vpc_endpoint_service_configuration() is implemented, a
-        list of those private endpoints would be kept and when this API
-        is invoked, those private endpoints would be added to the list of
-        default endpoint services.
+Currently only the default endpoint services are returned.  When
+create_vpc_endpoint_service_configuration() is implemented, a
+list of those private endpoints would be kept and when this API
+is invoked, those private endpoints would be added to the list of
+default endpoint services.
 
-        The DryRun parameter is ignored.
-        
+The DryRun parameter is ignored.
+
 
 - [X] describe_vpc_endpoints
 - [X] describe_vpc_peering_connections
@@ -566,6 +566,7 @@ ec2
 - [ ] get_flow_logs_integration_template
 - [ ] get_groups_for_capacity_reservation
 - [ ] get_host_reservation_purchase_preview
+- [ ] get_image_ancestry
 - [ ] get_image_block_public_access_state
 - [ ] get_instance_metadata_defaults
 - [ ] get_instance_tpm_ek_pub
@@ -685,8 +686,8 @@ ec2
 - [ ] modify_vpc_endpoint_connection_notification
 - [X] modify_vpc_endpoint_service_configuration
   
-        The following parameters are not yet implemented: RemovePrivateDnsName
-        
+The following parameters are not yet implemented: RemovePrivateDnsName
+
 
 - [ ] modify_vpc_endpoint_service_payer_responsibility
 - [X] modify_vpc_endpoint_service_permissions
@@ -751,25 +752,25 @@ ec2
 - [X] revoke_security_group_ingress
 - [X] run_instances
   
-        The Placement-parameter is validated to verify the availability-zone exists for the current region.
+The Placement-parameter is validated to verify the availability-zone exists for the current region.
 
-        The InstanceType-parameter can be validated, to see if it is a known instance-type.
-        Enable this validation by setting the environment variable `MOTO_EC2_ENABLE_INSTANCE_TYPE_VALIDATION=true`
+The InstanceType-parameter can be validated, to see if it is a known instance-type.
+Enable this validation by setting the environment variable `MOTO_EC2_ENABLE_INSTANCE_TYPE_VALIDATION=true`
 
-        The ImageId-parameter can be validated, to see if it is a known AMI.
-        Enable this validation by setting the environment variable `MOTO_ENABLE_AMI_VALIDATION=true`
+The ImageId-parameter can be validated, to see if it is a known AMI.
+Enable this validation by setting the environment variable `MOTO_ENABLE_AMI_VALIDATION=true`
 
-        The KeyPair-parameter can be validated, to see if it is a known key-pair.
-        Enable this validation by setting the environment variable `MOTO_ENABLE_KEYPAIR_VALIDATION=true`
-        
+The KeyPair-parameter can be validated, to see if it is a known key-pair.
+Enable this validation by setting the environment variable `MOTO_ENABLE_KEYPAIR_VALIDATION=true`
+
 
 - [ ] run_scheduled_instances
 - [ ] search_local_gateway_routes
 - [ ] search_transit_gateway_multicast_groups
 - [X] search_transit_gateway_routes
   
-        The following filters are currently supported: type, state, route-search.exact-match
-        
+The following filters are currently supported: type, state, route-search.exact-match
+
 
 - [ ] send_diagnostic_interrupt
 - [ ] start_declarative_policies_report

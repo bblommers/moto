@@ -71,8 +71,8 @@ guardduty
 - [ ] list_coverage
 - [X] list_detectors
   
-        The MaxResults and NextToken-parameter have not yet been implemented.
-        
+The MaxResults and NextToken-parameter have not yet been implemented.
+
 
 - [ ] list_filters
 - [ ] list_findings
@@ -82,8 +82,8 @@ guardduty
 - [ ] list_members
 - [X] list_organization_admin_accounts
   
-        Pagination is not yet implemented
-        
+Pagination is not yet implemented
+
 
 - [ ] list_publishing_destinations
 - [ ] list_tags_for_resource

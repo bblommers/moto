@@ -37,8 +37,8 @@ logs
 - [ ] delete_query_definition
 - [X] delete_resource_policy
   
-        Remove resource policy with a policy name matching given name.
-        
+Remove resource policy with a policy name matching given name.
+
 
 - [X] delete_retention_policy
 - [X] delete_subscription_filter
@@ -51,8 +51,8 @@ logs
 - [X] describe_destinations
 - [X] describe_export_tasks
   
-        Pagination is not yet implemented
-        
+Pagination is not yet implemented
+
 
 - [ ] describe_field_indexes
 - [ ] describe_index_policies
@@ -61,26 +61,26 @@ logs
 - [X] describe_metric_filters
 - [X] describe_queries
   
-        Pagination is not yet implemented
-        
+Pagination is not yet implemented
+
 
 - [ ] describe_query_definitions
 - [X] describe_resource_policies
   
-        Return list of resource policies.
+Return list of resource policies.
 
-        The next_token and limit arguments are ignored.  The maximum
-        number of resource policies per region is a small number (less
-        than 50), so pagination isn't needed.
-        
+The next_token and limit arguments are ignored.  The maximum
+number of resource policies per region is a small number (less
+than 50), so pagination isn't needed.
+
 
 - [X] describe_subscription_filters
 - [ ] disassociate_kms_key
 - [X] filter_log_events
   
-        The following filter patterns are currently supported: Single Terms, Multiple Terms, Exact Phrases.
-        If the pattern is not supported, all events are returned.
-        
+The following filter patterns are currently supported: Single Terms, Multiple Terms, Exact Phrases.
+If the pattern is not supported, all events are returned.
+
 
 - [ ] get_data_protection_policy
 - [X] get_delivery
@@ -95,8 +95,8 @@ logs
 - [ ] get_log_record
 - [X] get_query_results
   
-        Not all query commands are implemented yet. Please raise an issue if you encounter unexpected results.
-        
+Not all query commands are implemented yet. Please raise an issue if you encounter unexpected results.
+
 
 - [ ] get_transformer
 - [ ] list_anomalies
@@ -117,15 +117,15 @@ logs
 - [ ] put_integration
 - [X] put_log_events
   
-        The SequenceToken-parameter is not yet implemented
-        
+The SequenceToken-parameter is not yet implemented
+
 
 - [X] put_metric_filter
 - [ ] put_query_definition
 - [X] put_resource_policy
   
-        Creates/updates resource policy and return policy object
-        
+Creates/updates resource policy and return policy object
+
 
 - [X] put_retention_policy
 - [X] put_subscription_filter

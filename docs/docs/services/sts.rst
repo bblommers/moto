@@ -16,8 +16,8 @@ sts
 
 - [X] assume_role
   
-        Assume an IAM Role. Note that the role does not need to exist. The ARN can point to another account, providing an opportunity to switch accounts.
-        
+Assume an IAM Role. Note that the role does not need to exist. The ARN can point to another account, providing an opportunity to switch accounts.
+
 
 - [X] assume_role_with_saml
 - [X] assume_role_with_web_identity
@@ -25,6 +25,7 @@ sts
 - [ ] decode_authorization_message
 - [ ] get_access_key_info
 - [X] get_caller_identity
+- [ ] get_delegated_access_token
 - [X] get_federation_token
 - [X] get_session_token
 

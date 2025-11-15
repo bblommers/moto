@@ -21,13 +21,13 @@ kms
 - [X] create_grant
 - [X] create_key
   
-        The provided Policy currently does not need to be valid. If it is valid, Moto will perform authorization checks on key-related operations, just like AWS does.
+The provided Policy currently does not need to be valid. If it is valid, Moto will perform authorization checks on key-related operations, just like AWS does.
 
-        These authorization checks are quite basic for now. Moto will only throw an AccessDeniedException if the following conditions are met:
-         - The principal is set to "*"
-         - The resource is set to "*"
-         - The Action matches `describe_key`
-        
+These authorization checks are quite basic for now. Moto will only throw an AccessDeniedException if the following conditions are met:
+ - The principal is set to "*"
+ - The resource is set to "*"
+ - The Action matches `describe_key`
+
 
 - [X] decrypt
 - [X] delete_alias
@@ -71,10 +71,10 @@ kms
 - [X] schedule_key_deletion
 - [X] sign
   
-        Sign message using generated private key.
+Sign message using generated private key.
 
-        - grant_tokens are not implemented
-        
+- grant_tokens are not implemented
+
 
 - [X] tag_resource
 - [X] untag_resource
@@ -84,11 +84,11 @@ kms
 - [ ] update_primary_region
 - [X] verify
   
-        Verify message using public key from generated private key.
+Verify message using public key from generated private key.
 
-        - grant_tokens are not implemented
-        - The MessageType-parameter DIGEST is not yet implemented
-        
+- grant_tokens are not implemented
+- The MessageType-parameter DIGEST is not yet implemented
+
 
 - [X] verify_mac
 

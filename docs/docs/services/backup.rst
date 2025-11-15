@@ -74,14 +74,14 @@ backup
 - [ ] list_backup_plan_versions
 - [X] list_backup_plans
   
-        Pagination is not yet implemented
-        
+Pagination is not yet implemented
+
 
 - [ ] list_backup_selections
 - [X] list_backup_vaults
   
-        Pagination is not yet implemented
-        
+Pagination is not yet implemented
+
 
 - [ ] list_copy_job_summaries
 - [ ] list_copy_jobs
@@ -103,8 +103,8 @@ backup
 - [ ] list_restore_testing_selections
 - [X] list_tags
   
-        Pagination is not yet implemented
-        
+Pagination is not yet implemented
+
 
 - [ ] put_backup_vault_access_policy
 - [ ] put_backup_vault_lock_configuration

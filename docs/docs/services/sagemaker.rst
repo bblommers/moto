@@ -285,9 +285,9 @@ sagemaker
 - [ ] list_notebook_instance_lifecycle_configs
 - [X] list_notebook_instances
   
-        The following parameters are not yet implemented:
-        CreationTimeBefore, CreationTimeAfter, LastModifiedTimeBefore, LastModifiedTimeAfter, NotebookInstanceLifecycleConfigNameContains, DefaultCodeRepositoryContains, AdditionalCodeRepositoryEquals
-        
+The following parameters are not yet implemented:
+CreationTimeBefore, CreationTimeAfter, LastModifiedTimeBefore, LastModifiedTimeAfter, NotebookInstanceLifecycleConfigNameContains, DefaultCodeRepositoryContains, AdditionalCodeRepositoryEquals
+
 
 - [ ] list_optimization_jobs
 - [ ] list_partner_apps
@@ -321,8 +321,8 @@ sagemaker
 - [ ] retry_pipeline_execution
 - [X] search
   
-        Only a few SearchExpressions are implemented. Please open a bug report if you find any issues.
-        
+Only a few SearchExpressions are implemented. Please open a bug report if you find any issues.
+
 
 - [ ] search_training_plan_offerings
 - [ ] send_pipeline_execution_step_failure

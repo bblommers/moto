@@ -81,8 +81,8 @@ bedrock
 - [ ] list_custom_model_deployments
 - [X] list_custom_models
   
-        The foundation_model_arn_equals-argument is not yet supported
-        
+The foundation_model_arn_equals-argument is not yet supported
+
 
 - [ ] list_evaluation_jobs
 - [ ] list_foundation_model_agreement_offers

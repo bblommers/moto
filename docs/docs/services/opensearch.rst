@@ -58,6 +58,7 @@ opensearch
 - [ ] get_application
 - [X] get_compatible_versions
 - [ ] get_data_source
+- [ ] get_default_application_setting
 - [ ] get_direct_query_data_source
 - [ ] get_domain_maintenance_status
 - [ ] get_package_version_history
@@ -78,6 +79,7 @@ opensearch
 - [ ] list_vpc_endpoints
 - [ ] list_vpc_endpoints_for_domain
 - [ ] purchase_reserved_instance_offering
+- [ ] put_default_application_setting
 - [ ] reject_inbound_connection
 - [X] remove_tags
 - [ ] revoke_vpc_endpoint_access
