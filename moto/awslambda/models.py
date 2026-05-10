@@ -92,6 +92,28 @@ def zip2tar(zip_bytes: bytes) -> io.BytesIO:
             tarinfo = tarfile.TarInfo(name=zipinfo.filename)
             tarinfo.size = zipinfo.file_size
             tarinfo.mtime = calendar.timegm(zipinfo.date_time) - timeshift
+
+            # Convert supplied permission bits as supplied in `external_attr`
+            # The format is system-dependent though, so we're only converting it if we know we understand it
+            # Possible values for the create_system' attribute:
+            #   - 0 : MS-DOS/Windows
+            #   - 3 : Linux/MacOS
+            if zipinfo.create_system == 3:
+                full_file_mode = zipinfo.external_attr >> 16  # For example: 0o100400
+                file_permissions = full_file_mode & 0o777  # 0x400
+                # Default Mode is 644
+                # If the mode has less permissions, don't change anything - we do want to be able to read the code
+                # Only upgrade permissions, for example if the source has executable permissions
+                if file_permissions >= 0o644:
+                    tarinfo.mode = full_file_mode
+            if os.getenv("MOTO_DEBUG_FILE_PERMISSIONS"):
+                # Permissions can be hard to debug, especially without having access to the source system where the issues occur
+                # That's why we're adding a DEBUG-mode here that shows the relevant values for the compressed files
+                # If users supply this information, we should be able to fix any bugs that show up
+                print(  # noqa:T201
+                    f"Permissions for {zipinfo.filename}: system={zipinfo.create_system}, external={zipinfo.external_attr} (bitshifted={oct(zipinfo.external_attr >> 16)})"
+                )
+
             infile = zipf.open(zipinfo.filename)
             tarf.addfile(tarinfo, infile)
 
