@@ -417,3 +417,9 @@ class PolicyNotFoundException(DynamodbException):
     def __init__(self, message: str):
         super().__init__(PolicyNotFoundException.error_type, message=message)
         self.exception_msg = message
+
+
+class MissingIndexKeyAttributes(MockValidationException):
+    def __init__(self, keys: str, attr_definition: str):
+        msg = f"One or more parameter values were invalid: Some index key attributes are not defined in AttributeDefinitions. Keys: {keys}, AttributeDefinitions: {attr_definition}"
+        super().__init__(msg)

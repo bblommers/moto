@@ -2171,3 +2171,114 @@ def test_provide_range_key_against_table_without_range_key(table_name=None):
     err = exc.value.response["Error"]
     assert err["Code"] == "ValidationException"
     assert err["Message"] == "The provided key element does not match the schema"
+
+
+@pytest.mark.aws_verified
+@dynamodb_aws_verified(add_gsi=True)
+def test_update_table_with_gsi_problems(table_name=None):
+    ddb_client = boto3.client("dynamodb", "us-east-1")
+
+    ####
+    # CREATE GSI TWICE
+    ###
+    with pytest.raises(ClientError) as exc:
+        ddb_client.update_table(
+            TableName=table_name,
+            AttributeDefinitions=[{"AttributeName": "gsi_pk2", "AttributeType": "S"}],
+            GlobalSecondaryIndexUpdates=[
+                {
+                    "Create": {
+                        "IndexName": "test_gsi",
+                        "KeySchema": [
+                            {"AttributeName": "gsi_pk2", "KeyType": "HASH"},
+                        ],
+                        "Projection": {"ProjectionType": "ALL"},
+                        "ProvisionedThroughput": {
+                            "ReadCapacityUnits": 1,
+                            "WriteCapacityUnits": 1,
+                        },
+                    }
+                }
+            ],
+        )
+    err = exc.value.response["Error"]
+    assert err["Code"] == "ValidationException"
+    assert err["Message"] == "Attempting to create an index which already exists"
+
+    ####
+    # CREATE GSI WITH UNKNOWN ATTRIBUTES
+    ###
+    with pytest.raises(ClientError) as exc:
+        ddb_client.update_table(
+            TableName=table_name,
+            AttributeDefinitions=[{"AttributeName": "gsi2_pk", "AttributeType": "S"}],
+            GlobalSecondaryIndexUpdates=[
+                {
+                    "Create": {
+                        "IndexName": "test_gsi2",
+                        "KeySchema": [
+                            {"AttributeName": "unknown_pk", "KeyType": "HASH"},
+                        ],
+                        "Projection": {"ProjectionType": "ALL"},
+                        "ProvisionedThroughput": {
+                            "ReadCapacityUnits": 1,
+                            "WriteCapacityUnits": 1,
+                        },
+                    }
+                }
+            ],
+        )
+    err = exc.value.response["Error"]
+    assert err["Code"] == "ValidationException"
+    assert (
+        err["Message"]
+        == "One or more parameter values were invalid: Some index key attributes are not defined in AttributeDefinitions. Keys: [unknown_pk], AttributeDefinitions: [gsi2_pk]"
+    )
+
+    ####
+    # DELETE UNKNOWN GSI
+    ###
+    with pytest.raises(ClientError) as exc:
+        ddb_client.update_table(
+            TableName=table_name,
+            AttributeDefinitions=[{"AttributeName": "gsi_pk2", "AttributeType": "S"}],
+            GlobalSecondaryIndexUpdates=[
+                {
+                    "Delete": {
+                        "IndexName": "unknown_gsi",
+                    }
+                }
+            ],
+        )
+    err = exc.value.response["Error"]
+    assert err["Code"] == "ResourceNotFoundException"
+    assert (
+        err["Message"]
+        == f"Requested resource not found: Index unknown_gsi for table {table_name}"
+    )
+
+
+@pytest.mark.aws_verified
+@dynamodb_aws_verified(create_table=False)
+def test_put_item_with_invalid_table_name():
+    session = botocore.session.Session()
+    config = botocore.client.Config(parameter_validation=False)
+    client = session.create_client("dynamodb", region_name="us-east-1", config=config)
+
+    with pytest.raises(ClientError) as exc:
+        client.put_item(TableName="", Item={"id": {"S": "some id"}})
+    err = exc.value.response["Error"]
+    assert err["Code"] == "ValidationException"
+    assert "Member must have length greater than or equal to 1" in err["Message"]
+
+    with pytest.raises(ClientError) as exc:
+        client.put_item(TableName="x" * 257, Item={"id": {"S": "some id"}})
+    err = exc.value.response["Error"]
+    assert err["Code"] == "ValidationException"
+    assert "Member must have length less than or equal to 255" in err["Message"]
+
+    with pytest.raises(ClientError) as exc:
+        client.put_item(Item={"id": {"S": "some id"}})
+    err = exc.value.response["Error"]
+    assert err["Code"] == "ValidationException"
+    assert "Member must not be null" in err["Message"]

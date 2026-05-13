@@ -17,6 +17,7 @@ from moto.dynamodb.exceptions import (
     DeletionProtectedException,
     ItemSizeTooLarge,
     ItemSizeToUpdateTooLarge,
+    MissingIndexKeyAttributes,
     MockValidationException,
     MultipleTransactionsException,
     PointInTimeRecoveryUnavailable,
@@ -185,10 +186,12 @@ class DynamoDBBackend(BaseBackend):
         warm_throughput: dict[str, Any] | None,
     ) -> Table:
         table = self.get_table(name)
+        if global_index:
+            self.update_table_global_indexes(
+                table, global_index, attr_definitions=attr_definitions
+            )
         if attr_definitions:
             table.attr = attr_definitions
-        if global_index:
-            self.update_table_global_indexes(table, global_index)
         if throughput:
             table.throughput = throughput
         if billing_mode:
@@ -213,7 +216,10 @@ class DynamoDBBackend(BaseBackend):
         table.set_stream_specification(stream_specification)
 
     def update_table_global_indexes(
-        self, table: Table, global_index_updates: list[dict[str, Any]]
+        self,
+        table: Table,
+        global_index_updates: list[dict[str, Any]],
+        attr_definitions: list[dict[str, str]] | None,
     ) -> None:
         gsis_by_name = {i.name: i for i in table.global_indexes}
         for gsi_update in global_index_updates:
@@ -224,10 +230,8 @@ class DynamoDBBackend(BaseBackend):
             if gsi_to_delete:
                 index_name = gsi_to_delete["IndexName"]
                 if index_name not in gsis_by_name:
-                    raise ValueError(
-                        "Global Secondary Index does not exist, but tried to delete: {}".format(
-                            gsi_to_delete["IndexName"]
-                        )
+                    raise ResourceNotFoundException(
+                        msg=f"Requested resource not found: Index {index_name} for table {table.name}"
                     )
 
                 del gsis_by_name[index_name]
@@ -242,10 +246,16 @@ class DynamoDBBackend(BaseBackend):
 
             if gsi_to_create:
                 if gsi_to_create["IndexName"] in gsis_by_name:
-                    raise ValueError(
-                        "Global Secondary Index already exists: {}".format(
-                            gsi_to_create["IndexName"]
-                        )
+                    raise MockValidationException(
+                        "Attempting to create an index which already exists"
+                    )
+
+                attr_names = [ks["AttributeName"] for ks in gsi_to_create["KeySchema"]]
+                attr_defs = [ks["AttributeName"] for ks in attr_definitions or []]
+                if any(a not in attr_defs for a in attr_names):
+                    raise MissingIndexKeyAttributes(
+                        keys=f"[{','.join(attr_names)}]",
+                        attr_definition=f"[{','.join(attr_defs)}]",
                     )
 
                 gsis_by_name[gsi_to_create["IndexName"]] = GlobalSecondaryIndex.create(
@@ -331,6 +341,7 @@ class DynamoDBBackend(BaseBackend):
             return table.schema
 
     def get_table(self, table_name: str) -> Table:
+        Table.validate_table_name(table_name)
         # Find table by name
         if table := self.tables.get(table_name):
             return table
@@ -584,10 +595,7 @@ class DynamoDBBackend(BaseBackend):
         return table.delete_item(hash_value, range_value)
 
     def update_time_to_live(self, table_name: str, ttl_spec: dict[str, Any]) -> None:
-        try:
-            table = self.get_table(table_name)
-        except ResourceNotFoundException:
-            raise JsonRESTError("ResourceNotFound", "Table not found")
+        table = self.get_table(table_name)
 
         if "Enabled" not in ttl_spec or "AttributeName" not in ttl_spec:
             raise JsonRESTError(

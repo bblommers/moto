@@ -30,6 +30,7 @@ from .exceptions import (
     ExpressionAttributeValuesEmpty,
     InvalidProjectionExpression,
     KeyIsEmptyStringException,
+    MissingIndexKeyAttributes,
     MockValidationException,
     ProvidedKeyDoesNotExist,
     UnknownKeyType,
@@ -279,7 +280,7 @@ class DynamoHandler(BaseResponse):
 
     def create_table(self) -> ActionResult:
         body = self.body
-        table_name = body["TableName"]
+        table_name = body.get("TableName")
         # check billing mode and get the throughput
         if "BillingMode" in body.keys() and body["BillingMode"] == "PAY_PER_REQUEST":
             billing_mode = "PAY_PER_REQUEST"
@@ -297,6 +298,7 @@ class DynamoHandler(BaseResponse):
         warm_throughput = body.get("WarmThroughput")
 
         self._validate_table_creation(
+            table_name=table_name,
             billing_mode=billing_mode,
             throughput=throughput,
             key_schema=key_schema,
@@ -324,6 +326,7 @@ class DynamoHandler(BaseResponse):
 
     def _validate_table_creation(
         self,
+        table_name: str,
         billing_mode: str,
         throughput: dict[str, Any] | None,
         key_schema: list[dict[str, str]],
@@ -332,6 +335,8 @@ class DynamoHandler(BaseResponse):
         attr: list[dict[str, str]],
         warm_throughput: dict[str, Any] | None,
     ) -> None:
+        Table.validate_table_name(table_name)
+
         # Validate Throughput
         if billing_mode == "PAY_PER_REQUEST" and throughput:
             raise MockValidationException(
@@ -492,12 +497,9 @@ class DynamoHandler(BaseResponse):
                 )
         elif len(actual_attrs) < len(expected_attrs):
             if indexes:
-                raise MockValidationException(
-                    err_head
-                    + "Some index key attributes are not defined in AttributeDefinitions. Keys: "
-                    + dump_list(list(set(expected_attrs) - set(actual_attrs)))
-                    + ", AttributeDefinitions: "
-                    + dump_list(actual_attrs)
+                raise MissingIndexKeyAttributes(
+                    keys=dump_list(list(set(expected_attrs) - set(actual_attrs))),
+                    attr_definition=dump_list(actual_attrs),
                 )
             else:
                 raise MockValidationException(
@@ -505,20 +507,14 @@ class DynamoHandler(BaseResponse):
                 )
         else:
             if indexes:
-                raise MockValidationException(
-                    err_head
-                    + "Some index key attributes are not defined in AttributeDefinitions. Keys: "
-                    + dump_list(list(set(expected_attrs) - set(actual_attrs)))
-                    + ", AttributeDefinitions: "
-                    + dump_list(actual_attrs)
+                raise MissingIndexKeyAttributes(
+                    keys=dump_list(list(set(expected_attrs) - set(actual_attrs))),
+                    attr_definition=(dump_list(actual_attrs)),
                 )
             else:
-                raise MockValidationException(
-                    err_head
-                    + "Some index key attributes are not defined in AttributeDefinitions. Keys: "
-                    + dump_list(expected_attrs)
-                    + ", AttributeDefinitions: "
-                    + dump_list(actual_attrs)
+                raise MissingIndexKeyAttributes(
+                    keys=dump_list(expected_attrs),
+                    attr_definition=dump_list(actual_attrs),
                 )
 
     def _get_filter_expression(self) -> str | None:
@@ -605,17 +601,19 @@ class DynamoHandler(BaseResponse):
 
     @include_consumed_capacity()
     def put_item(self) -> ActionResult:
-        name = self.body["TableName"]
+        name = self.body.get("TableName")
         item = self.body["Item"]
         return_values = self.body.get("ReturnValues", "NONE")
         return_values_on_condition_check_failure = self.body.get(
             "ReturnValuesOnConditionCheckFailure"
         )
 
+        table = self.dynamodb_backend.get_table(name)
+
+        # This validation occurs after checking whether the Table exists
         if return_values not in ("ALL_OLD", "NONE"):
             raise MockValidationException("Return values set to invalid value")
 
-        table = self.dynamodb_backend.get_table(name)
         validate_put_has_empty_keys(item, table)
         validate_put_has_empty_attrs(item, table)
         validate_put_has_gsi_keys_set_to_none(item, table)
@@ -774,9 +772,9 @@ class DynamoHandler(BaseResponse):
         for table_name, table_request in table_batches.items():
             if len(table_request["Keys"]) > 100:
                 raise MockValidationException(
-                    "1 validation error detected: Value at 'requestItems."
+                    "1 validation error detected: Value at 'RequestItems."
                     + table_name
-                    + ".member.keys' failed to satisfy constraint: Member must have length less than or equal to 100"
+                    + ".member.Keys' failed to satisfy constraint: Member must have length less than or equal to 100"
                 )
         # Scenario 2: We're requesting more than a 100 keys across all tables
         nr_of_keys_across_all_tables = sum(
@@ -1310,7 +1308,7 @@ class DynamoHandler(BaseResponse):
         )
 
     def update_time_to_live(self) -> ActionResult:
-        name = self.body["TableName"]
+        name = self.body.get("TableName")
         ttl_spec = self.body["TimeToLiveSpecification"]
 
         self.dynamodb_backend.update_time_to_live(name, ttl_spec)
@@ -1537,6 +1535,7 @@ class DynamoHandler(BaseResponse):
         global_indexes = table_parameters.get("GlobalSecondaryIndexes")
 
         self._validate_table_creation(
+            table_name=table_name,
             billing_mode=table_billing,
             throughput=table_throughput,
             key_schema=table_schema,

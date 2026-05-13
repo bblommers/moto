@@ -1,5 +1,6 @@
 import copy
 import math
+import re
 from collections import defaultdict
 from collections.abc import Sequence
 from typing import Any
@@ -362,6 +363,36 @@ class Table(CloudFormationModel):
             kms.create_alias(key.id, ddb_alias)
         ebs_key = kms.describe_key(ddb_alias)
         return ebs_key.arn
+
+    @staticmethod
+    def validate_table_name(table_name: str | None) -> None:
+        errors = []
+        if table_name is None:
+            errors.append(
+                "Value null at 'tableName' failed to satisfy constraint: Member must not be null"
+            )
+        elif not table_name:
+            errors.append(
+                "Value '' at 'tableName' failed to satisfy constraint: Member must have length greater than or equal to 1"
+            )
+        else:
+            if len(table_name) < 3:
+                errors.append(
+                    f"Value '{table_name}' at 'tableName' failed to satisfy constraint: Member must have length greater than or equal to 3"
+                )
+            if table_name and len(table_name) > 255:
+                errors.append(
+                    f"Value '{table_name}' at 'tableName' failed to satisfy constraint: Member must have length less than or equal to 255"
+                )
+            if table_name and not re.fullmatch(r"[a-zA-Z0-9_.-]+", table_name):
+                errors.append(
+                    f"Value '{table_name}' at 'tableName' failed to satisfy constraint: Member must satisfy regular expression pattern: [a-zA-Z0-9_.-]+"
+                )
+        if errors:
+            error_name = "error" if len(errors) == 1 else "errors"
+            raise MockValidationException(
+                f"{len(errors)} validation {error_name} detected: " + "; ".join(errors)
+            )
 
     @classmethod
     def has_cfn_attr(cls, attr: str) -> bool:
